@@ -1,27 +1,14 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-// import axios from 'axios' // Removed axios
-// import { API_URL } from '../config' // Removed API_URL
 import {
   login as apiLogin,
   register as apiRegister,
   getMe as apiGetMe,
-  requestPasswordReset as apiRequestPasswordReset, // Added
-  resetPassword as apiResetPassword // Added
+  requestPasswordReset as apiRequestPasswordReset,
+  resetPassword as apiResetPassword
 } from '../services/api/auth'
 import router from '../router'
-
-export interface User {
-  id: number
-  name: string
-  email: string
-  phone?: string
-  role: 'student' | 'professor' | 'admin' | 'super_admin'
-  country?: string
-  birthdate?: string
-  created_at: string
-  updated_at: string
-}
+import { User } from '../types/api'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
@@ -47,10 +34,10 @@ export const useAuthStore = defineStore('auth', () => {
     if (!user.value) return false
     
     if (Array.isArray(role)) {
-      return role.includes(user.value.role?.name)
+      return role.includes(user.value.role)
     }
     
-    return user.value.role?.name === role
+    return user.value.role === role
   }
 
   // Actions
@@ -61,9 +48,11 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await apiLogin({ username: identifier, password })
       
-      token.value = response.access_token
+      token.value = response.access_token as string
       localStorage.setItem('token', response.access_token)
-      localStorage.setItem('refreshToken', response.refresh_token)
+      if (response.refresh_token) {
+        localStorage.setItem('refreshToken', response.refresh_token)
+      }
       
       const userDetails = await apiGetMe()
       user.value = userDetails
@@ -91,7 +80,7 @@ export const useAuthStore = defineStore('auth', () => {
     
     try {
       // Call apiRegister - Note: apiRegister in services returns User
-      await apiRegister(userData)
+      await apiRegister(userData as any)
       
       // Registration successful, redirect to login page
       router.push('/login')
@@ -125,20 +114,30 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const requestPasswordReset = async (email: string) => {
+    loading.value = true
+    error.value = ''
     try {
       const response = await apiRequestPasswordReset(email)
-      return response.message // Assuming the backend returns a message
+      return { success: true, message: response.message }
     } catch (err: any) {
-      throw new Error(err.response?.data?.detail || 'Failed to request password reset')
+      error.value = err.response?.data?.detail || 'Failed to request password reset'
+      return { success: false }
+    } finally {
+      loading.value = false
     }
   }
 
   const resetPassword = async (token: string, newPassword: string) => {
+    loading.value = true
+    error.value = ''
     try {
       const response = await apiResetPassword(token, newPassword)
-      return response.message // Assuming the backend returns a message
+      return { success: true, message: response.message }
     } catch (err: any) {
-      throw new Error(err.response?.data?.detail || 'Failed to reset password')
+      error.value = err.response?.data?.detail || 'Failed to reset password'
+      return { success: false }
+    } finally {
+      loading.value = false
     }
   }
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { useAuthStore } from '../../stores/auth'
 
 // Components
@@ -9,7 +9,7 @@ import AdminDashboard from '../dashboard/admin/AdminDashboard.vue'
 
 const authStore = useAuthStore()
 const currentUser = computed(() => authStore.user)
-const userRole = computed(() => currentUser.value?.role?.name || '')
+const userRole = computed(() => currentUser.value?.role || '')
 
 // Show appropriate dashboard based on user role
 const showDashboard = computed(() => {

@@ -1,165 +1,103 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
 import apiClient from '../services/api'
+import { CourseTest } from '../types/api'
 
-export interface Course {
-  id: number
-  title: string
-  description: string
-  instructor: {
-    id: number
-    name: string
-  }
-  sections: CourseSection[]
-  progress: number
-  status: 'draft' | 'published'
-  created_at: string
-  updated_at: string
-}
+export const useCourseStore = defineStore('course', {
+  state: () => ({
+    loading: false,
+    error: '',
+    currentCourse: null as any,
+    currentTest: null as CourseTest | null,
+  }),
+  actions: {
+    // Get course details
+    async getCourse(courseId: number) {
+      this.loading = true
+      this.error = ''
 
-export interface CourseSection {
-  id: number
-  title: string
-  description?: string
-  order: number
-  lessons: CourseLesson[]
-  test?: CourseTest
-}
-
-export interface CourseLesson {
-  id: number
-  title: string
-  type: 'video' | 'text' | 'quiz'
-  content: string
-  duration?: string
-  order: number
-  completed: boolean
-}
-
-export interface CourseTest {
-  id: number
-  title: string
-  description?: string
-  duration: number
-  passingScore: number
-  maxAttempts: number
-  questions: TestQuestion[]
-}
-
-export interface TestQuestion {
-  id: number
-  type: 'multiple' | 'true-false' | 'essay'
-  question: string
-  options?: string[]
-  correctAnswer: number | boolean | null
-  points: number
-}
-
-export const useCourseStore = defineStore('course', () => {
-  const loading = ref(false)
-  const error = ref('')
-  const currentCourse = ref<Course | null>(null)
-  const currentTest = ref<CourseTest | null>(null)
-
-  // Get course details
-  const getCourse = async (courseId: number) => {
-    loading.value = true
-    error.value = ''
-    
-    try {
-      const response = await apiClient.get(`/courses/${courseId}`)
-      currentCourse.value = response.data
-    } catch (err: any) {
-      error.value = err.message || 'Failed to load course'
-      throw error.value
-    } finally {
-      loading.value = false
-    }
-  }
-
-  // Get test details
-  const getTest = async (testId: number) => {
-    loading.value = true
-    error.value = ''
-    
-    try {
-      const response = await apiClient.get(`/courses/tests/${testId}`)
-      currentTest.value = response.data
-    } catch (err: any) {
-      error.value = err.message || 'Failed to load test'
-      throw error.value
-    } finally {
-      loading.value = false
-    }
-  }
-
-  // Save test
-  const saveTest = async (courseId: number, sectionId: number | null, test: CourseTest) => {
-    loading.value = true
-    error.value = ''
-    
-    try {
-      const response = await apiClient.post(`/courses/sections/${sectionId}/tests/`, test)
-      return response.data
-    } catch (err: any) {
-      error.value = err.message || 'Failed to save test'
-      throw error.value
-    } finally {
-      loading.value = false
-    }
-  }
-
-  // Mark lesson as completed
-  const completedLesson = async (courseId: number, lessonId: number) => {
-    loading.value = true
-    error.value = ''
-    
-    try {
-      await apiClient.post(`/courses/${courseId}/lessons/${lessonId}/complete`)
-      
-      if (currentCourse.value) {
-        // Update local state
-        currentCourse.value.sections.forEach(section => {
-          section.lessons.forEach(lesson => {
-            if (lesson.id === lessonId) {
-              lesson.completed = true
-            }
-          })
-        })
+      try {
+        const response = await apiClient.get(`/courses/${courseId}`)
+        this.currentCourse = response.data
+      } catch (err: any) {
+        this.error = err.message || 'Failed to load course'
+        throw this.error
+      } finally {
+        this.loading = false
       }
-    } catch (err: any) {
-      error.value = err.message || 'Failed to mark lesson as completed'
-      throw error.value
-    } finally {
-      loading.value = false
-    }
-  }
+    },
 
-  // Submit test answers
-  const submitTest = async (courseId: number, testId: number, answers: any[]) => {
-    loading.value = true
-    error.value = ''
-    
-    try {
-      const response = await apiClient.post(`/courses/${courseId}/tests/${testId}/attempt`, { answers })
-      return response.data
-    } catch (err: any) {
-      error.value = err.message || 'Failed to submit test'
-      throw error.value
-    } finally {
-      loading.value = false
-    }
-  }
+    // Get test details
+    async getTest(testId: number) {
+      this.loading = true
+      this.error = ''
 
-  return {
-    loading,
-    error,
-    currentCourse,
-    currentTest,
-    getCourse,
-    getTest,
-    saveTest,
-    completedLesson,
-    submitTest
+      try {
+        const response = await apiClient.get(`/courses/tests/${testId}`)
+        this.currentTest = response.data
+      } catch (err: any) {
+        this.error = err.message || 'Failed to load test'
+        throw this.error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // Save test
+    async saveTest(_courseId: number, sectionId: number | null, test: CourseTest) {
+      this.loading = true
+      this.error = ''
+
+      try {
+        const response = await apiClient.post(`/courses/sections/${sectionId}/tests/`, test)
+        return response.data
+      } catch (err: any) {
+        this.error = err.message || 'Failed to save test'
+        throw this.error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // Mark lesson as completed
+    async completedLesson(courseId: number, lessonId: number) {
+      this.loading = true
+      this.error = ''
+      
+      try {
+        await apiClient.post(`/courses/${courseId}/lessons/${lessonId}/complete`)
+
+        if (this.currentCourse) {
+          // Update local state
+          this.currentCourse.sections.forEach((section: any) => {
+            section.lessons.forEach((lesson: any) => {
+              if (lesson.id === lessonId) {
+                lesson.is_completed = true
+              }
+            })
+          })
+        }
+      } catch (err: any) {
+        this.error = err.message || 'Failed to mark lesson as completed'
+        throw this.error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // Submit test answers
+    async submitTest(courseId: number, testId: number, answers: any[]) {
+      this.loading = true
+      this.error = ''
+
+      try {
+        const response = await apiClient.post(`/courses/${courseId}/tests/${testId}/attempt`, { answers })
+        return response.data
+      } catch (err: any) {
+        this.error = err.message || 'Failed to submit test'
+        throw this.error
+      } finally {
+        this.loading = false
+      }
+    }
   }
 })

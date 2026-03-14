@@ -202,9 +202,8 @@ import type {
   CourseTest,
   TestQuestion,
   CourseTestCreatePayload,
-  TestQuestionCreatePayload,
-  TestQuestionUpdatePayload,
 } from '../types/api';
+import { QuestionType } from '../types/api';
 
 // Props
 interface Props {
@@ -233,14 +232,14 @@ interface FormTestQuestion {
 const test = ref<{
   id?: number;
   title: string;
-  description: string | null;
+  description: string;
   duration_minutes: number;
   passing_score: number;
   max_attempts: number;
   questions: FormTestQuestion[];
 }>({
   title: 'Nouveau Quiz',
-  description: null,
+  description: '',
   duration_minutes: 60,
   passing_score: 70,
   max_attempts: 3,
@@ -270,6 +269,7 @@ const isFormValid = computed(() => {
 });
 
 const loadTest = async () => {
+  if (!props.sectionId) return;
   isLoading.value = true;
   error.value = null;
   
@@ -279,7 +279,7 @@ const loadTest = async () => {
     if (!fetchedTest || !fetchedTest.id) {
       test.value = {
         title: 'Nouveau Quiz',
-        description: null,
+        description: '',
         duration_minutes: 60,
         passing_score: 70,
         max_attempts: 3,
@@ -291,15 +291,15 @@ const loadTest = async () => {
     test.value = {
       id: fetchedTest.id,
       title: fetchedTest.title,
-      description: fetchedTest.description,
+      description: fetchedTest.description ?? '',
       duration_minutes: fetchedTest.duration_minutes || 60,
       passing_score: fetchedTest.passing_score || 70,
       max_attempts: fetchedTest.max_attempts || 3,
-      questions: fetchedTest.questions?.map((q: TestQuestion) => {
+      questions: (fetchedTest.questions || []).map((q: TestQuestion) => {
         const formQuestion: FormTestQuestion = {
           id: q.id,
           question_text: q.question_text,
-          question_type: q.question_type === 'multiple' ? 'multiple_choice' : q.question_type as 'multiple_choice' | 'true-false' | 'essay',
+          question_type: q.question_type === QuestionType.MULTIPLE_CHOICE ? 'multiple_choice' : 'essay',
           points: q.points || 1,
         };
         
@@ -359,7 +359,7 @@ const addQuestion = (type: 'multiple_choice' | 'true-false' | 'essay') => {
   test.value.questions.push(newQuestion);
 };
 
-const removeQuestion = (index: number, questionId) => {
+const removeQuestion = (index: number, questionId: number | null = null) => {
   if (questionId) {
     // Confirmation de suppression
     const confirmed = confirm('Êtes-vous sûr de vouloir supprimer cette question ?');
@@ -369,7 +369,7 @@ const removeQuestion = (index: number, questionId) => {
 
     // Suppression
     test.value.questions.splice(index, 1);
-    deleteTestQuestion(questionId);
+    deleteTestQuestion(questionId as number);
   }else{
     test.value.questions.splice(index, 1);
   }
@@ -401,7 +401,7 @@ const prepareQuestionForAPI = (question: FormTestQuestion) => {
   if (question.question_type === 'true-false') {
     return {
       ...baseQuestion,
-      question_type: 'multiple_choice' as const,
+      question_type: QuestionType.MULTIPLE_CHOICE,
       options: [
         { text: 'Vrai', is_correct: question.correct_answer === true },
         { text: 'Faux', is_correct: question.correct_answer === false }
@@ -410,13 +410,13 @@ const prepareQuestionForAPI = (question: FormTestQuestion) => {
   } else if (question.question_type === 'multiple_choice') {
     return {
       ...baseQuestion,
-      question_type: 'multiple_choice' as const,
+      question_type: QuestionType.MULTIPLE_CHOICE,
       options: question.options || []
     };
   } else {
     return {
       ...baseQuestion,
-      question_type: 'multiple_choice' as const,
+      question_type: QuestionType.ESSAY,
       options: []
     };
   }
@@ -440,9 +440,9 @@ const saveTest = async () => {
     let savedTest: CourseTest;
 
     if (test.value.id) {
-      const testPayload: CourseTestUpdatePayer = {
+      const testPayload: any = {
         title: test.value.title,
-        description: test.value.description,
+        description: test.value.description as string | undefined,
         duration_minutes: test.value.duration_minutes,
         passing_score: test.value.passing_score,
         max_attempts: test.value.max_attempts,
@@ -454,12 +454,12 @@ const saveTest = async () => {
         const questionPayload = prepareQuestionForAPI(q);
 
         if (q.id) {
-          await updateTestQuestion(q.id, questionPayload as TestQuestionUpdatePayload);
+          await updateTestQuestion(q.id, questionPayload as any);
         } else {
           const newQ = await createTestQuestion(test.value.id!, {
             ...questionPayload,
             test_id: test.value.id!,
-          } as TestQuestionCreatePayload);
+          } as any);
           test.value.questions[index].id = newQ.id;
         }
       }
@@ -467,7 +467,7 @@ const saveTest = async () => {
     } else {
       const testPayload: CourseTestCreatePayload = {
         title: test.value.title,
-        description: test.value.description,
+        description: test.value.description || undefined,
         duration_minutes: test.value.duration_minutes,
         passing_score: test.value.passing_score,
         max_attempts: test.value.max_attempts,
@@ -484,12 +484,12 @@ const saveTest = async () => {
         const newQ = await createTestQuestion(savedTest.id!, {
           ...questionPayload,
           test_id: savedTest.id!,
-        } as TestQuestionCreatePayload);
+        } as any);
         test.value.questions[index].id = newQ.id;
       }
     }
 
-    window.$('#testEditorModal').modal('toggle');
+    (window as any).$('#testEditorModal').modal('toggle');
 
   } catch (err: any) {
     console.error('Error saving test:', err);

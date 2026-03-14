@@ -2,9 +2,7 @@
 import { RouterView, useRoute } from 'vue-router'
 import Navbar from './components/layout/Navbar.vue'
 import Footer from './components/layout/Footer.vue'
-import { useAuthStore } from './stores/auth'
 
-const authStore = useAuthStore()
 const route = useRoute()
 
 // Liste des routes où on veut cacher Navbar et Footer

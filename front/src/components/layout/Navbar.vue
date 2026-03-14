@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import { APP_NAME } from '../../config'
@@ -70,20 +70,20 @@ const handleLogout = () => {
             <li><RouterLink class="dropdown-item" to="/my-content">Mes contenus</RouterLink></li>
             
             <!-- Student specific -->
-            <template v-if="currentUser?.role?.name === 'student'">
+            <template v-if="currentUser?.role === 'student'">
               <li><RouterLink class="dropdown-item" to="/my-courses">Mes cours</RouterLink></li>
               <li><RouterLink class="dropdown-item" to="/certificates">Mes certificats</RouterLink></li>
               <li><RouterLink class="dropdown-item" to="/browse-courses">Explorer les cours</RouterLink></li>
             </template>
             
             <!-- Professor specific -->
-            <template v-if="currentUser?.role?.name === 'professor'">
+            <template v-if="currentUser?.role === 'professor'">
               <li><RouterLink class="dropdown-item" to="/manage-courses">Gérer mes cours</RouterLink></li>
               <li><RouterLink class="dropdown-item" to="/live-sessions">Sessions en direct</RouterLink></li>
             </template>
             
             <!-- Admin specific -->
-            <template v-if="['admin', 'super_admin'].includes(currentUser?.role?.name || '')">
+            <template v-if="['admin', 'super_admin'].includes(currentUser?.role || '')">
               <li><RouterLink class="dropdown-item" to="/manage-professors">Gérer les professeurs</RouterLink></li>
               <li><RouterLink class="dropdown-item" to="/live-sessions">Sessions en direct</RouterLink></li>
             </template>

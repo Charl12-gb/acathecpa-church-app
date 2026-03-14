@@ -8,33 +8,33 @@ export enum UserRole {
 export interface User {
   id: number;
   email: string;
-  name?: string | null;
+  name: string;
   phone?: string | null;
   role: UserRole;
   country?: string | null;
-  birthdate?: string | null; // Consider Date object if consistently used
+  birthdate?: string | null;
   is_active: boolean;
-  created_at: string; // Or Date
-  updated_at: string; // Or Date
+  created_at: string;
+  updated_at: string;
 }
 
 export interface UserCreatePayload {
   email: string;
-  name: string; // Required for registration
+  name: string;
   password: string;
   phone?: string;
   country?: string;
   birthdate?: string;
-  role?: UserRole; // Optional, backend might default
+  role?: UserRole;
 }
 
 export interface UserUpdatePayload {
   email?: string;
   name?: string;
-  phone?: string;
-  country?: string;
-  birthdate?: string;
+  phone?: string | null;
+  country?: string | null;
+  birthdate?: string | null;
   role?: UserRole;
   is_active?: boolean;
-  password?: string; // For password changes
+  password?: string;
 }

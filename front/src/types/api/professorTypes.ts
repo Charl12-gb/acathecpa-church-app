@@ -1,5 +1,4 @@
 import { User } from './userTypes';
-import { UserRole } from './userTypes';
 
 export interface SocialLinks {
   linkedin?: string | null;
@@ -38,15 +37,7 @@ export interface ProfessorProfile {
   social_links?: SocialLinks;
 }
 
-export interface Professor {
-  id: number;
-  name: string;
-  email: string;
-  phone?: string | null;
-  country?: string | null;
-  birthdate?: string | null;
-  is_active: boolean;
-  role: UserRole; 
+export interface Professor extends User {
   professor_profile: ProfessorProfile | null;
 }
 
@@ -86,6 +77,3 @@ export interface ProfessorProfileCreatePayload {
   social_links?: SocialLinks;
 }
 
-export interface Professor extends User {
-  professor_profile: ProfessorProfile | null;
-}

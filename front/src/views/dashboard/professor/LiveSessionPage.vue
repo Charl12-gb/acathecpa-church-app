@@ -149,19 +149,19 @@
 
               <!-- Participant Videos -->
               <div 
-                v-for="user in remoteUsers"
-                :key="user.uid"
+                v-for="[uid, user] in Array.from(remoteUsers)"
+                :key="uid"
                 class="video-container"
               >
-                <div :ref="'remote-' + user.uid" class="video-element"></div>
+                <div :ref="(el: any) => { if (el) (instance?.proxy as any)['remote-' + uid] = el }" class="video-element"></div>
                 <div class="video-overlay">
-                  <span class="badge bg-secondary">{{ user.name }}</span>
+                  <span class="badge bg-secondary">{{ (user as any).name }}</span>
                   <div class="controls">
                     <button 
                       class="btn btn-light btn-sm"
-                      @click="toggleParticipantAudio(user.uid)"
+                      @click="toggleParticipantAudio(uid)"
                     >
-                      <i :class="['bi', user.isAudioEnabled ? 'bi-mic' : 'bi-mic-mute']"></i>
+                      <i :class="['bi', (user as any).isAudioEnabled ? 'bi-mic' : 'bi-mic-mute']"></i>
                     </button>
                   </div>
                 </div>
@@ -209,7 +209,7 @@
                   v-for="message in messages" 
                   :key="message.timestamp"
                   class="message"
-                  :class="{ 'message-own': message.userId === currentUser.id }"
+                  :class="{ 'message-own': message.userId === currentUser?.id }"
                 >
                   <div class="message-header">
                     <strong>{{ message.userName }}</strong>
@@ -243,19 +243,19 @@
             <!-- Participants -->
             <div v-else class="participants-list">
               <div 
-                v-for="user in remoteUsers"
-                :key="user.uid"
+                v-for="[uid, user] in Array.from(remoteUsers)"
+                :key="uid"
                 class="participant-item"
               >
                 <div class="d-flex align-items-center">
                   <div class="participant-avatar">
-                    {{ user.name.charAt(0) }}
+                    {{ (user as any).name.charAt(0) }}
                   </div>
                   <div class="participant-info">
                     <div class="participant-name">
-                      {{ user.name }}
+                      {{ (user as any).name }}
                       <span 
-                        v-if="raisedHands.has(user.uid)"
+                        v-if="raisedHands.has(uid)"
                         class="badge bg-warning text-dark ms-2"
                       >
                         <i class="bi bi-hand-index-thumb"></i>
@@ -266,10 +266,10 @@
                   <div class="participant-controls ms-auto">
                     <button 
                       class="btn btn-sm"
-                      :class="user.isAudioEnabled ? 'btn-outline-danger' : 'btn-outline-success'"
-                      @click="toggleParticipantAudio(user.uid)"
+                      :class="(user as any).isAudioEnabled ? 'btn-outline-danger' : 'btn-outline-success'"
+                      @click="toggleParticipantAudio(uid)"
                     >
-                      <i :class="['bi', user.isAudioEnabled ? 'bi-mic-mute' : 'bi-mic']"></i>
+                      <i :class="['bi', (user as any).isAudioEnabled ? 'bi-mic-mute' : 'bi-mic']"></i>
                     </button>
                   </div>
                 </div>
@@ -299,7 +299,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, getCurrentInstance } from 'vue'
 import { useRoute } from 'vue-router'
 import { useVideoConferenceStore } from '../../../stores/videoConference'
 import { useAuthStore } from '../../../stores/auth'
@@ -335,6 +335,8 @@ const remoteUsers = computed(() => videoStore.remoteUsers)
 const messages = computed(() => videoStore.messages)
 const raisedHands = computed(() => videoStore.raisedHands)
 const loading = computed(() => videoStore.loading)
+
+const instance = getCurrentInstance();
 
 // Methods
 const createSession = async () => {
@@ -378,19 +380,21 @@ const endSession = async () => {
 
 const toggleAudio = () => {
   isAudioEnabled.value = !isAudioEnabled.value
-  if (videoStore.localAudioTrack) {
+  const track = (videoStore as any).localAudioTrack;
+  if (track) {
     isAudioEnabled.value ? 
-      videoStore.localAudioTrack.setEnabled(true) : 
-      videoStore.localAudioTrack.setEnabled(false)
+      track.setEnabled(true) :
+      track.setEnabled(false)
   }
 }
 
 const toggleVideo = () => {
   isVideoEnabled.value = !isVideoEnabled.value
-  if (videoStore.localVideoTrack) {
+  const track = (videoStore as any).localVideoTrack;
+  if (track) {
     isVideoEnabled.value ? 
-      videoStore.localVideoTrack.setEnabled(true) : 
-      videoStore.localVideoTrack.setEnabled(false)
+      track.setEnabled(true) :
+      track.setEnabled(false)
   }
 }
 

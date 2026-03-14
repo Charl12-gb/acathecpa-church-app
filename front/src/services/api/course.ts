@@ -6,7 +6,7 @@ import {
     CourseTest, CourseTestCreatePayload, /* CourseTestUpdatePayload, */
     TestQuestion, TestQuestionCreatePayload, /* TestQuestionUpdatePayload, */
     // TestSubmissionPayload, TestResult, // Original types, might be replaced or kept for other uses
-    Certificate, CertificateDisplay, CertificateBase, // Added Certificate types
+    Certificate, CertificateDisplay, // Added Certificate types
     EnrollmentProgress, // Added for new progress endpoints
     TestSubmissionWithScoreSchema // Added for submitting test with score
 } from '../../types/api';

@@ -267,7 +267,11 @@ const previewContent = () => {
 // Save content
 const saveContent = async () => {
   try {
-    await contentStore.saveContent(contentForm.value)
+    const payload: any = {
+        ...contentForm.value,
+        content_body: contentForm.value.content
+    };
+    await contentStore.saveContent(payload)
     router.push('/my-content')
   } catch (error) {
     console.error('Error saving content:', error)

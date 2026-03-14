@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { APP_NAME } from '../../config'
 
 const contactForm = ref({
   name: '',

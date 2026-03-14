@@ -178,10 +178,10 @@ const router = createRouter({
   ]
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore()
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
-  const requiredRole = to.meta.role
+  const requiredRole = to.meta.role as string | string[] | undefined
 
   if (requiresAuth && !authStore.isAuthenticated) {
     next('/login')

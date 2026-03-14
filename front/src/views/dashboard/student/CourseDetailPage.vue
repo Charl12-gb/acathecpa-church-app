@@ -231,8 +231,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getCourseById, getMyCertificateForCourse, getMyCourseEnrollmentProgress } from '../../../services/api/course';
-import type { Course, CourseSection, CourseLesson as ApiCourseLesson, EnrollmentProgress } from '../../../types/api';
+import { getCourseById, getMyCertificateForCourse, getMyCourseEnrollmentProgress, triggerStudentCertificateCheck } from '../../../services/api/course';
+import type { Course, CourseSection, EnrollmentProgress } from '../../../types/api';
 import type { CertificateDisplay } from '../../../types/api';
 
 const route = useRoute()
@@ -342,14 +342,6 @@ const findNextIncompleteSection = () => {
 }
 
 // Actions
-const startLesson = async (sectionId: number, lessonId: number) => {
-    try {
-        router.push(`/lesson/${course.value?.id}/${sectionId}/${lessonId}`)
-    } catch (err: any) {
-        error.value = err.message
-    }
-}
-
 const continueLastLesson = () => {
     if (!course.value) return;
 

@@ -5,8 +5,10 @@ import { getAllCourses } from '../../services/api/course'
 import type { Course } from '../../types/api' // Ensure Course type is imported
 
 onMounted(async () => {
-  new TypeIt("#typeit-text", {
-    speed: 100,
+  const TypeIt = (window as any).TypeIt;
+  if (TypeIt) {
+    new TypeIt("#typeit-text", {
+      speed: 100,
     loop: true,
     deleteSpeed: 50,
     waitUntilVisible: true,
@@ -18,9 +20,10 @@ onMounted(async () => {
   .pause(3500)
   .delete()
   .type("Bienvenido a ACATHECPA")
-  .pause(3500)
-  .delete()
-  .go();
+    .pause(3500)
+    .delete()
+    .go();
+  }
 
   // Fetch featured courses
   try {
@@ -280,7 +283,7 @@ const testimonials = ref([
               <div class="card-body">
                 <h5 class="card-title fw-bold">{{ course.title }}</h5>
                 <p class="card-text">
-                  {{ course.description.length > 50 ? course.description.slice(0, 100) + '...' : course.description }}
+                  {{ (course.description && course.description.length > 50) ? course.description.slice(0, 100) + '...' : (course.description || '') }}
                 </p>
 
                 <div class="d-flex align-items-center mb-3">

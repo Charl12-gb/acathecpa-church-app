@@ -1,5 +1,4 @@
-from sqlalchemy import Column, Integer, ForeignKey, DateTime, Float
-from sqlalchemy.dialects.postgresql import JSONB # Using JSONB for PostgreSQL for better performance
+from sqlalchemy import Column, Integer, ForeignKey, DateTime, Float, JSON
 from sqlalchemy.orm import relationship
 from app.database import Base
 from datetime import datetime
@@ -15,11 +14,11 @@ class Enrollment(Base):
     completed_at = Column(DateTime, nullable=True)
 
     # Using default=[] ensures a new list is created for each instance if not provided
-    completed_lessons = Column(JSONB, nullable=False, default=lambda: []) # Store list of lesson IDs
-    completed_sections = Column(JSONB, nullable=False, default=lambda: []) # Store list of section IDs
-    test_attempts = Column(JSONB, nullable=False, default=lambda: [])
+    completed_lessons = Column(JSON, nullable=False, default=lambda: []) # Store list of lesson IDs
+    completed_sections = Column(JSON, nullable=False, default=lambda: []) # Store list of section IDs
+    test_attempts = Column(JSON, nullable=False, default=lambda: [])
     # Example: [{"test_id": 1, "score": 80, "passed": True, "attempted_at": "timestamp"}]
-    test_scores = Column(JSONB, nullable=False, default=lambda: [])
+    test_scores = Column(JSON, nullable=False, default=lambda: [])
     # Example: [{"test_id": 1, "score": 80}]
 
     user = relationship("User", back_populates="enrollments")

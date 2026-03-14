@@ -12,11 +12,11 @@ export interface ProfessorUserAndProfileCreatePayload {
     name?: string;
     email: string;
     password?: string;
-    phone?: string;
-    country?: string;
-    birthdate?: string;
+    phone?: string | null;
+    country?: string | null;
+    birthdate?: string | null;
     specialization: string;
-    bio?: string;
+    bio?: string | null;
     education?: any[];
     experience?: any[];
     skills?: string[];

@@ -17,9 +17,6 @@ import {
 import type {
   Course,
   CourseSectionCreatePayload,
-  CourseLessonCreatePayload,
-  LessonType,
-  ContentType,
 } from '../../../types/api';
 import { CourseStatus } from '../../../types/api';
 
@@ -46,24 +43,7 @@ const courseForm = ref<{
   objectives: string[]; 
   prerequisites: string[]; 
   status: CourseStatus;
-  sections: Array<{ 
-    id?: number;
-    title: string;
-    order: number;
-    content_type: ContentType;
-    video_url: string | null;
-    text_content: string | null;
-    test: any | null;
-    lessons: Array<{
-      id?: number; 
-      title: string;
-      type: LessonType;
-      duration: string;
-      content: string; 
-      order: number;
-      is_completed: boolean; 
-    }>;
-  }>;
+  sections: any[];
 }>({
   title: '',
   description: '',
@@ -80,14 +60,14 @@ const courseForm = ref<{
     {
       title: '',
       order: 0,
-      content_type: 'text' as ContentType,
+      content_type: 'text',
       video_url: null,
       text_content: '', 
       test: null,
       lessons: [
         {
           title: '',
-          type: 'video' as LessonType,
+          type: 'video',
           duration: '',
           content: '', 
           order: 0,
@@ -95,15 +75,15 @@ const courseForm = ref<{
         },
       ],
     },
-  ],
+  ] as any[],
 });
 
 const errors = ref<Record<string, string>>({});
 
 // Computed property for total lessons count
 const totalLessons = computed(() => {
-  return courseForm.value.sections.reduce((total, section) => {
-    return total + section.lessons?.length;
+  return courseForm.value.sections.reduce((total: number, section: any) => {
+    return total + (section.lessons?.length || 0);
   }, 0);
 });
 
@@ -129,24 +109,24 @@ onMounted(async () => {
         status: fetchedCourse.status || CourseStatus.DRAFT,
         category: fetchedCourse.category || '',
         level: fetchedCourse.level || 'beginner',
-        sections: fetchedCourse.sections?.map(s => ({
+        sections: (fetchedCourse.sections || []).map((s: any) => ({
           id: s.id,
           title: s.title,
           order: s.order,
-          content_type: s.content_type || ('text' as ContentType),
+          content_type: s.content_type || 'text',
           video_url: s.video_url || null,
           text_content: s.text_content || null,
           test: s.test || null, 
-          lessons: s.lessons?.map(l => ({
+          lessons: (s.lessons || []).map((l: any) => ({
             id: l.id,
             title: l.title,
-            type: l.type as LessonType,
+            type: l.type,
             duration: l.duration || '',
             content: l.content_body || '',
             order: l.order,
             is_completed: l.is_completed,
           })),
-        })),
+        })) as any[],
       };
     } catch (err: any) {
       console.error('Error loading course:', err);
@@ -178,7 +158,7 @@ const addSection = () => {
   courseForm.value.sections.push({
     title: '',
     order: courseForm.value.sections?.length,
-    content_type: 'text' as ContentType,
+    content_type: 'text',
     video_url: null,
     text_content: '',
     test: null,
@@ -186,12 +166,12 @@ const addSection = () => {
   });
 };
 
-const removeSection = (index: number, sectionId = null) => {
+const removeSection = (index: number, sectionId: number | null = null) => {
   if (sectionId) {
     // Confirmation dialog
-    const confirm = window.confirm('Are you sure you want to delete this section?');
-    if (!confirm) return;
-    deleteCourseSection(sectionId);
+    const confirmed = window.confirm('Are you sure you want to delete this section?');
+    if (!confirmed) return;
+    deleteCourseSection(sectionId as number);
     courseForm.value.sections.splice(index, 1);
     // Update order for remaining sections
     courseForm.value.sections.forEach((section, i) => {
@@ -210,7 +190,7 @@ const addLesson = (sectionIndex: number) => {
   console.log(courseForm.value.sections[sectionIndex])
   courseForm.value.sections[sectionIndex].lessons.push({
     title: '',
-    type: 'video' as LessonType,
+    type: 'video',
     duration: '',
     content: '',
     order: courseForm.value.sections[sectionIndex].lessons?.length,
@@ -218,18 +198,18 @@ const addLesson = (sectionIndex: number) => {
   });
 };
 
-const removeLesson = (sectionIndex: number, lessonIndex: number, lessonId = null) => {
+const removeLesson = (sectionIndex: number, lessonIndex: number, lessonId: number | null = null) => {
   if (lessonId) {
-    const confirm = window.confirm('Are you sure you want to delete this lesson?');
-    if (!confirm) return;
-    deleteCourseLesson(lessonId);
+    const confirmed = window.confirm('Are you sure you want to delete this lesson?');
+    if (!confirmed) return;
+    deleteCourseLesson(lessonId as number);
     courseForm.value.sections[sectionIndex].lessons.splice(lessonIndex, 1);
-    courseForm.value.sections[sectionIndex].lessons.forEach((lesson, i) => {
+    courseForm.value.sections[sectionIndex].lessons.forEach((lesson: any, i: number) => {
       lesson.order = i;
     });
   }else{
     courseForm.value.sections[sectionIndex].lessons.splice(lessonIndex, 1);
-    courseForm.value.sections[sectionIndex].lessons.forEach((lesson, i) => {
+    courseForm.value.sections[sectionIndex].lessons.forEach((lesson: any, i: number) => {
       lesson.order = i;
     });
   }
@@ -242,7 +222,10 @@ const openCreateTestModal = (incomingSectionId: number) => {
   
   // Attendre le prochain tick pour s'assurer que le composant reçoit la nouvelle valeur
   nextTick(() => {
-    window.$('#testEditorModal').modal('toggle');
+      const modal = (window as any).$('#testEditorModal');
+      if (modal && modal.modal) {
+          modal.modal('toggle');
+      }
   });
 };
 
@@ -272,7 +255,7 @@ const saveCourse = async () => {
   }
 
   try {
-    const payload = {
+    const payload: any = {
       title: courseForm.value.title,
       description: courseForm.value.description,
       price: courseForm.value.price,
@@ -314,18 +297,18 @@ const saveCourse = async () => {
 
         // Créer ou mettre à jour les leçons
         for (const [lessonIndex, lesson] of (section.lessons || []).entries()) {
-          const lessonPayload: CourseLessonCreatePayload = {
-            title: lesson.title,
-            type: lesson.type,
-            duration: lesson.duration,
-            content_body: lesson.content,
+          const lessonPayload: any = {
+            title: (lesson as any).title,
+            type: (lesson as any).type,
+            duration: (lesson as any).duration,
+            content_body: (lesson as any).content,
             order: lessonIndex,
             section_id: sectionId,
-            is_completed: lesson.is_completed ?? false,
+            is_completed: (lesson as any).is_completed ?? false,
           };
 
-          if (lesson.id) {
-            await updateCourseLesson(lesson.id, lessonPayload);
+          if ((lesson as any).id) {
+            await updateCourseLesson((lesson as any).id, lessonPayload);
           } else {
             await createCourseLesson(sectionId, lessonPayload);
           }
@@ -354,13 +337,13 @@ const saveCourse = async () => {
         const sectionId = newSection.id;
 
         for (const [lessonIndex, lesson] of (section.lessons || []).entries()) {
-          if (!lesson.title.trim()) continue;
+          if (!(lesson as any).title.trim()) continue;
 
-          const lessonPayload: CourseLessonCreatePayload = {
-            title: lesson.title,
-            type: lesson.type,
-            duration: lesson.duration,
-            content_body: lesson.content,
+          const lessonPayload: any = {
+            title: (lesson as any).title,
+            type: (lesson as any).type,
+            duration: (lesson as any).duration,
+            content_body: (lesson as any).content,
             order: lessonIndex,
             section_id: sectionId,
             is_completed: false,
@@ -389,10 +372,7 @@ const togglePreview = () => {
   showPreview.value = !showPreview.value;
 };
 
-// Preview course
-const previewCourse = () => {
-  togglePreview();
-};
+// Preview course removed as redundant
 </script>
 
 <template>
@@ -560,7 +540,7 @@ const previewCourse = () => {
             <h5 class="mb-0">Objectifs d'apprentissage</h5>
           </div>
           <div class="card-body">
-            <div v-for="(objective, index) in courseForm.objectives" :key="index" class="mb-3">
+            <div v-for="(_objective, index) in courseForm.objectives" :key="index" class="mb-3">
               <div class="input-group">
                 <input 
                   type="text" 
@@ -590,7 +570,7 @@ const previewCourse = () => {
             <h5 class="mb-0">Prérequis</h5>
           </div>
           <div class="card-body">
-            <div v-for="(prerequisite, index) in courseForm.prerequisites" :key="index" class="mb-3">
+            <div v-for="(_prerequisite, index) in courseForm.prerequisites" :key="index" class="mb-3">
               <div class="input-group">
                 <input 
                   type="text" 
@@ -843,7 +823,7 @@ const previewCourse = () => {
                   :src="courseForm.image_url" 
                   class="img-fluid rounded"
                   style="width: 100%; height: 200px; object-fit: cover;"
-                  @error="$event.target.style.display='none'"
+                  @error="($event.target as any).style.display='none'"
                   alt="Aperçu du cours"
                 >
               </div>
@@ -899,7 +879,7 @@ const previewCourse = () => {
             <div class="mb-3">
               <h6 class="fw-bold mb-2">Contenu du cours :</h6>
               <div class="accordion accordion-flush" id="previewAccordion">
-                <div v-for="(section, index) in courseForm.sections.filter(s => s.title.trim())" :key="index" class="accordion-item">
+                <div v-for="(section, index) in (courseForm.sections as any[]).filter(s => s.title.trim())" :key="index" class="accordion-item">
                   <h2 class="accordion-header">
                     <button 
                       class="accordion-button collapsed py-2" 
@@ -924,8 +904,8 @@ const previewCourse = () => {
                   </h2>
                   <div :id="`collapse${index}`" class="accordion-collapse collapse" :data-bs-parent="`#previewAccordion`">
                     <div class="accordion-body py-2">
-                      <div v-if="section.lessons?.length > 0">
-                        <div v-for="(lesson, lessonIndex) in section.lessons.filter(l => l.title.trim())" :key="lessonIndex" class="d-flex align-items-center mb-2">
+                      <div v-if="(section.lessons as any[])?.length > 0">
+                        <div v-for="(lesson, lessonIndex) in (section.lessons as any[]).filter((l: any) => l.title.trim())" :key="lessonIndex" class="d-flex align-items-center mb-2">
                           <i class="bi bi-play-btn text-muted me-2" style="font-size: 0.8rem;"></i>
                           <small class="flex-grow-1">{{ lesson.title }}</small>
                           <small class="text-muted">{{ lesson.duration }}</small>
