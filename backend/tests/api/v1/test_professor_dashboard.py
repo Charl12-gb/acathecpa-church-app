@@ -15,7 +15,7 @@ from pydantic import ValidationError
 from app.core.config import settings
 from app.models.user import User as UserModel # For dummy user
 # Import the specific dependency to override for endpoint tests
-from app.routers.professor_router import get_current_active_professor_user as professor_auth_dependency
+from app.dependencies.auth import require_professor as professor_auth_dependency
 
 
 # --- Schema Tests ---
@@ -79,7 +79,7 @@ def test_professor_recent_activity_schema_missing_content():
 # --- API Endpoint Tests (Structure) ---
 
 # Define a reusable dummy professor user
-dummy_professor_user_data = {"username": "prof_test", "role": "professor", "id": 2, "email": "prof@test.com", "is_active": True}
+dummy_professor_user_data = {"name": "prof_test", "id": 2, "email": "prof@test.com", "is_active": True}
 mock_professor_user = UserModel(**dummy_professor_user_data)
 
 async def override_get_current_active_professor_user_dependency():

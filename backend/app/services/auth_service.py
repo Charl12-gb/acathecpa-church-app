@@ -107,15 +107,15 @@ def get_user_with_profile(db: Session, user_id: int) -> Optional[User]:
 
 def create_user(db: Session, user: UserCreate) -> User:
     hashed_password = get_password_hash(user.password)
-    user_role_id = user.role
-    if user.role:
-        user_role_id = db.query(Roles).filter(Roles.name ==  user.role).first()
-    else:
-        raise ValueError("Role must be specified or defaulted to " + user.role)
     
-    user_role_id = user_role_id.id if user_role_id else None
-    if not user_role_id:
-        raise ValueError("Invalid role specified or role does not exist in the database.")
+    # Default to student role if none specified
+    role_name = user.role.name if user.role else UserRoleEnum.student
+
+    db_role = db.query(Roles).filter(Roles.name == role_name).first()
+    if not db_role:
+        raise ValueError(f"Role '{role_name}' does not exist in the database.")
+
+    user_role_id = db_role.id
     
     db_user = User(
         email=user.email,

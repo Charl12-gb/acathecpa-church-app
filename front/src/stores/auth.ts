@@ -16,7 +16,9 @@ export interface User {
   name: string
   email: string
   phone?: string
-  role: 'student' | 'professor' | 'admin' | 'super_admin'
+  role: {
+    name: 'student' | 'professor' | 'admin' | 'super_admin'
+  }
   country?: string
   birthdate?: string
   created_at: string

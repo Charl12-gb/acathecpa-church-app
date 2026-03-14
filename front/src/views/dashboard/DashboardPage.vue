@@ -13,16 +13,12 @@ const userRole = computed(() => currentUser.value?.role?.name || '')
 
 // Show appropriate dashboard based on user role
 const showDashboard = computed(() => {
-  switch (userRole.value) {
-    case 'student':
-      return 'student'
-    case 'professor':
-      return 'professor'
-    case 'admin':
-    case 'super_admin':
-      return 'admin'
-    default:
-      return 'student'
+  if (userRole.value === 'admin' || userRole.value === 'super_admin') {
+    return 'admin'
+  } else if (userRole.value === 'professor') {
+    return 'professor'
+  } else {
+    return 'student'
   }
 })
 </script>
