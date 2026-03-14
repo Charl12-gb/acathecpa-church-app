@@ -4,9 +4,9 @@ import {
   ProfessorProfile,
   ProfessorProfileCreatePayload,
   ProfessorProfileUpdatePayload,
-  ProfessorUserAndProfileCreatePayload, // New import
+  ProfessorUserAndProfileCreatePayload,
+  UserUpdatePayload,
 } from '../types/api';
-import { UserRole, UserUpdatePayload } from '../types/api'; // UserRole was missing from original snippet
 
 // Import API service functions with aliases to avoid name clashes if any
 import {
@@ -14,8 +14,8 @@ import {
   getProfessor as apiGetProfessor,
   createProfessorProfile as apiCreateProfessorProfile,
   updateProfessorProfile as apiUpdateProfessorProfile,
-  deleteProfessorProfile as apiDeleteProfessorProfile, // Added for completeness, was in snippet, not in file
-  createProfessorUserAndProfile as apiCreateProfessorUserAndProfile, // New import
+  deleteProfessorProfile as apiDeleteProfessorProfile,
+  createProfessorUserAndProfile as apiCreateProfessorUserAndProfile,
 } from '../services/api/professor';
 
 import {
@@ -46,7 +46,7 @@ export const useProfessorStore = defineStore('professor', {
 
   getters: {
     getProfessorById: (state) => (id: number): Professor | undefined => {
-      return state.professors.find(prof => prof.id === id);
+      return state.professors.find((prof: Professor) => prof.id === id);
     },
     getAllProfessors: (state): Professor[] => {
       return state.professors;
@@ -120,9 +120,9 @@ export const useProfessorStore = defineStore('professor', {
            await this.fetchProfessor(userId); // Fetch anyway to update if it becomes current
         }
         // Also update in the list if present
-        const professorIndex = this.professors.findIndex(p => p.id === userId);
-        if (professorIndex !== -1 && this.currentProfessor && this.currentProfessor.id === userId) {
-            this.professors[professorIndex] = { ...this.currentProfessor };
+        const professorIndex = this.professors.findIndex((p: Professor) => p.id === userId);
+        if (professorIndex !== -1 && this.currentProfessor && (this.currentProfessor as any).id === userId) {
+            this.professors[professorIndex] = { ...this.currentProfessor } as any;
         }
         return newProfile;
       } catch (error) {
@@ -139,11 +139,11 @@ export const useProfessorStore = defineStore('professor', {
       this.errorItem = null;
       try {
         const updatedProfile = await apiUpdateProfessorProfile(userId, profileData);
-        if (this.currentProfessor && this.currentProfessor.id === userId) {
+        if (this.currentProfessor && (this.currentProfessor as any).id === userId) {
           // Update the profile part of the currentProfessor
-          if (this.currentProfessor.professor_profile) {
-            this.currentProfessor.professor_profile = {
-              ...this.currentProfessor.professor_profile,
+          if ((this.currentProfessor as any).professor_profile) {
+            (this.currentProfessor as any).professor_profile = {
+              ...(this.currentProfessor as any).professor_profile,
               ...updatedProfile
             };
           } else {
@@ -151,16 +151,16 @@ export const useProfessorStore = defineStore('professor', {
           }
         }
          // Also update in the list
-        const professorIndex = this.professors.findIndex(p => p.id === userId);
-        if (professorIndex !== -1 && this.currentProfessor && this.currentProfessor.id === userId) {
-             this.professors[professorIndex] = { ...this.currentProfessor }; // Update with the fetched/updated professor
+        const professorIndex = this.professors.findIndex((p: Professor) => p.id === userId);
+        if (professorIndex !== -1 && this.currentProfessor && (this.currentProfessor as any).id === userId) {
+             this.professors[professorIndex] = { ...this.currentProfessor } as any; // Update with the fetched/updated professor
         } else if (professorIndex !== -1) { // If not current, but in list, update its profile part
             const profInList = this.professors[professorIndex];
             if (profInList.professor_profile) {
-                this.professors[professorIndex].professor_profile = { ...profInList.professor_profile, ...updatedProfile};
+                (this.professors[professorIndex] as any).professor_profile = { ...profInList.professor_profile, ...updatedProfile};
             } else { // If profile was somehow missing, fetch that specific professor for the list
                 const fetchedProf = await apiGetProfessor(userId);
-                this.professors[professorIndex] = fetchedProf;
+                this.professors[professorIndex] = fetchedProf as any;
             }
         }
         return updatedProfile;
@@ -178,13 +178,13 @@ export const useProfessorStore = defineStore('professor', {
       this.errorItem = null;
       try {
         await apiDeleteProfessorProfile(userId); // Using the aliased import
-        if (this.currentProfessor && this.currentProfessor.id === userId) {
-          if (this.currentProfessor.professor_profile) {
-             this.currentProfessor.professor_profile = null;
+        if (this.currentProfessor && (this.currentProfessor as any).id === userId) {
+          if ((this.currentProfessor as any).professor_profile) {
+             (this.currentProfessor as any).professor_profile = null;
           }
         }
         // Update the list: find professor and set their profile to null or refetch
-        const professorIndex = this.professors.findIndex(p => p.id === userId);
+        const professorIndex = this.professors.findIndex((p: Professor) => p.id === userId);
         if (professorIndex !== -1) {
           if (this.professors[professorIndex].professor_profile) {
             this.professors[professorIndex].professor_profile = null;
@@ -204,8 +204,8 @@ export const useProfessorStore = defineStore('professor', {
       this.errorItem = null;
       try {
         await apiDeleteUser(userId); // This deletes the user
-        this.professors = this.professors.filter(p => p.id !== userId);
-        if (this.currentProfessor && this.currentProfessor.id === userId) {
+        this.professors = this.professors.filter((p: Professor) => p.id !== userId);
+        if (this.currentProfessor && (this.currentProfessor as any).id === userId) {
           this.currentProfessor = null;
         }
       } catch (error: any) {
@@ -224,12 +224,12 @@ export const useProfessorStore = defineStore('professor', {
         const payload: UserUpdatePayload = { is_active: !currentStatus };
         const updatedUser = await apiUpdateUser(userId, payload);
 
-        const professorIndex = this.professors.findIndex(p => p.id === userId);
+        const professorIndex = this.professors.findIndex((p: Professor) => p.id === userId);
         if (professorIndex !== -1) {
-          this.professors[professorIndex].is_active = updatedUser.is_active;
+          this.professors[professorIndex].is_active = updatedUser.is_active || false;
         }
-        if (this.currentProfessor && this.currentProfessor.id === userId) {
-          this.currentProfessor.is_active = updatedUser.is_active;
+        if (this.currentProfessor && (this.currentProfessor as any).id === userId) {
+          (this.currentProfessor as any).is_active = updatedUser.is_active || false;
         }
       } catch (error: any) {
         this.errorItem = error; // Store the actual error object

@@ -1,14 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Title } from 'chart.js';
-import { Line } from 'vue-chartjs';
 import { useProfessorStore } from '../../../stores/professor';
 import { storeToRefs } from 'pinia';
 import { Professor } from '../../../types/api/professorTypes';
-
-// Register Chart.js components
-ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Title);
 
 const professorStore = useProfessorStore();
 
@@ -103,31 +98,6 @@ const handleToggleStatus = async (professor: Professor) => {
   }
 };
 
-// Chart data placeholder
-const getStudentGrowthData = (professor: Professor) => {
-  const placeholderData = [0,0,0,0,0,0]; // Placeholder
-  return {
-    labels: ['Jan', 'Fev', 'Mar', 'Avr', 'Mai', 'Juin'],
-    datasets: [
-      {
-        label: 'Étudiants (Données Fictives)',
-        data: placeholderData,
-        borderColor: '#4CAF50',
-        backgroundColor: 'rgba(76, 175, 80, 0.1)',
-        tension: 0.4,
-        fill: true
-      }
-    ]
-  };
-};
-
-const chartOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: { legend: { display: false }, title: { display: false } },
-  scales: { y: { beginAtZero: true, display: false }, x: { display: false } },
-  elements: { point:{ radius: 0 } }
-};
 
 // Computed Stats
 const totalProfessors = computed(() => professorList.value.length); // Uses store-managed list

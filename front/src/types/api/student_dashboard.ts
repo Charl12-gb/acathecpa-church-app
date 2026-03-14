@@ -66,6 +66,8 @@ export interface RecommendedCourseItem {
   duration_weeks: number;
   /** URL of the course image. */
   image_url: string;
+  /** Category of the course. */
+  category?: string;
 }
 
 /**

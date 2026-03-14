@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { getAllCourses, enrollInCourse } from '../../../services/api/course';
 import type { Course } from '../../../types/api';
+import { CourseStatus } from '../../../types/api';
 import { useRouter } from 'vue-router';
 
 // Sample categories - these could also come from an API in a real app
@@ -35,7 +36,7 @@ const fetchAllPublishedCourses = async () => {
   try {
     // Backend returns published courses by default if no status is specified or handled by default in service
     // Explicitly requesting published status as per subtask requirement
-    courses.value = await getAllCourses({ status: 'published' });
+    courses.value = await getAllCourses({ status: 'published' as CourseStatus });
   } catch (err: any) {
     console.error('Failed to fetch courses:', err);
     error.value = err.message || 'Erreur lors du chargement des cours.';

@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.seeds.users import seed_default_user
 from app.seeds.permissions import roles_permissions
+from app.seeds.data import seed_data
 
 # Commande pour lancer tous les seeds
 @click.group()
@@ -30,6 +31,22 @@ def seed_roles_permissions_command():
         print("🔌 Fermeture de la connexion à la base de données")
         db.close()
 
+
+# Seed des données de test
+@cli.command("seed-data")
+def seed_data_command():
+    """📚 Lance le seed des données de test (professeurs, cours)"""
+    print("🌱 Lancement du seed des données de test...")
+    db: Session = SessionLocal()
+    try:
+        seed_data(db)
+        print("✅ Données de test seedées avec succès!")
+    except Exception as e:
+        print(f"❌ Erreur lors du seed des données: {str(e)}")
+        db.rollback()
+        raise
+    finally:
+        db.close()
 
 # Seed de l'utilisateur admin
 @cli.command("seed-default-user")
@@ -82,10 +99,21 @@ def seed_default_user_command(email, password):
     confirmation_prompt=True, 
     help="Mot de passe de l'utilisateur admin."
 )
-def seed_all_command(email, password):
+@click.option(
+    "--create-tables",
+    is_flag=True,
+    help="Crée les tables de la base de données si elles n'existent pas."
+)
+def seed_all_command(email, password, create_tables):
     """🚀 Lance tous les seeds en une seule fois"""
     print("🌱 Lancement de tous les seeds...")
     print("="*60)
+
+    if create_tables:
+        from app.database import engine, Base
+        print("\n🏗️ Création des tables de la base de données...")
+        Base.metadata.create_all(bind=engine)
+        print("✅ Tables créées avec succès!")
     
     # 1. Seed des rôles et permissions
     print("\n1️⃣ ÉTAPE 1: Synchronisation des rôles et permissions")
@@ -125,6 +153,22 @@ def seed_all_command(email, password):
         print("🔌 Fermeture de la connexion")
         db.close()
     
+    # 3. Seed des données de test
+    print("\n3️⃣ ÉTAPE 3: Création des données de test (cours, professeurs)")
+    print("-" * 50)
+
+    db: Session = SessionLocal()
+    try:
+        seed_data(db)
+        print("✅ Données de test seedées avec succès!")
+    except Exception as e:
+        print(f"❌ Erreur lors du seed des données: {str(e)}")
+        db.rollback()
+        db.close()
+        return
+    finally:
+        db.close()
+
     # Résumé final
     print("\n" + "="*60)
     print("🎉 TOUS LES SEEDS TERMINÉS AVEC SUCCÈS!")

@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import { getMyEnrolledCourses, getMyCourseEnrollmentProgress } from '../../../services/api/course';
-import type { Course, EnrollmentProgress } from '../../../types/api';
+import type { Course } from '../../../types/api';
 
 // Define an extended type for courses with their specific progress
 type CourseWithProgress = Course & { studentProgressPercentage?: number };

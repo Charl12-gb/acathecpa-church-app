@@ -210,40 +210,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useAuthStore } from '../../../stores/auth'
-import type { User } from '../../../stores/auth'
+import { ref, computed, onMounted } from 'vue'
+import { getUsers, deleteUser as apiDeleteUser, updateUser as apiUpdateUser } from '../../../services/api/user'
 
-// Sample users data (replace with actual API calls)
-const users = ref([
-  {
-    id: 1,
-    name: 'John Doe',
-    email: 'john@example.com',
-    phone: '+33 1 23 45 67 89',
-    role: 'student',
-    status: 'active',
-    created_at: '2023-08-15'
-  },
-  {
-    id: 2,
-    name: 'Jane Smith',
-    email: 'jane@example.com',
-    phone: '+33 1 23 45 67 90',
-    role: 'professor',
-    status: 'active',
-    created_at: '2023-09-01'
-  },
-  {
-    id: 3,
-    name: 'Bob Johnson',
-    email: 'bob@example.com',
-    phone: '+33 1 23 45 67 91',
-    role: 'admin',
-    status: 'inactive',
-    created_at: '2023-07-20'
+const users = ref<any[]>([])
+const isLoading = ref(false)
+const error = ref('')
+
+const fetchUsers = async () => {
+  isLoading.value = true
+  try {
+    const data = await getUsers()
+    // Map status from is_active
+    users.value = data.map((u: any) => ({
+        ...u,
+        status: u.is_active ? 'active' : 'inactive'
+    }))
+  } catch (err: any) {
+    error.value = err.message || 'Erreur lors du chargement des utilisateurs'
+  } finally {
+    isLoading.value = false
   }
-])
+}
+
+onMounted(fetchUsers)
 
 // Filters
 const filters = ref({
@@ -258,9 +248,9 @@ const filteredUsers = computed(() => {
     // Search filter
     if (filters.value.search) {
       const search = filters.value.search.toLowerCase()
-      if (!user.name.toLowerCase().includes(search) &&
-          !user.email.toLowerCase().includes(search) &&
-          !user.phone.includes(search)) {
+      if (!(user.name || '').toLowerCase().includes(search) &&
+          !(user.email || '').toLowerCase().includes(search) &&
+          !(user.phone || '').includes(search)) {
         return false
       }
     }
@@ -296,15 +286,24 @@ const newUsers = computed(() => {
 })
 
 // Actions
-const toggleUserStatus = (user: any) => {
-  user.status = user.status === 'active' ? 'inactive' : 'active'
-  // Add API call here
+const toggleUserStatus = async (user: any) => {
+  try {
+    const newStatus = user.status === 'active' ? false : true
+    await apiUpdateUser(user.id, { is_active: newStatus })
+    user.status = newStatus ? 'active' : 'inactive'
+  } catch (err: any) {
+    alert(err.message || 'Erreur lors du changement de statut')
+  }
 }
 
-const deleteUser = (userId: number) => {
+const deleteUser = async (userId: number) => {
   if (confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?')) {
-    users.value = users.value.filter(user => user.id !== userId)
-    // Add API call here
+    try {
+        await apiDeleteUser(userId)
+        users.value = users.value.filter(user => user.id !== userId)
+    } catch (err: any) {
+        alert(err.message || 'Erreur lors de la suppression')
+    }
   }
 }
 </script>

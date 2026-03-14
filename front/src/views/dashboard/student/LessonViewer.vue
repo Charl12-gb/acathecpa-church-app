@@ -91,10 +91,10 @@
                         <p><strong>{{ question.question_text }}</strong> ({{ question.points }} points)</p>
 
                         <!-- Multiple Choice - Single Answer (Radio) -->
-                        <div v-if="question.question_type === 'MULTIPLE_CHOICE' && question.options && !question.options.some(opt => opt.is_correct_many)" class="quiz-options">
-                          <div v-for="option in question.options" :key="option.id" class="form-check">
-                            <input class="form-check-input" type="radio" :name="`question-${question.id}`" :id="`option-${option.id}`" :value="option.id" v-model="userAnswers[question.id]">
-                            <label class="form-check-label" :for="`option-${option.id}`">{{ option.text }}</label>
+                        <div v-if="question.question_type === QuestionType.MULTIPLE_CHOICE && question.options" class="quiz-options">
+                          <div v-for="(option, optIndex) in question.options" :key="optIndex" class="form-check">
+                            <input class="form-check-input" type="radio" :name="`question-${question.id}`" :id="`option-${question.id}-${optIndex}`" :value="option.text" v-model="userAnswers[question.id]">
+                            <label class="form-check-label" :for="`option-${question.id}-${optIndex}`">{{ option.text }}</label>
                           </div>
                         </div>
                         <!-- Add more v-else-if for other question types like MULTIPLE_CHOICE_MULTIPLE_ANSWERS (checkboxes), TEXT_INPUT, etc. -->
@@ -114,12 +114,12 @@
                         Résultat: {{ lastQuizAttemptResult.passed ? 'Réussi' : 'Échoué' }}
                       </p>
                       <button
-                        v-if="currentQuizData && (currentQuizData.max_attempts === null || (lastQuizAttemptResult.attempt_number || 1) < currentQuizData.max_attempts)"
+                        v-if="currentQuizData && (currentQuizData.max_attempts === null || (lastQuizAttemptResult.attempt_number || 1) < (currentQuizData.max_attempts ?? 3))"
                         @click="startQuiz(currentSection.test.id)"
                         class="btn btn-outline-secondary mt-2">
                         Reprendre le Quiz
                       </button>
-                      <p v-else-if="currentQuizData && currentQuizData.max_attempts !== null && (lastQuizAttemptResult.attempt_number || 1) >= currentQuizData.max_attempts" class="text-muted mt-2">
+                      <p v-else-if="currentQuizData && currentQuizData.max_attempts !== null && (lastQuizAttemptResult.attempt_number || 1) >= (currentQuizData.max_attempts ?? 3)" class="text-muted mt-2">
                         Nombre maximum de tentatives atteint.
                       </p>
                     </div>
@@ -237,11 +237,11 @@ import {
 } from '../../../services/api/course';
 import { markLessonCompleted } from '../../../services/api/course';
 import type {
-    Course, CourseSection, CourseLesson as ApiCourseLesson, LessonType,
-    CourseTest, TestQuestion, // Added for quiz functionality
+    Course, CourseSection, CourseLesson as ApiCourseLesson,
+    CourseTest,
     EnrollmentProgress, TestSubmissionWithScoreSchema, TestQuestionAttemptSummaryInputSchema // For API calls & state
 } from '../../../types/api';
-import { useAuthStore } from '../../../stores/auth'; // To get user_id for submissions if needed, or for context
+import { QuestionType } from '../../../types/api';
 
 const route = useRoute();
 const router = useRouter();
@@ -270,7 +270,6 @@ const isLoadingQuiz = ref(false);
 
 // Store for overall progress potentially
 const enrollmentProgressFromApi = ref<EnrollmentProgress | null>(null);
-const authStore = useAuthStore(); // If user_id is needed for some operations or context
 
 // Load course and lesson data
 const loadCourseAndLesson = async () => {
@@ -448,7 +447,7 @@ const handleQuizSubmit = async () => {
 
   currentQuizData.value.questions.forEach(question => {
     // totalPointsPossible += question.points || 0;
-    const userAnswer = userAnswers.value[question.id];
+    // const userAnswer = userAnswers.value[question.id];
     // Actual scoring logic is complex and depends on question.correct_answer_data or options.
     // For this example, we'll assume a simple pass/fail or dummy score calculation.
     // Let's assume each question is worth (100 / num_questions) points for simplicity of percentage score.
@@ -457,10 +456,10 @@ const handleQuizSubmit = async () => {
     // This part needs robust logic based on how correct_answer_data is structured for each question_type
     // For MCQs, one would iterate question.options, find the one where opt.is_correct is true, and compare its id with userAnswer.
     // This is a placeholder.
-    let isCorrectThisQuestion = false; // Dummy value
-    if (userAnswer !== undefined) { // Example: give points if answered
+        // let isCorrectThisQuestion = false; // Dummy value
+        // if (userAnswer !== undefined) { // Example: give points if answered
         // score += (100 / (currentQuizData.value?.questions.length || 1)); // Simplified score contribution
-    }
+        // }
 
     questionsSummary.push({
       question_id: question.id,
@@ -580,7 +579,7 @@ const nextLesson = () => {
   }
 }
 
-const switchLesson = (sectionId: number, lessonId: number) => {
+const switchLesson = (_sectionId: number, lessonId: number) => {
   router.push(`/lesson/${course.value?.id}/${lessonId}`)
 }
 
@@ -604,11 +603,13 @@ const completeLesson = async () => {
   }
 };
 
-const handleMarkSectionCompleted = async (sectionId: number) => {
+const handleMarkSectionCompleted = async (_sectionId: number) => {
     if (!course.value) return;
     try {
-        const progress = await markLessonCompleted(sectionId);
-    } catch (err: any) { // Added curly brace
+        // NOTE: In a real implementation, you might have a dedicated markSectionCompleted API.
+        // For now, it seems this was intended to use markLessonCompleted or a similar placeholder.
+        // await markSectionCompleted(sectionId);
+    } catch (err: any) {
         console.error('Failed to complete section:', err);
     }
 };
@@ -673,13 +674,11 @@ watch(enrollmentProgressFromApi, (newProgress) => {
         }
 
         // Update is_completed status for all lessons in the course structure
-        let lessonsUpdated = false;
         for (const section of course.value.sections) {
             for (const lesson of section.lessons) {
                 const isNowCompleted = newProgress.completed_lessons.includes(lesson.id);
                 if (lesson.is_completed !== isNowCompleted) {
                     lesson.is_completed = isNowCompleted;
-                    lessonsUpdated = true;
                 }
             }
         }

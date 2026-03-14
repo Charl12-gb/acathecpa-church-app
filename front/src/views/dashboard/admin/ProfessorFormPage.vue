@@ -10,7 +10,6 @@ import {
   ProfessorProfile,
   EducationEntry,
   ExperienceEntry,
-  ProfessorUserAndProfileCreatePayload,
 } from '../../../types/api/professorTypes';
 
 const route = useRoute();
@@ -108,12 +107,12 @@ const toggleEditForm = () => {
 
 const defaultNewEducationEntry: EducationEntry = { institution: '', degree: '', field_of_study: '', start_year: null, end_year: null, description: '' };
 const defaultNewExperienceEntry: ExperienceEntry = { company: '', role: '', start_date: '', end_date: '', description: '' };
-const addEducation = () => { if (professorData.value.professor_profile) { if (!professorData.value.professor_profile.education) { professorData.value.professor_profile.education = []; } professorData.value.professor_profile.education.push({ ...defaultNewEducationEntry }); } };
-const removeEducation = (index: number) => { professorData.value.professor_profile?.education?.splice(index, 1); };
-const addExperience = () => { if (professorData.value.professor_profile) { if (!professorData.value.professor_profile.experience) { professorData.value.professor_profile.experience = []; } professorData.value.professor_profile.experience.push({ ...defaultNewExperienceEntry }); } };
-const removeExperience = (index: number) => { professorData.value.professor_profile?.experience?.splice(index, 1); };
-const addSkill = () => { if (professorData.value.professor_profile) { if (!professorData.value.professor_profile.skills) { professorData.value.professor_profile.skills = []; } professorData.value.professor_profile.skills.push(''); } };
-const removeSkill = (index: number) => { professorData.value.professor_profile?.skills?.splice(index, 1); };
+const addEducation = () => { if (professorData.value.professor_profile) { if (!professorData.value.professor_profile.education) { (professorData.value.professor_profile as any).education = []; } (professorData.value.professor_profile as any).education.push({ ...defaultNewEducationEntry }); } };
+const removeEducation = (index: number) => { (professorData.value.professor_profile as any)?.education?.splice(index, 1); };
+const addExperience = () => { if (professorData.value.professor_profile) { if (!professorData.value.professor_profile.experience) { (professorData.value.professor_profile as any).experience = []; } (professorData.value.professor_profile as any).experience.push({ ...defaultNewExperienceEntry }); } };
+const removeExperience = (index: number) => { (professorData.value.professor_profile as any)?.experience?.splice(index, 1); };
+const addSkill = () => { if (professorData.value.professor_profile) { if (!professorData.value.professor_profile.skills) { (professorData.value.professor_profile as any).skills = []; } (professorData.value.professor_profile as any).skills.push(''); } };
+const removeSkill = (index: number) => { (professorData.value.professor_profile as any)?.skills?.splice(index, 1); };
 
 const saveProfessor = async () => {
   saving.value = true;
@@ -140,7 +139,7 @@ const saveProfessor = async () => {
         saving.value = false;
         return;
       }
-      const profileUpdatePayload = {
+      const profileUpdatePayload: any = {
         specialization: professorData.value.professor_profile.specialization,
         bio: professorData.value.professor_profile.bio,
         education: professorData.value.professor_profile.education?.filter(e => e.institution?.trim() && e.degree?.trim()),
@@ -156,7 +155,7 @@ const saveProfessor = async () => {
         saving.value = false;
         return;
       }
-      const createPayload: ProfessorUserAndProfileCreatePayload = {
+      const createPayload: any = {
         name: professorData.value.name,
         email: professorData.value.email,
         password: professorData.value.password,
@@ -395,9 +394,9 @@ const hasSocialLinks = computed(() => {
               <button type="button" class="btn btn-sm btn-outline-primary" @click="addSkill"><i class="bi bi-plus-circle me-1"></i>Ajouter</button>
             </div>
             <div class="card-body">
-              <div v-for="(skill, index) in professorData.professor_profile.skills" :key="index" class="mb-2">
+              <div v-for="(_, index) in professorData.professor_profile.skills" :key="index" class="mb-2">
                 <div class="input-group input-group-sm">
-                  <input type="text" class="form-control form-control-sm" v-model="professorData.professor_profile.skills[index]" placeholder="Ex: JavaScript">
+                  <input type="text" class="form-control form-control-sm" v-model="professorData.professor_profile.skills![index]" placeholder="Ex: JavaScript">
                   <button class="btn btn-outline-danger" type="button" @click="removeSkill(index)"><i class="bi bi-trash"></i></button>
                 </div>
               </div>
@@ -409,7 +408,7 @@ const hasSocialLinks = computed(() => {
           <div class="card border-0 shadow-sm">
             <div class="card-header bg-white py-3"><h5 class="mb-0">Réseaux sociaux</h5></div>
             <div class="card-body">
-              <div class="row g-3">
+              <div class="row g-3" v-if="professorData.professor_profile.social_links">
                 <div class="col-md-6"><label class="form-label">LinkedIn</label><div class="input-group"><span class="input-group-text"><i class="bi bi-linkedin"></i></span><input type="url" class="form-control" v-model="professorData.professor_profile.social_links.linkedin" placeholder="https://linkedin.com/in/username"></div></div>
                 <div class="col-md-6"><label class="form-label">Twitter / X</label><div class="input-group"><span class="input-group-text"><i class="bi bi-twitter-x"></i></span><input type="url" class="form-control" v-model="professorData.professor_profile.social_links.twitter" placeholder="https://x.com/username"></div></div>
                 <div class="col-md-6"><label class="form-label">GitHub</label><div class="input-group"><span class="input-group-text"><i class="bi bi-github"></i></span><input type="url" class="form-control" v-model="professorData.professor_profile.social_links.github" placeholder="https://github.com/username"></div></div>
@@ -462,15 +461,15 @@ const hasSocialLinks = computed(() => {
                     <li v-if="professorData.professor_profile.experience.length > 3" class="text-muted mt-1"><small>+{{ professorData.professor_profile.experience.length - 3 }} autre(s)</small></li>
                 </ul>
             </div>
-            <div class="mb-3" v-if="hasSocialLinks">
+            <div class="mb-3" v-if="hasSocialLinks && professorData.professor_profile.social_links">
                 <small class="text-muted d-block mb-1"><i class="bi bi-share-fill me-2"></i>Réseaux Sociaux</small>
                 <div class="mt-2 d-flex flex-wrap gap-2">
-                    <a v-if="professorData.professor_profile.social_links.linkedin" :href="professorData.professor_profile.social_links.linkedin" target="_blank" class="btn btn-sm btn-outline-primary" aria-label="LinkedIn"><i class="bi bi-linkedin"></i></a>
-                    <a v-if="professorData.professor_profile.social_links.twitter" :href="professorData.professor_profile.social_links.twitter" target="_blank" class="btn btn-sm btn-outline-info" aria-label="Twitter X"><i class="bi bi-twitter-x"></i></a>
-                    <a v-if="professorData.professor_profile.social_links.github" :href="professorData.professor_profile.social_links.github" target="_blank" class="btn btn-sm btn-outline-dark" aria-label="GitHub"><i class="bi bi-github"></i></a>
-                    <a v-if="professorData.professor_profile.social_links.website" :href="professorData.professor_profile.social_links.website" target="_blank" class="btn btn-sm btn-outline-secondary" aria-label="Site Web"><i class="bi bi-globe"></i></a>
-                    <a v-if="professorData.professor_profile.social_links.orcid" :href="professorData.professor_profile.social_links.orcid" target="_blank" class="btn btn-sm btn-outline-success" aria-label="ORCID"><i class="bi bi-person-badge"></i></a>
-                    <a v-if="professorData.professor_profile.social_links.google_scholar" :href="professorData.professor_profile.social_links.google_scholar" target="_blank" class="btn btn-sm btn-outline-danger" aria-label="Google Scholar"><i class="bi bi-mortarboard"></i></a>
+                    <a v-if="professorData.professor_profile.social_links.linkedin" :href="professorData.professor_profile.social_links.linkedin!" target="_blank" class="btn btn-sm btn-outline-primary" aria-label="LinkedIn"><i class="bi bi-linkedin"></i></a>
+                    <a v-if="professorData.professor_profile.social_links.twitter" :href="professorData.professor_profile.social_links.twitter!" target="_blank" class="btn btn-sm btn-outline-info" aria-label="Twitter X"><i class="bi bi-twitter-x"></i></a>
+                    <a v-if="professorData.professor_profile.social_links.github" :href="professorData.professor_profile.social_links.github!" target="_blank" class="btn btn-sm btn-outline-dark" aria-label="GitHub"><i class="bi bi-github"></i></a>
+                    <a v-if="professorData.professor_profile.social_links.website" :href="professorData.professor_profile.social_links.website!" target="_blank" class="btn btn-sm btn-outline-secondary" aria-label="Site Web"><i class="bi bi-globe"></i></a>
+                    <a v-if="professorData.professor_profile.social_links.orcid" :href="professorData.professor_profile.social_links.orcid!" target="_blank" class="btn btn-sm btn-outline-success" aria-label="ORCID"><i class="bi bi-person-badge"></i></a>
+                    <a v-if="professorData.professor_profile.social_links.google_scholar" :href="professorData.professor_profile.social_links.google_scholar!" target="_blank" class="btn btn-sm btn-outline-danger" aria-label="Google Scholar"><i class="bi bi-mortarboard"></i></a>
                 </div>
             </div>
           </div>

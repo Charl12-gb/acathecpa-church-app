@@ -195,7 +195,7 @@ const computedEngagementChartData = computed(() => {
               <div v-for="course in publishedCourses" :key="course.id" class="list-group-item px-0 py-3">
                 <div class="d-flex">
                   <!-- Assuming course.image_url exists from CoursePerformance type -->
-                  <img :src="course.image_url || 'https://placehold.co/400x200?text=Cours'" alt="Course Image" class="rounded me-3" style="width: 100px; height: 60px; object-fit: cover;">
+                  <img :src="(course as any).image_url || 'https://placehold.co/400x200?text=Cours'" alt="Course Image" class="rounded me-3" style="width: 100px; height: 60px; object-fit: cover;">
                   <div class="flex-grow-1">
                     <div class="d-flex justify-content-between align-items-start">
                       <h6 class="mb-1">{{ course.title }}</h6>

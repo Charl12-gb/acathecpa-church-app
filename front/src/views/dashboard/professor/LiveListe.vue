@@ -242,10 +242,7 @@
   
   <script setup lang="ts">
   import { ref, computed } from 'vue'
-  import { useVideoConferenceStore } from '../../../stores/videoConference'
   import type { LiveSession } from '../../../stores/videoConference'
-  
-  const videoStore = useVideoConferenceStore()
   
   // Sample data (replace with actual API calls)
   const sessions = ref<LiveSession[]>([
@@ -332,8 +329,11 @@
   const shareSession = (session: LiveSession) => {
     currentSessionLink.value = `${window.location.origin}/join-session/${session.id}`
     // Open modal (using Bootstrap)
-    const modal = new bootstrap.Modal(document.getElementById('shareModal'))
-    modal.show()
+    const modalElement = document.getElementById('shareModal');
+    if (modalElement) {
+        const modal = new (window as any).bootstrap.Modal(modalElement)
+        modal.show()
+    }
   }
   
   const copyToClipboard = (text: string) => {

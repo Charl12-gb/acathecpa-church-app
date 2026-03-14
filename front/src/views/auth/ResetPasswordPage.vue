@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '../../stores/auth'
-import { useRoute, useRouter, RouterLink } from 'vue-router'
+import { useRoute, RouterLink } from 'vue-router'
 
 const authStore = useAuthStore()
 const route = useRoute()
-const router = useRouter() // useRouter is imported but not used in the provided snippet, will be used by store action
 
 const token = ref('')
 const password = ref('')
@@ -58,12 +57,7 @@ const handleSubmit = async () => {
   const result = await authStore.resetPassword(token.value, password.value)
 
   if (result.success) {
-    // The store action already redirects to /login.
-    // We can set a message that might be displayed briefly or passed via query/store to login page.
-    // For now, the redirect is the primary confirmation.
-    // A more robust solution might involve a global notification system.
-    // message.value = result.message || "Password has been reset successfully! Redirecting to login..."
-    // setTimeout(() => router.push('/login'), 2000); // Manual redirect if store didn't do it.
+    message.value = result.message || "Password has been reset successfully!"
   }
   // If result.success is false, the storeError computed property will display the error from the store.
 }
