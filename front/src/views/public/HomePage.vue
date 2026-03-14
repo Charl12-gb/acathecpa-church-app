@@ -33,7 +33,7 @@ onMounted(async () => {
   }
 })
 
-// Sample data for courses and partners
+// Data for courses and partners
 const featuredCourses = ref<Course[]>([]);
 
 const partners = ref([

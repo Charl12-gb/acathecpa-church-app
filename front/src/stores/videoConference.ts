@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import axios from 'axios'
-import { API_URL } from '../config'
+import apiClient from '../services/api'
 import AgoraRTC from 'agora-rtc-sdk-ng'
 import AgoraRTM from 'agora-rtm-sdk'
 
@@ -48,7 +47,7 @@ export const useVideoConferenceStore = defineStore('videoConference', () => {
     error.value = ''
     
     try {
-      const response = await axios.post(`${API_URL}/live-sessions`, sessionData)
+      const response = await apiClient.post('/live-sessions', sessionData)
       currentSession.value = response.data
       return response.data
     } catch (err: any) {
@@ -63,7 +62,7 @@ export const useVideoConferenceStore = defineStore('videoConference', () => {
   const joinSession = async (sessionId: number, userId: number, isHost: boolean) => {
     try {
       // Get session token from backend
-      const response = await axios.post(`${API_URL}/live-sessions/${sessionId}/join`, {
+      const response = await apiClient.post(`/live-sessions/${sessionId}/join`, {
         userId,
         isHost
       })
@@ -130,7 +129,7 @@ export const useVideoConferenceStore = defineStore('videoConference', () => {
   // Toggle participant audio
   const toggleParticipantAudio = async (userId: string, muted: boolean) => {
     try {
-      await axios.post(`${API_URL}/live-sessions/${currentSession.value?.id}/participants/${userId}/audio`, {
+      await apiClient.post(`/live-sessions/${currentSession.value?.id}/participants/${userId}/audio`, {
         muted
       })
       
@@ -149,7 +148,7 @@ export const useVideoConferenceStore = defineStore('videoConference', () => {
     try {
       const isRaised = raisedHands.value.has(userId)
       
-      await axios.post(`${API_URL}/live-sessions/${currentSession.value?.id}/participants/${userId}/hand`, {
+      await apiClient.post(`/live-sessions/${currentSession.value?.id}/participants/${userId}/hand`, {
         raised: !isRaised
       })
       

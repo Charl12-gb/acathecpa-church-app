@@ -52,8 +52,8 @@
       <div v-for="article in filteredArticles" :key="article.id" class="col-md-6 col-lg-4">
         <div class="card h-100 border-0 shadow-sm">
           <img 
-            v-if="article.mediaUrl" 
-            :src="article.mediaUrl" 
+            v-if="article.mediaUrl || (article as any).media_url"
+            :src="article.mediaUrl || (article as any).media_url"
             class="card-img-top" 
             :alt="article.title"
             style="height: 200px; object-fit: cover;"
@@ -75,7 +75,7 @@
             <h5 class="card-title mb-3">{{ article.title }}</h5>
             <p class="card-text text-muted">{{ article.description }}</p>
             
-            <div class="d-flex align-items-center mb-3">
+            <div class="d-flex align-items-center mb-3" v-if="article.author">
               <div class="rounded-circle bg-light p-2 me-2">
                 <i class="bi bi-person-circle text-primary"></i>
               </div>
@@ -148,52 +148,8 @@ const loadArticles = async () => {
   error.value = ''
   
   try {
-    // const data = await contentStore.getContents('article')
-    // articles.value = data
-    articles.value =[
-    {
-      "id": "1",
-      "title": "Comment améliorer votre référencement SEO en 2025",
-      "description": "Découvrez les techniques les plus efficaces pour optimiser votre visibilité sur les moteurs de recherche cette année.",
-      "format": "text",
-      "mediaUrl": "https://example.com/images/seo-article.jpg",
-      "created_at": "2025-04-15T14:30:00Z",
-      "author": {
-        "id": "a1",
-        "name": "Marie Dubois",
-        "avatarUrl": "https://example.com/avatars/marie.jpg"
-      },
-      "tags": ["SEO", "Marketing Digital", "Web"]
-    },
-    {
-      "id": "2",
-      "title": "Tutoriel: Créer une application Vue.js en 30 minutes",
-      "description": "Un guide pas à pas pour développer rapidement votre première application avec le framework Vue.js.",
-      "format": "video",
-      "mediaUrl": "https://example.com/images/vuejs-tutorial.jpg",
-      "created_at": "2025-04-10T09:15:00Z",
-      "author": {
-        "id": "a2",
-        "name": "Thomas Martin",
-        "avatarUrl": "https://example.com/avatars/thomas.jpg"
-      },
-      "tags": ["Vue.js", "JavaScript", "Frontend", "Tutoriel"]
-    },
-    {
-      "id": "3",
-      "title": "L'importance de l'accessibilité web pour votre site",
-      "description": "Pourquoi et comment rendre votre site web accessible à tous les utilisateurs, y compris ceux ayant des handicaps.",
-      "format": "podcast",
-      "mediaUrl": "https://example.com/images/accessibility.jpg",
-      "created_at": "2025-04-05T16:45:00Z",
-      "author": {
-        "id": "a3",
-        "name": "Sophie Leroy",
-        "avatarUrl": "https://example.com/avatars/sophie.jpg"
-      },
-      "tags": ["Accessibilité", "UX", "Inclusivité"]
-    }
-  ]
+    const data = await contentStore.getContents('article')
+    articles.value = data
   } catch (err: any) {
     error.value = err.message
   } finally {

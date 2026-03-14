@@ -1,5 +1,5 @@
-// API URL - Change this to your actual API URL when ready
-export const API_URL = 'http://localhost:3000/api'
+// API URL - Pointing to the FastAPI backend
+export const API_URL = 'http://localhost:8000/api/v1'
 
 // App constants
 export const APP_NAME = 'ACATHECPA'

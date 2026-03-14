@@ -29,7 +29,7 @@
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-4 mb-4 mb-md-0">
-                                    <img :src="podcast.mediaUrl || 'https://placehold.co/400x400?text=Podcast'"
+                                    <img :src="podcast.mediaUrl || (podcast as any).media_url || 'https://placehold.co/400x400?text=Podcast'"
                                         class="img-fluid rounded" :alt="podcast.title">
                                 </div>
                                 <div class="col-md-8">
@@ -46,7 +46,7 @@
                                         </div>
                                     </div>
 
-                                    <div class="d-flex align-items-center mb-4">
+                                    <div class="d-flex align-items-center mb-4" v-if="podcast.author">
                                         <div class="rounded-circle bg-light p-2 me-2">
                                             <i class="bi bi-person-circle text-primary"></i>
                                         </div>
@@ -75,24 +75,24 @@
                             <!-- Audio Player -->
                             <div v-if="podcast.format === 'audio'" class="audio-player mb-4">
                                 <audio controls class="w-100">
-                                    <source :src="podcast.mediaUrl" type="audio/mpeg">
+                                    <source :src="podcast.mediaUrl || (podcast as any).media_url" type="audio/mpeg">
                                     Your browser does not support the audio element.
                                 </audio>
                             </div>
 
                             <!-- Video Player -->
                             <div v-else-if="podcast.format === 'video'" class="ratio ratio-16x9 mb-4">
-                                <iframe :src="podcast.mediaUrl" allowfullscreen
+                                <iframe :src="podcast.mediaUrl || (podcast as any).media_url" allowfullscreen
                                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
                             </div>
 
                             <!-- Text Content -->
-                            <div v-if="podcast.content" class="podcast-content" v-html="podcast.content"></div>
+                            <div v-if="podcast.content || (podcast as any).content_body" class="podcast-content" v-html="podcast.content || (podcast as any).content_body"></div>
                         </div>
                     </div>
 
                     <!-- Premium Content Notice -->
-                    <div v-if="podcast.isPremium" class="alert alert-warning">
+                    <div v-if="podcast.isPremium || (podcast as any).is_premium" class="alert alert-warning">
                         <i class="bi bi-star-fill me-2"></i>
                         Contenu premium
                         <strong class="ms-2">{{ podcast.price }}XOF</strong>
@@ -122,24 +122,8 @@ const loadPodcast = async () => {
 
     try {
         const podcastId = parseInt(route.params.id as string)
-        //   const data = await contentStore.getContent(podcastId)
-        //   podcast.value = data
-        podcast.value = {
-            "id": 1,
-            "title": "Titre du podcast",
-            "description": "Description du podcast",
-            "created_at": "2025-04-26T10:00:00Z",
-            "format": "audio",
-            "mediaUrl": "https://example.com/media/podcast.mp3",
-            "author": {
-                "id": 1,
-                "name": "Auteur du podcast"
-            },
-            "tags": ["théologie", "mission", "éducation"],
-            "content": "<p>Contenu HTML riche du podcast...</p>",
-            "isPremium": true,
-            "price": 9.99
-        }
+        const data = await contentStore.getContent(podcastId)
+        podcast.value = data
     } catch (err: any) {
         error.value = err.message || 'Failed to load podcast'
     } finally {

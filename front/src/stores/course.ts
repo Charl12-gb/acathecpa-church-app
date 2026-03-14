@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import axios from 'axios'
-import { API_URL } from '../config'
+import { ref } from 'vue'
+import apiClient from '../services/api'
 
 export interface Course {
   id: number
@@ -68,7 +67,7 @@ export const useCourseStore = defineStore('course', () => {
     error.value = ''
     
     try {
-      const response = await axios.get(`${API_URL}/courses/${courseId}`)
+      const response = await apiClient.get(`/courses/${courseId}`)
       currentCourse.value = response.data
     } catch (err: any) {
       error.value = err.message || 'Failed to load course'
@@ -84,7 +83,7 @@ export const useCourseStore = defineStore('course', () => {
     error.value = ''
     
     try {
-      const response = await axios.get(`${API_URL}/tests/${testId}`)
+      const response = await apiClient.get(`/courses/tests/${testId}`)
       currentTest.value = response.data
     } catch (err: any) {
       error.value = err.message || 'Failed to load test'
@@ -100,10 +99,7 @@ export const useCourseStore = defineStore('course', () => {
     error.value = ''
     
     try {
-      const response = await axios.post(`${API_URL}/courses/${courseId}/tests`, {
-        sectionId,
-        test
-      })
+      const response = await apiClient.post(`/courses/sections/${sectionId}/tests/`, test)
       return response.data
     } catch (err: any) {
       error.value = err.message || 'Failed to save test'
@@ -119,7 +115,7 @@ export const useCourseStore = defineStore('course', () => {
     error.value = ''
     
     try {
-      await axios.post(`${API_URL}/courses/${courseId}/lessons/${lessonId}/complete`)
+      await apiClient.post(`/courses/${courseId}/lessons/${lessonId}/complete`)
       
       if (currentCourse.value) {
         // Update local state
@@ -140,12 +136,12 @@ export const useCourseStore = defineStore('course', () => {
   }
 
   // Submit test answers
-  const submitTest = async (testId: number, answers: any[]) => {
+  const submitTest = async (courseId: number, testId: number, answers: any[]) => {
     loading.value = true
     error.value = ''
     
     try {
-      const response = await axios.post(`${API_URL}/tests/${testId}/submit`, { answers })
+      const response = await apiClient.post(`/courses/${courseId}/tests/${testId}/attempt`, { answers })
       return response.data
     } catch (err: any) {
       error.value = err.message || 'Failed to submit test'

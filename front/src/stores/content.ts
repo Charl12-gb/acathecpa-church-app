@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import axios from 'axios'
-import { API_URL } from '../config'
+import apiClient from '../services/api'
 
 export interface Content {
   id: number
@@ -35,7 +34,7 @@ export const useContentStore = defineStore('content', () => {
     error.value = ''
     
     try {
-      const response = await axios.get(`${API_URL}/contents${type ? `?type=${type}` : ''}`)
+      const response = await apiClient.get(`/contents/${type ? `?type=${type}` : ''}`)
       return response.data
     } catch (err: any) {
       error.value = err.message || 'Failed to load contents'
@@ -51,7 +50,7 @@ export const useContentStore = defineStore('content', () => {
     error.value = ''
     
     try {
-      const response = await axios.get(`${API_URL}/contents/${contentId}`)
+      const response = await apiClient.get(`/contents/${contentId}`)
       currentContent.value = response.data
       return response.data
     } catch (err: any) {
@@ -68,7 +67,7 @@ export const useContentStore = defineStore('content', () => {
     error.value = ''
     
     try {
-      const response = await axios.post(`${API_URL}/contents`, content)
+      const response = await apiClient.post('/contents/', content)
       return response.data
     } catch (err: any) {
       error.value = err.message || 'Failed to save content'
@@ -84,7 +83,7 @@ export const useContentStore = defineStore('content', () => {
     error.value = ''
     
     try {
-      await axios.delete(`${API_URL}/contents/${contentId}`)
+      await apiClient.delete(`/contents/${contentId}`)
     } catch (err: any) {
       error.value = err.message || 'Failed to delete content'
       throw error.value
@@ -99,7 +98,7 @@ export const useContentStore = defineStore('content', () => {
     error.value = ''
     
     try {
-      const response = await axios.get(`${API_URL}/user/contents`)
+      const response = await apiClient.get('/contents/user')
       userContents.value = response.data
       return response.data
     } catch (err: any) {
@@ -116,7 +115,7 @@ export const useContentStore = defineStore('content', () => {
     error.value = ''
     
     try {
-      const response = await axios.post(`${API_URL}/contents/${contentId}/publish`)
+      const response = await apiClient.post(`/contents/${contentId}/publish`)
       return response.data
     } catch (err: any) {
       error.value = err.message || 'Failed to publish content'
