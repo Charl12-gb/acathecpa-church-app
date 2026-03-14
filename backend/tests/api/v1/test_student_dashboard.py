@@ -16,7 +16,7 @@ from pydantic import ValidationError
 from app.core.config import settings
 from app.models.user import User as UserModel # For dummy user
 # Import the specific dependency to override for endpoint tests
-from app.routers.student_router import get_current_active_student_user as student_auth_dependency
+from app.dependencies.auth import require_student as student_auth_dependency
 
 # --- Schema Tests ---
 
@@ -93,7 +93,7 @@ def test_recent_certificate_schema_invalid_date_format():
 
 # --- API Endpoint Tests (Structure) ---
 
-dummy_student_user_data = {"username": "student_test", "role": "student", "id": 3, "email": "student@test.com", "is_active": True}
+dummy_student_user_data = {"name": "student_test", "id": 3, "email": "student@test.com", "is_active": True}
 mock_student_user = UserModel(**dummy_student_user_data)
 
 async def override_get_current_active_student_user_dependency():

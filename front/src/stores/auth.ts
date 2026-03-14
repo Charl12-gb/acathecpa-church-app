@@ -7,10 +7,16 @@ import {
   requestPasswordReset as apiRequestPasswordReset,
   resetPassword as apiResetPassword
 } from '../services/api/auth'
+import type { User as ApiUser, UserRole } from '../types/api/userTypes'
 import router from '../router'
-import { User } from '../types/api'
+
+export type User = Omit<ApiUser, 'role'> & {
+  role: ApiUser['role'] | { name: ApiUser['role'] }
+}
 
 export const useAuthStore = defineStore('auth', () => {
+  type RoleName = UserRole
+
   const user = ref<User | null>(null)
   const token = ref<string | null>(null)
   const loading = ref(false)
@@ -29,15 +35,20 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Computed
   const isAuthenticated = computed(() => !!token.value)
+
+  const getRoleName = (role: User['role']): RoleName => {
+    return typeof role === 'string' ? role : role.name
+  }
   
-  const hasRole = (role: string | string[]) => {
+  const hasRole = (role: RoleName | RoleName[]) => {
     if (!user.value) return false
+    const userRoleName = getRoleName(user.value.role)
     
     if (Array.isArray(role)) {
-      return role.includes(user.value.role)
+      return role.includes(userRoleName)
     }
     
-    return user.value.role === role
+    return userRoleName === role
   }
 
   // Actions

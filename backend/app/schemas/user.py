@@ -17,7 +17,7 @@ class UserBase(BaseModel):
     phone: Optional[str] = None
     country: Optional[str] = None
     birthdate: Optional[str] = None
-    role: Optional[RoleBase] = 'student' 
+    role: Optional[RoleBase] = None
 
 # Schema for user creation
 class UserCreate(UserBase):

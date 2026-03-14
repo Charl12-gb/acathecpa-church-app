@@ -92,6 +92,12 @@ const registrationOptions = {
 
 </script>
 
+<script lang="ts">
+export default {
+  name: 'AdminDashboard'
+}
+</script>
+
 <template>
   <div>
     <!-- Loading and Error States -->

@@ -90,6 +90,20 @@ const computedEngagementChartData = computed(() => {
   };
 });
 
+const getCourseImage = (course: unknown) => {
+  if (course && typeof course === 'object' && 'image_url' in course) {
+    const imageUrl = (course as { image_url?: string | null }).image_url
+    return imageUrl || 'https://placehold.co/400x200?text=Cours'
+  }
+  return 'https://placehold.co/400x200?text=Cours'
+}
+
+</script>
+
+<script lang="ts">
+export default {
+  name: 'ProfessorDashboard'
+}
 </script>
 
 <template>
@@ -194,8 +208,7 @@ const computedEngagementChartData = computed(() => {
             <div v-else class="list-group list-group-flush">
               <div v-for="course in publishedCourses" :key="course.id" class="list-group-item px-0 py-3">
                 <div class="d-flex">
-                  <!-- Assuming course.image_url exists from CoursePerformance type -->
-                  <img :src="(course as any).image_url || 'https://placehold.co/400x200?text=Cours'" alt="Course Image" class="rounded me-3" style="width: 100px; height: 60px; object-fit: cover;">
+                  <img :src="getCourseImage(course)" alt="Course Image" class="rounded me-3" style="width: 100px; height: 60px; object-fit: cover;">
                   <div class="flex-grow-1">
                     <div class="d-flex justify-content-between align-items-start">
                       <h6 class="mb-1">{{ course.title }}</h6>

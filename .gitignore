@@ -1,26 +1,104 @@
-# Fichiers et dossiers spécifiques au frontend (React)
-/frontend/node_modules
-/frontend/build
-/frontend/.env
-/frontend/.env.local
-/frontend/.env.development.local
-/frontend/.env.test.local
-/frontend/.env.production.local
+# ==========================
+# Frontend (Vue.js / Vite)
+# ==========================
+front/node_modules/
+front/dist/
+front/.env
+front/.env.local
+front/.env.*.local
+front/.cache/
 
-# Fichiers et dossiers spécifiques au backend (FastAPI)
-/backend/.venv
-/backend/__pycache__
-/backend/*.pyc
-/backend/.env
+# Logs npm/yarn/pnpm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# Fichiers et dossiers généraux à ignorer
+# Coverage
+front/coverage/
+
+# ==========================
+# Backend (FastAPI / Python)
+# ==========================
+backend/.venv/
+backend/venv/
+apiEnv/
+
+# Bytecode Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyd
+*.pyo
+
+# Distribution / packaging
+backend/dist/
+backend/build/
+backend/*.egg-info/
+backend/.eggs/
+*.egg
+
+# Variables d'environnement
+.env
+.env.local
+.env.*.local
+backend/.env
+backend/.env.*
+
+# Alembic (conserver les migrations, ignorer les caches)
+backend/alembic/__pycache__/
+backend/alembic/versions/__pycache__/
+
+# Tests
+backend/.pytest_cache/
+backend/.coverage
+backend/htmlcov/
+backend/coverage.xml
+.tox/
+
+# Mypy / type checkers
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pytype/
+
+# ==========================
+# Base de données locale
+# ==========================
+*.db
+*.sqlite
+*.sqlite3
+
+# ==========================
+# Éditeurs & OS
+# ==========================
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
 Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# JetBrains / PyCharm
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# ==========================
+# Divers
+# ==========================
 *.log
 *.tmp
+*.bak
 temp/
 tmp/
 .history/
-.vscode/
-.idea/
 

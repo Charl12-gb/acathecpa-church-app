@@ -101,6 +101,12 @@ const computedWeeklyActivityChartData = computed(() => {
 
 </script>
 
+<script lang="ts">
+export default {
+  name: 'StudentDashboard'
+}
+</script>
+
 <template>
   <div>
     <!-- Loading and Error States -->

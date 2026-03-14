@@ -1,11 +1,17 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, defineAsyncComponent } from 'vue'
 import { useAuthStore } from '../../stores/auth'
 
 // Components
-import StudentDashboard from '../dashboard/student/StudentDashboard.vue'
-import ProfessorDashboard from '../dashboard/professor/ProfessorDashboard.vue'
-import AdminDashboard from '../dashboard/admin/AdminDashboard.vue'
+const StudentDashboard = defineAsyncComponent(
+  () => import('../dashboard/student/StudentDashboard.vue') as any
+)
+const ProfessorDashboard = defineAsyncComponent(
+  () => import('../dashboard/professor/ProfessorDashboard.vue') as any
+)
+const AdminDashboard = defineAsyncComponent(
+  () => import('../dashboard/admin/AdminDashboard.vue') as any
+)
 
 const authStore = useAuthStore()
 const currentUser = computed(() => authStore.user)
@@ -13,16 +19,12 @@ const userRole = computed(() => currentUser.value?.role || '')
 
 // Show appropriate dashboard based on user role
 const showDashboard = computed(() => {
-  switch (userRole.value) {
-    case 'student':
-      return 'student'
-    case 'professor':
-      return 'professor'
-    case 'admin':
-    case 'super_admin':
-      return 'admin'
-    default:
-      return 'student'
+  if (userRole.value === 'admin' || userRole.value === 'super_admin') {
+    return 'admin'
+  } else if (userRole.value === 'professor') {
+    return 'professor'
+  } else {
+    return 'student'
   }
 })
 </script>
