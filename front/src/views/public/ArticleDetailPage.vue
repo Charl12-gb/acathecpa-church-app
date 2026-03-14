@@ -33,7 +33,7 @@
                 <i class="bi bi-calendar me-2"></i>
                 <span>{{ new Date(article.created_at).toLocaleDateString() }}</span>
               </div>
-              <div class="d-flex align-items-center">
+              <div class="d-flex align-items-center" v-if="article.author">
                 <i class="bi bi-person-circle me-2"></i>
                 <span>{{ article.author.name }}</span>
               </div>
@@ -41,8 +41,8 @@
   
             <div class="mb-4">
               <img 
-                v-if="article.mediaUrl" 
-                :src="article.mediaUrl" 
+                v-if="article.mediaUrl || (article as any).media_url"
+                :src="article.mediaUrl || (article as any).media_url"
                 :alt="article.title"
                 class="img-fluid rounded"
               >
@@ -56,17 +56,17 @@
             <div class="card border-0 shadow-sm mb-4">
               <div class="card-body">
                 <!-- Text Content -->
-                <div v-if="article.format === 'text'" v-html="article.content" class="article-content"></div>
+                <div v-if="article.format === 'text'" v-html="article.content || (article as any).content_body" class="article-content"></div>
   
                 <!-- PDF Viewer -->
                 <div v-else-if="article.format === 'pdf'" class="ratio ratio-16x9">
-                  <iframe :src="article.mediaUrl" allowfullscreen></iframe>
+                  <iframe :src="article.mediaUrl || (article as any).media_url" allowfullscreen></iframe>
                 </div>
   
                 <!-- Video Player -->
                 <div v-else-if="article.format === 'video'" class="ratio ratio-16x9">
                   <iframe 
-                    :src="article.mediaUrl" 
+                    :src="article.mediaUrl || (article as any).media_url"
                     allowfullscreen
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   ></iframe>
@@ -75,7 +75,7 @@
                 <!-- Audio Player -->
                 <div v-else-if="article.format === 'audio'" class="audio-player">
                   <audio controls class="w-100">
-                    <source :src="article.mediaUrl" type="audio/mpeg">
+                    <source :src="article.mediaUrl || (article as any).media_url" type="audio/mpeg">
                     Your browser does not support the audio element.
                   </audio>
                 </div>
@@ -97,7 +97,7 @@
             </div>
   
             <!-- Premium Content Notice -->
-            <div v-if="article.isPremium" class="alert alert-warning">
+            <div v-if="article.isPremium || (article as any).is_premium" class="alert alert-warning">
               <i class="bi bi-star-fill me-2"></i>
               Contenu premium
               <strong class="ms-2">{{ article.price }}XOF</strong>
@@ -127,25 +127,8 @@
     
     try {
       const articleId = parseInt(route.params.id as string)
-    //   const data = await contentStore.getContent(articleId)
-    //   article.value = data
-      article.value = {
-    "id": 42,
-    "title": "Comment intégrer Vue.js avec Bootstrap 5",
-    "description": "Un guide complet pour créer des interfaces modernes en combinant Vue.js et Bootstrap 5",
-    "content": "<p>Dans cet article, nous allons explorer comment intégrer efficacement Vue.js avec Bootstrap 5 pour créer des interfaces modernes et réactives.</p><h2>Pourquoi combiner Vue.js et Bootstrap?</h2><p>Vue.js offre une réactivité puissante tandis que Bootstrap propose un design éprouvé et des composants prêts à l'emploi. Ensemble, ils forment une combinaison redoutable.</p><blockquote>Vue.js et Bootstrap se complètent parfaitement pour créer rapidement des interfaces utilisateur professionnelles.</blockquote><h2>Installation et configuration</h2><p>Commençons par installer les packages nécessaires...</p>",
-    "format": "text",
-    "mediaUrl": "https://example.com/images/vuejs-bootstrap-integration.jpg",
-    "created_at": "2025-04-20T10:15:00Z",
-    "author": {
-      "id": "a5",
-      "name": "Julie Durand",
-      "avatarUrl": "https://example.com/avatars/julie.jpg"
-    },
-    "tags": ["Vue.js", "Bootstrap", "Frontend", "Développement Web"],
-    "isPremium": true,
-    "price": 4.99
-  }
+      const data = await contentStore.getContent(articleId)
+      article.value = data
     } catch (err: any) {
       error.value = err.message || 'Failed to load article'
     } finally {

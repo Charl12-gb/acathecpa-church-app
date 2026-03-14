@@ -34,18 +34,7 @@ const fetchCourses = async () => {
     // Assuming getInstructorCourses returns courses structured similarly to the old sample data for now.
     // Adjustments might be needed based on the actual API response structure.
     const fetchedCourses = await getInstructorCourses()
-    // The fetchedCourses should already conform to the updated Course type,
-    // which includes status, price, is_free, image_url etc.
-    // Mocking for UI elements not yet on backend model.
-    courses.value = fetchedCourses?.map(course => ({
-      ...course, // Spread the actual course data first
-      students: (course as any).students || 0, // Keep mocks for now if template uses them
-      rating: (course as any).rating || 0,
-      revenue: (course as any).revenue || 0,
-      lastUpdated: course.updated_at || course.created_at,
-      completionRate: course.progress || 0,
-      monthlyEnrollments: (course as any).monthlyEnrollments || [0,0,0,0,0,0]
-    }));
+    courses.value = fetchedCourses || [];
   } catch (err: any) {
     console.error('Failed to fetch courses:', err)
     error.value = err.message || 'Erreur lors du chargement des cours.'
@@ -71,13 +60,13 @@ const filteredCourses = computed(() => {
   // Sorting - Adjust based on available fields in Course type
   switch (filters.value.sort) {
     case 'students':
-      filtered.sort((a, b) => (b.students || 0) - (a.students || 0)) // Use default if undefined
+      filtered.sort((a, b) => ((b as any).students || 0) - ((a as any).students || 0))
       break
     case 'rating':
-      filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0))
+      filtered.sort((a, b) => ((b as any).rating || 0) - ((a as any).rating || 0))
       break
     case 'revenue':
-      filtered.sort((a, b) => (b.revenue || 0) - (a.revenue || 0))
+      filtered.sort((a, b) => ((b as any).revenue || 0) - ((a as any).revenue || 0))
       break
     default: // recent (using updated_at or created_at)
       filtered.sort((a, b) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime())
@@ -87,36 +76,36 @@ const filteredCourses = computed(() => {
 })
 
 // Chart data for enrollments
-const getEnrollmentChartData = (course: any) => { // course type should be Course, but monthlyEnrollments is mocked
-  return {
-    labels: ['Jan', 'Fev', 'Mar', 'Avr', 'Mai', 'Juin'], // Generic labels
-    datasets: [
-      {
-        label: 'Inscriptions',
-        data: course.monthlyEnrollments || [0,0,0,0,0,0], // Use mocked data or remove chart if not available
-        borderColor: '#3498db',
-        backgroundColor: 'rgba(52, 152, 219, 0.1)',
-        tension: 0.4,
-        fill: true
-      }
-    ]
-  }
-}
+// const getEnrollmentChartData = (course: any) => {
+//   return {
+//     labels: ['Jan', 'Fev', 'Mar', 'Avr', 'Mai', 'Juin'],
+//     datasets: [
+//       {
+//         label: 'Inscriptions',
+//         data: course.monthlyEnrollments || [0,0,0,0,0,0],
+//         borderColor: '#3498db',
+//         backgroundColor: 'rgba(52, 152, 219, 0.1)',
+//         tension: 0.4,
+//         fill: true
+//       }
+//     ]
+//   }
+// }
 
-const chartOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      display: false
-    }
-  },
-  scales: {
-    y: {
-      beginAtZero: true
-    }
-  }
-}
+// const chartOptions = {
+//   responsive: true,
+//   maintainAspectRatio: false,
+//   plugins: {
+//     legend: {
+//       display: false
+//     }
+//   },
+//   scales: {
+//     y: {
+//       beginAtZero: true
+//     }
+//   }
+// }
 
 const updateCourseStatus = async (courseId: number, newStatus: CourseStatus) => {
   // Simple loading state for now, could be per-course
@@ -212,8 +201,7 @@ const deleteCourse = async (courseId: number) => {
                 </div>
                 <div>
                   <h6 class="mb-0 text-muted">Étudiants</h6>
-                  <!-- Note: 'students' might not be available on Course type from API -->
-                  <h3 class="mb-0">{{ courses.reduce((sum, course) => sum + (course.students || 0), 0) }}</h3>
+                  <h3 class="mb-0">{{ courses.reduce((sum, course) => sum + ((course as any).students || 0), 0) }}</h3>
                 </div>
               </div>
             </div>
@@ -228,11 +216,10 @@ const deleteCourse = async (courseId: number) => {
                 </div>
                 <div>
                   <h6 class="mb-0 text-muted">Note moyenne</h6>
-                  <!-- Note: 'rating' might not be available -->
                   <h3 class="mb-0">
                     {{
-                      (courses.reduce((sum, course) => sum + (course.rating || 0), 0) /
-                      (courses.filter(c => (c.rating || 0) > 0).length || 1)).toFixed(1)
+                      (courses.reduce((sum, course) => sum + ((course as any).rating || 0), 0) /
+                      (courses.filter(c => ((c as any).rating || 0) > 0).length || 1)).toFixed(1)
                     }}
                   </h3>
                 </div>
@@ -249,8 +236,7 @@ const deleteCourse = async (courseId: number) => {
                 </div>
                 <div>
                   <h6 class="mb-0 text-muted">Revenus totaux</h6>
-                  <!-- Note: 'revenue' might not be available -->
-                  <h3 class="mb-0">{{ courses.reduce((sum, course) => sum + (course.revenue || 0), 0) }}XOF</h3>
+                  <h3 class="mb-0">{{ courses.reduce((sum, course) => sum + ((course as any).revenue || 0), 0) }}XOF</h3>
                 </div>
               </div>
             </div>
