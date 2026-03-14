@@ -1,0 +1,26 @@
+# Fichiers et dossiers spécifiques au frontend (React)
+/frontend/node_modules
+/frontend/build
+/frontend/.env
+/frontend/.env.local
+/frontend/.env.development.local
+/frontend/.env.test.local
+/frontend/.env.production.local
+
+# Fichiers et dossiers spécifiques au backend (FastAPI)
+/backend/.venv
+/backend/__pycache__
+/backend/*.pyc
+/backend/.env
+
+# Fichiers et dossiers généraux à ignorer
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+temp/
+tmp/
+.history/
+.vscode/
+.idea/
+

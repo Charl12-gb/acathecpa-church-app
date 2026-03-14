@@ -1,0 +1,132 @@
+:root {
+  /* Couleurs principales (extraites du logo) */
+  --color-primary: #C14428; /* Rouge brique du texte ACATHECPA */
+  --color-secondary: #1B7A78; /* Vert-bleu du globe */
+  --color-accent: #F4A300; /* Jaune-or des éclairs */
+  --color-success: #27664B; /* Vert foncé de l'ombre du livre */
+  --color-warning: #F4A300; /* Jaune (réutilisé pour warning) */
+  --color-error: #B03A20; /* Rouge plus foncé pour erreurs */
+  --color-neutral: #FFF8EE; /* Fond beige clair */
+
+  /* Couleurs d'arrière-plan */
+  --background-default: #FFF8EE; /* Beige crème général */
+  --background-secondary: #FFFFFF; /* Blanc pour cartes */
+  --background-accent: #F4A3001A; /* Jaune très léger pour mise en avant */
+  --background-light: #F4A300; /* Jaune vif pour éléments clairs */
+  --background-dark: #1B7A78; /* Vert-bleu pour éléments sombres */
+  --background-dark-contrast: #1B7A781A; /* Vert-bleu très léger pour contraste */
+  --background-dark-contrast-2: #1B7A7820; /* Vert-bleu légèrement plus foncé pour contraste */
+  --background-primary: #C14428; /* Rouge brique pour éléments principaux */
+
+  /* Fontes */
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  /* Light mode */
+  color-scheme: light;
+  color: #2C2C2C; /* Texte principal gris foncé */
+  background-color: var(--background-default);
+
+  /* Text rendering */
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Bootstrap overrides */
+:root {
+  --bs-primary: var(--color-primary);
+  --bs-secondary: var(--color-secondary);
+  --bs-success: var(--color-success);
+  --bs-info: var(--color-secondary);
+  --bs-warning: var(--color-warning);
+  --bs-danger: var(--color-error);
+  --bs-light: var(--color-neutral);
+  --bs-dark: #1a1a1a;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: var(--background-default);
+  color: #2C2C2C;
+}
+
+/* Titres */
+h1, h2, h3, h4, h5, h6 {
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+/* Liens */
+a {
+  text-decoration: none;
+  transition: color 0.3s;
+  color: var(--color-primary);
+}
+a:hover {
+  color: var(--color-secondary);
+}
+
+/* Cartes */
+.card {
+  background-color: var(--background-secondary);
+  border: 1px solid var(--color-secondary);
+  border-radius: 8px;
+  padding: 20px;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Boutons */
+.btn {
+  background-color: var(--color-primary);
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn:hover {
+  background-color: var(--color-secondary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+/* Section spéciale */
+.section-padding {
+  padding: 80px 0;
+}
+
+/* Section accentuée */
+.section-highlight {
+  background-color: var(--background-accent);
+  padding: 40px;
+  border-radius: 12px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .section-padding {
+    padding: 60px 0;
+  }
+}
+
+@media (max-width: 576px) {
+  .section-padding {
+    padding: 40px 0;
+  }
+}
