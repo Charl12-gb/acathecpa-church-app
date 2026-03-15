@@ -99,6 +99,23 @@ const computedWeeklyActivityChartData = computed(() => {
   };
 });
 
+const getRecommendedImage = (course: any): string => {
+  return course?.image_url || `https://picsum.photos/seed/reco-${course?.id || 'x'}/640/360`;
+};
+
+const getRecommendedCategory = (course: any): string => {
+  return course?.category || 'General';
+};
+
+const getRecommendedInstructor = (course: any): string => {
+  return course?.instructor_name || 'Formateur';
+};
+
+const getRecommendedDuration = (course: any): string => {
+  const weeks = Number(course?.duration_weeks || 0);
+  return weeks > 0 ? `${weeks} semaines` : 'Duree flexible';
+};
+
 </script>
 
 <script lang="ts">
@@ -249,15 +266,22 @@ export default {
             </div>
             <div v-else class="row g-3">
               <div v-for="course in recommendedCourses" :key="course.id" class="col-md-6">
-                <div class="card h-100 shadow-sm">
-                  <img :src="course.image_url || 'https://placehold.co/400x200?text=Recommandé'" class="card-img-top" :alt="course.title">
+                <div class="card h-100 shadow-sm recommended-card border-0">
+                  <img :src="getRecommendedImage(course)" class="card-img-top recommended-image" :alt="course.title">
                   <div class="card-body">
-                    <h6 class="card-title">{{ course.title }}</h6>
-                    <p class="card-text small text-muted">
-                      <span class="badge bg-primary">{{ course.category }}</span> <br>
-                      <i class="bi bi-person-circle me-1"></i> {{ course.instructor_name }}<br>
-                      <i class="bi bi-clock me-1"></i> {{ course.duration_weeks }} semaines
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                      <h6 class="card-title mb-0 pe-2">{{ course.title }}</h6>
+                      <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle">
+                        {{ getRecommendedCategory(course) }}
+                      </span>
+                    </div>
+                    <p class="card-text small text-muted mb-3">
+                      <i class="bi bi-person-circle me-1"></i> {{ getRecommendedInstructor(course) }}<br>
+                      <i class="bi bi-clock me-1"></i> {{ getRecommendedDuration(course) }}
                     </p>
+                    <RouterLink :to="`/course/${course.id}`" class="btn btn-sm btn-outline-primary w-100">
+                      Voir le cours
+                    </RouterLink>
                   </div>
                 </div>
               </div>
@@ -355,5 +379,19 @@ export default {
 
 .progress-bar {
   background-color: #2ecc71;
+}
+
+.recommended-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.recommended-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.08) !important;
+}
+
+.recommended-image {
+  height: 150px;
+  object-fit: cover;
 }
 </style>

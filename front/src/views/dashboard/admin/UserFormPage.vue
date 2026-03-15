@@ -1,5 +1,5 @@
 <template>
-  <div class="container py-5">
+  <div class="container-fluid">
     <!-- Header -->
     <div class="row mb-4">
       <div class="col-12">
@@ -10,8 +10,10 @@
               {{ isEditing ? 'Modifiez les informations de l\'utilisateur' : 'Créez un nouvel utilisateur' }}
             </p>
           </div>
-          <button class="btn btn-primary" @click="saveUser">
-            <i class="bi bi-check-circle me-2"></i>Enregistrer
+          <button class="btn btn-primary" @click="saveUser" :disabled="isSaving">
+            <span v-if="isSaving" class="spinner-border spinner-border-sm me-2"></span>
+            <i v-else class="bi bi-check-circle me-2"></i>
+            {{ isSaving ? 'Enregistrement...' : 'Enregistrer' }}
           </button>
         </div>
       </div>
@@ -19,6 +21,8 @@
 
     <div class="row">
       <div class="col-lg-8">
+        <!-- Error message -->
+        <div v-if="errorMsg" class="alert alert-danger mb-3">{{ errorMsg }}</div>
         <!-- User Form -->
         <div class="card border-0 shadow-sm">
           <div class="card-body">
@@ -181,70 +185,99 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { getUserById, updateUser } from '../../../services/api/user'
+import { register } from '../../../services/api/auth'
+import { UserRole } from '../../../types/api/userTypes'
 
 const route = useRoute()
 const router = useRouter()
 
 const isEditing = computed(() => !!route.params.id)
+const isSaving = ref(false)
+const errorMsg = ref('')
 
-// Form data
 const userForm = ref({
   name: '',
   email: '',
   phone: '',
   country: '',
   birthdate: '',
-  role: 'student',
+  role: 'student' as string,
   status: 'active',
   password: '',
   confirm_password: ''
 })
 
-// Country list
 const countries = [
-  "France", "Belgique", "Suisse", "Canada", "Maroc", "Algérie", 
+  "France", "Belgique", "Suisse", "Canada", "Maroc", "Algérie",
   "Tunisie", "Sénégal", "Côte d'Ivoire", "Cameroun", "Mali"
 ]
 
-// Load user data if editing
 onMounted(async () => {
   if (isEditing.value) {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
+      const userId = Number(route.params.id)
+      const user = await getUserById(userId) as any
+      const roleName = typeof user.role === 'object' && user.role !== null
+        ? (user.role as any).name
+        : user.role as string
       userForm.value = {
-        name: 'John Doe',
-        email: 'john@example.com',
-        phone: '+33 1 23 45 67 89',
-        country: 'France',
-        birthdate: '1990-01-01',
-        role: 'student',
-        status: 'active',
+        name: user.name || '',
+        email: user.email,
+        phone: user.phone || '',
+        country: user.country || '',
+        birthdate: user.birthdate || '',
+        role: roleName,
+        status: user.is_active ? 'active' : 'inactive',
         password: '',
         confirm_password: ''
       }
-    } catch (error) {
-      console.error('Error loading user:', error)
+    } catch (err: any) {
+      errorMsg.value = err.message || 'Erreur lors du chargement de l\'utilisateur'
     }
   }
 })
 
-// Save user
 const saveUser = async () => {
+  errorMsg.value = ''
+  if (userForm.value.password && userForm.value.password !== userForm.value.confirm_password) {
+    errorMsg.value = 'Les mots de passe ne correspondent pas'
+    return
+  }
+
+  isSaving.value = true
   try {
-    // Validate passwords match
-    if (userForm.value.password !== userForm.value.confirm_password) {
-      alert('Les mots de passe ne correspondent pas')
-      return
+    if (isEditing.value) {
+      const userId = Number(route.params.id)
+      const payload: any = {
+        name: userForm.value.name,
+        email: userForm.value.email,
+        phone: userForm.value.phone || null,
+        country: userForm.value.country || null,
+        birthdate: userForm.value.birthdate || null,
+        role: { name: userForm.value.role },
+        is_active: userForm.value.status === 'active',
+      }
+      if (userForm.value.password) {
+        payload.password = userForm.value.password
+      }
+      await updateUser(userId, payload)
+    } else {
+      await register({
+        name: userForm.value.name,
+        email: userForm.value.email,
+        password: userForm.value.password,
+        phone: userForm.value.phone || undefined,
+        country: userForm.value.country || undefined,
+        birthdate: userForm.value.birthdate || undefined,
+        role: userForm.value.role as UserRole,
+      })
     }
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
     router.push('/manage-users')
-  } catch (error) {
-    console.error('Error saving user:', error)
+  } catch (err: any) {
+    errorMsg.value = err.response?.data?.detail || err.message || 'Erreur lors de l\'enregistrement'
+  } finally {
+    isSaving.value = false
   }
 }
 </script>

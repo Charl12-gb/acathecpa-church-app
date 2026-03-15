@@ -75,6 +75,32 @@ const filteredCourses = computed(() => {
   return filtered
 })
 
+const getCourseMetric = (course: Course, key: 'students' | 'rating' | 'revenue') => {
+  const raw = course as unknown as { students?: number; rating?: number; revenue?: number };
+  return raw[key] || 0;
+}
+
+const totalStudents = computed(() =>
+  courses.value.reduce((sum, course) => sum + getCourseMetric(course, 'students'), 0)
+)
+
+const averageRating = computed(() => {
+  const ratings = courses.value.map((course) => getCourseMetric(course, 'rating')).filter((value) => value > 0)
+  if (ratings.length === 0) return '0.0'
+  const avg = ratings.reduce((sum, value) => sum + value, 0) / ratings.length
+  return avg.toFixed(1)
+})
+
+const totalRevenue = computed(() =>
+  courses.value.reduce((sum, course) => sum + getCourseMetric(course, 'revenue'), 0)
+)
+
+const onCourseStatusChange = (courseId: number, event: Event) => {
+  const target = event.target as HTMLSelectElement | null
+  if (!target) return
+  updateCourseStatus(courseId, target.value as CourseStatus)
+}
+
 // Chart data for enrollments
 // const getEnrollmentChartData = (course: any) => {
 //   return {
@@ -147,289 +173,635 @@ const deleteCourse = async (courseId: number) => {
 </script>
 
 <template>
-  <div class="container py-5">
-    <!-- Header -->
-    <div class="row mb-4">
-      <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center">
-          <div>
-            <h1 class="mb-1">Mes Cours</h1>
-            <p class="text-muted mb-0">Gérez vos cours et leur contenu</p>
+  <div class="professor-courses-page">
+    <!-- Toolbar : Header + Filters unified -->
+    <div class="toolbar">
+      <div class="toolbar-top">
+        <div class="toolbar-title">
+          <h1>Mes Cours</h1>
+          <span class="result-count">
+            <strong>{{ filteredCourses.length }}</strong> cours{{ filteredCourses.length > 1 ? 's' : '' }}
+          </span>
+        </div>
+        <RouterLink to="/course-editor" class="btn-create">
+          <i class="bi bi-plus-lg"></i> Créer un cours
+        </RouterLink>
+      </div>
+
+      <!-- Stats Strip -->
+      <div class="stats-strip">
+        <div class="stat-chip">
+          <i class="bi bi-book" style="color: #2453a7;"></i>
+          <span><strong>{{ courses.length }}</strong> cours</span>
+        </div>
+        <div class="stat-chip">
+          <i class="bi bi-people" style="color: #18794e;"></i>
+          <span><strong>{{ totalStudents }}</strong> étudiants</span>
+        </div>
+        <div class="stat-chip">
+          <i class="bi bi-star" style="color: #b45309;"></i>
+          <span><strong>{{ averageRating }}</strong> note</span>
+        </div>
+        <div class="stat-chip">
+          <i class="bi bi-currency-euro" style="color: #6b7280;"></i>
+          <span><strong>{{ totalRevenue }}</strong> XOF</span>
+        </div>
+      </div>
+
+      <div class="toolbar-bottom">
+        <div class="toolbar-selects">
+          <div class="select-wrap">
+            <i class="bi bi-funnel"></i>
+            <select v-model="filters.status">
+              <option value="all">Tous les statuts</option>
+              <option value="published">Publiés</option>
+              <option value="draft">Brouillons</option>
+            </select>
           </div>
-          <RouterLink to="/course-editor" class="btn btn-primary">
-            <i class="bi bi-plus-circle me-2"></i>Créer un cours
-          </RouterLink>
+          <div class="select-wrap">
+            <i class="bi bi-sort-down"></i>
+            <select v-model="filters.sort">
+              <option value="recent">Plus récents</option>
+              <option value="students">Nombre d'étudiants</option>
+              <option value="rating">Note</option>
+              <option value="revenue">Revenus</option>
+            </select>
+          </div>
         </div>
       </div>
     </div>
 
-    <div v-if="isLoading" class="text-center py-5">
-      <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Chargement...</span>
-      </div>
-      <p>Chargement des cours...</p>
+    <!-- Loading -->
+    <div v-if="isLoading" class="loading-state">
+      <div class="spinner"></div>
+      <p>Chargement des cours…</p>
     </div>
 
-    <div v-else-if="error" class="alert alert-danger" role="alert">
-      {{ error }}
-    </div>
-
-    <div v-else>
-      <!-- Stats Cards -->
-      <div class="row g-4 mb-4">
-        <div class="col-md-3">
-          <div class="card border-0 shadow-sm">
-            <div class="card-body">
-              <div class="d-flex align-items-center">
-                <div class="rounded-circle bg-primary bg-opacity-10 p-3 me-3">
-                  <i class="bi bi-book text-primary fs-4"></i>
-                </div>
-                <div>
-                  <h6 class="mb-0 text-muted">Total des cours</h6>
-                  <h3 class="mb-0">{{ courses.length }}</h3>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card border-0 shadow-sm">
-            <div class="card-body">
-              <div class="d-flex align-items-center">
-                <div class="rounded-circle bg-success bg-opacity-10 p-3 me-3">
-                  <i class="bi bi-people text-success fs-4"></i>
-                </div>
-                <div>
-                  <h6 class="mb-0 text-muted">Étudiants</h6>
-                  <h3 class="mb-0">{{ courses.reduce((sum, course) => sum + ((course as any).students || 0), 0) }}</h3>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card border-0 shadow-sm">
-            <div class="card-body">
-              <div class="d-flex align-items-center">
-                <div class="rounded-circle bg-warning bg-opacity-10 p-3 me-3">
-                  <i class="bi bi-star text-warning fs-4"></i>
-                </div>
-                <div>
-                  <h6 class="mb-0 text-muted">Note moyenne</h6>
-                  <h3 class="mb-0">
-                    {{
-                      (courses.reduce((sum, course) => sum + ((course as any).rating || 0), 0) /
-                      (courses.filter(c => ((c as any).rating || 0) > 0).length || 1)).toFixed(1)
-                    }}
-                  </h3>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card border-0 shadow-sm">
-            <div class="card-body">
-              <div class="d-flex align-items-center">
-                <div class="rounded-circle bg-info bg-opacity-10 p-3 me-3">
-                  <i class="bi bi-currency-euro text-info fs-4"></i>
-                </div>
-                <div>
-                  <h6 class="mb-0 text-muted">Revenus totaux</h6>
-                  <h3 class="mb-0">{{ courses.reduce((sum, course) => sum + ((course as any).revenue || 0), 0) }}XOF</h3>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- <div class="col-md-3">
-          <div class="card border-0 shadow-sm">
-            <div class="card-body">
-              <div class="d-flex align-items-center">
-                <div class="rounded-circle bg-success bg-opacity-10 p-3 me-3">
-                  <i class="bi bi-people text-success fs-4"></i>
-                </div>
-                <div>
-                  <h6 class="mb-0 text-muted">Étudiants</h6>
-                  <h3 class="mb-0">{{ courses.reduce((sum, course) => sum + (course.students || 0), 0) }}</h3>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card border-0 shadow-sm">
-            <div class="card-body">
-              <div class="d-flex align-items-center">
-                <div class="rounded-circle bg-warning bg-opacity-10 p-3 me-3">
-                  <i class="bi bi-star text-warning fs-4"></i>
-                </div>
-                <div>
-                  <h6 class="mb-0 text-muted">Note moyenne</h6>
-                  <h3 class="mb-0">
-                    {{ 
-                      (courses.reduce((sum, course) => sum + (course.rating || 0), 0) /
-                      (courses.filter(c => (c.rating || 0) > 0).length || 1)).toFixed(1)
-                    }}
-                  </h3>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card border-0 shadow-sm">
-            <div class="card-body">
-              <div class="d-flex align-items-center">
-                <div class="rounded-circle bg-info bg-opacity-10 p-3 me-3">
-                  <i class="bi bi-currency-euro text-info fs-4"></i>
-                </div>
-                <div>
-                  <h6 class="mb-0 text-muted">Revenus totaux</h6>
-                  <h3 class="mb-0">{{ courses.reduce((sum, course) => sum + (course.revenue || 0), 0) }}XOF</h3>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div> -->
-      </div>
-    </div>
-
-    <!-- Filters -->
-    <div class="row mb-4">
-      <div class="col-12">
-        <div class="card border-0 shadow-sm">
-          <div class="card-body">
-            <div class="row g-3">
-              <div class="col-md-6">
-                <select v-model="filters.status" class="form-select">
-                  <option value="all">Tous les statuts</option>
-                  <option value="published">Publiés</option>
-                  <option value="draft">Brouillons</option>
-                </select>
-              </div>
-              <div class="col-md-6">
-                <select v-model="filters.sort" class="form-select">
-                  <option value="recent">Plus récents</option>
-                  <option value="students">Nombre d'étudiants</option>
-                  <option value="rating">Note</option>
-                  <option value="revenue">Revenus</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+    <!-- Error -->
+    <div v-else-if="error" class="error-banner">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+      <span>{{ error }}</span>
+      <button @click="fetchCourses">Réessayer</button>
     </div>
 
     <!-- Course List -->
-    <div class="row g-4">
-      <div v-for="course in filteredCourses" :key="course.id" class="col-12">
-        <div class="card border-0 shadow-sm">
-          <div class="card-body">
-            <div class="row">
-              <div class="col-md-3">
-                <img 
-                  :src="course.image_url || 'https://placehold.co/400x200?text=Image+Indisponible'"
-                  :alt="course.title"
-                  class="img-fluid rounded mb-3 mb-md-0"
-                  style="width: 100%; height: 150px; object-fit: cover;"
-                >
-              </div>
-              <div class="col-md-6">
-                <div class="d-flex align-items-center mb-1">
-                  <h5 class="mb-0 me-2">{{ course.title }}</h5>
-                  <span 
-                    :class="[
-                      'badge',
-                      course.status === 'published' ? 'bg-success' : 'bg-secondary'
-                    ]"
-                  >
-                    {{ course.status === 'published' ? 'Publié' : 'Brouillon' }}
-                  </span>
-                </div>
-                <p class="text-muted small mb-2">{{ course.short_description || course.description?.substring(0,100) + '...' }}</p>
+    <div v-else-if="filteredCourses.length > 0" class="course-list">
+      <article v-for="course in filteredCourses" :key="course.id" class="course-card">
+        <!-- Thumbnail -->
+        <div class="card-thumb">
+          <img
+            :src="course.image_url || 'https://placehold.co/400x220/e8eef7/2453a7?text=Cours'"
+            :alt="course.title"
+          >
+          <span
+            class="thumb-badge"
+            :class="course.status === 'published' ? 'published' : 'draft'"
+          >
+            {{ course.status === 'published' ? 'Publié' : 'Brouillon' }}
+          </span>
+        </div>
 
-                <div class="d-flex flex-wrap gap-2 mb-2 small">
-                  <span v-if="course.is_free" class="badge bg-info">Gratuit</span>
-                  <span v-else-if="course.price != null" class="badge bg-primary">Prix: {{ course.price }}XOF</span>
-                  <span class="text-muted">Categorie: {{ course.category }}</span>
-                  <span class="text-muted">Mis à jour: {{ new Date(course.updated_at || course.created_at).toLocaleDateString() }}</span>
-                </div>
+        <!-- Body -->
+        <div class="card-body">
+          <div class="card-header-row">
+            <span v-if="course.is_free" class="price-badge free">Gratuit</span>
+            <span v-else-if="course.price != null" class="price-badge">{{ course.price }} XOF</span>
+            <span class="card-date">
+              <i class="bi bi-clock"></i> {{ new Date(course.updated_at || course.created_at).toLocaleDateString('fr-FR') }}
+            </span>
+          </div>
 
-                <div>
-                  <label :for="'status-select-' + course.id" class="form-label form-label-sm me-2">Changer statut:</label>
-                  <select
-                    :id="'status-select-' + course.id"
-                    class="form-select form-select-sm d-inline-block"
-                    style="width: auto;"
-                    :value="course.status"
-                    @change="updateCourseStatus(course.id, ($event.target as HTMLSelectElement).value as CourseStatus)"
-                    :disabled="isLoading"
-                  >
-                    <option value="draft">Brouillon</option>
-                    <option value="published">Publié</option>
-                  </select>
-                </div>
+          <h3 class="card-title">{{ course.title }}</h3>
+          <p class="card-desc">{{ course.short_description || course.description?.substring(0, 130) + '…' }}</p>
 
-              </div>
-              <div class="col-md-3 d-flex flex-column align-items-end justify-content-center">
-                <RouterLink
-                  :to="`/course-editor/${course.id}`"
-                  class="btn btn-sm btn-outline-primary mb-2 w-100"
-                >
-                  <i class="bi bi-pencil me-1"></i>Modifier
-                </RouterLink>
-                <button
-                  class="btn btn-sm btn-outline-danger w-100"
-                  @click="deleteCourse(course.id)"
-                  :disabled="isLoading"
-                >
-                  <i class="bi bi-trash me-1"></i>Supprimer
-                </button>
-              </div>
-            </div>
+          <div class="card-info-row">
+            <span v-if="course.category" class="info-tag">
+              <i class="bi bi-tag"></i> {{ course.category }}
+            </span>
+          </div>
+
+          <div class="card-status-row">
+            <label :for="'status-select-' + course.id" class="status-label">Statut :</label>
+            <select
+              :id="'status-select-' + course.id"
+              class="status-select"
+              :value="course.status"
+              @change="onCourseStatusChange(course.id, $event)"
+              :disabled="isLoading"
+            >
+              <option value="draft">Brouillon</option>
+              <option value="published">Publié</option>
+            </select>
           </div>
         </div>
-      </div>
+
+        <!-- Side panel -->
+        <div class="card-side">
+          <RouterLink :to="`/course-editor/${course.id}`" class="btn-action primary">
+            <i class="bi bi-pencil"></i> Modifier
+          </RouterLink>
+          <button
+            class="btn-action danger"
+            @click="deleteCourse(course.id)"
+            :disabled="isLoading"
+          >
+            <i class="bi bi-trash"></i> Supprimer
+          </button>
+        </div>
+      </article>
     </div>
 
     <!-- Empty State -->
-    <div v-if="filteredCourses.length === 0" class="text-center py-5">
-      <div class="mb-4">
-        <i class="bi bi-journal-x display-1 text-muted"></i>
+    <div v-if="!isLoading && !error && filteredCourses.length === 0" class="empty-state">
+      <div class="empty-illustration">
+        <i class="bi bi-journal-x"></i>
       </div>
       <h3>Aucun cours trouvé</h3>
-      <p class="text-muted">Commencez par créer votre premier cours</p>
-      <RouterLink to="/course-editor" class="btn btn-primary">
-        Créer un cours
+      <p>Commencez par créer votre premier cours</p>
+      <RouterLink to="/course-editor" class="btn-reset">
+        <i class="bi bi-plus-lg"></i> Créer un cours
       </RouterLink>
     </div>
   </div>
 </template>
 
-<style scoped>
-.rounded-circle {
-  width: 50px;
-  height: 50px;
+<style scoped lang="scss">
+// ─── Palette ────────────────────────────────────
+$primary:     #2453a7;
+$primary-dark:#1a3f8a;
+$primary-soft:#eaf2ff;
+$dark:        #1a2332;
+$gray:        #6b7280;
+$gray-light:  #f4f7fb;
+$border:      #dfe8f6;
+$radius:      14px;
+
+.professor-courses-page {
+  max-width: 1140px;
+  margin: 0 auto;
+}
+
+// ─── Toolbar ─────────────────────────────────────
+.toolbar {
+  background: #fff;
+  border: 1px solid $border;
+  border-radius: $radius;
+  padding: 1rem 1.2rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 10px rgba(16, 24, 40, 0.04);
+}
+
+.toolbar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.toolbar-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+
+  h1 {
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: $dark;
+    margin: 0;
+  }
+}
+
+.result-count {
+  font-size: 0.78rem;
+  color: $gray;
+  white-space: nowrap;
+  strong { color: $primary; font-weight: 700; }
+}
+
+.btn-create {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1.1rem;
+  background: $primary;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.2s;
+  &:hover { background: $primary-dark; color: #fff; }
+}
+
+// ─── Stats Strip (compact chips) ────────────────
+.stats-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid lighten($border, 3%);
+}
+
+.stat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.8rem;
+  background: $gray-light;
+  border: 1px solid $border;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  color: $gray;
+
+  i { font-size: 0.85rem; }
+  strong { color: $dark; font-weight: 700; }
+}
+
+.toolbar-bottom {
+  padding-top: 0.75rem;
+  border-top: 1px solid lighten($border, 3%);
+}
+
+.toolbar-selects {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.select-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  > i {
+    position: absolute;
+    left: 0.65rem;
+    color: $primary;
+    font-size: 0.78rem;
+    pointer-events: none;
+  }
+
+  select {
+    border: 1.5px solid $border;
+    border-radius: 10px;
+    padding: 0.55rem 1.8rem 0.55rem 2rem;
+    font-size: 0.82rem;
+    color: $dark;
+    background: $gray-light;
+    appearance: auto;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    &:focus { border-color: $primary; }
+  }
+}
+
+// ─── Loading ────────────────────────────────────
+.loading-state {
+  text-align: center;
+  padding: 4rem 1rem;
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid $border;
+    border-top-color: $primary;
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+    margin: 0 auto 1rem;
+  }
+
+  p { color: $gray; font-size: 0.9rem; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+// ─── Error banner ───────────────────────────────
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.9rem 1.2rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  color: #dc2626;
+  font-size: 0.88rem;
+
+  button {
+    margin-left: auto;
+    background: none;
+    border: 1px solid #dc2626;
+    color: #dc2626;
+    border-radius: 8px;
+    padding: 0.3rem 0.8rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    &:hover { background: #dc2626; color: #fff; }
+  }
+}
+
+// ─── Course List ────────────────────────────────
+.course-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+// ─── Course Card (horizontal) ───────────────────
+.course-card {
+  display: flex;
+  background: #fff;
+  border: 1px solid $border;
+  border-radius: $radius;
+  overflow: hidden;
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+
+  &:hover {
+    border-color: lighten($primary, 28%);
+    box-shadow: 0 8px 30px rgba($primary, 0.1);
+  }
+}
+
+// ── Thumbnail ───────────────────────────────────
+.card-thumb {
+  position: relative;
+  flex-shrink: 0;
+  width: 260px;
+  height: 200px;
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+  }
+
+  .course-card:hover & img {
+    transform: scale(1.06);
+  }
+}
+
+.thumb-badge {
+  position: absolute;
+  top: 0.6rem;
+  left: 0.6rem;
+  border-radius: 8px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+
+  &.published { background: #10b981; color: #fff; }
+  &.draft     { background: rgba(#fff, 0.95); color: $gray; }
+}
+
+// ── Body (center) ───────────────────────────────
+.card-body {
+  flex: 1;
+  padding: 1rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.card-header-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.4rem;
+}
+
+.price-badge {
+  background: $primary-soft;
+  color: $primary;
+  border-radius: 6px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+
+  &.free { background: #dcfce7; color: #15803d; }
+}
+
+.card-date {
+  font-size: 0.72rem;
+  color: $gray;
+  i { margin-right: 0.2rem; }
+}
+
+.card-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: $dark;
+  line-height: 1.35;
+  margin: 0 0 0.3rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-desc {
+  font-size: 0.82rem;
+  color: $gray;
+  line-height: 1.55;
+  margin-bottom: 0.5rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-info-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.info-tag {
+  background: $gray-light;
+  color: $gray;
+  border: 1px solid $border;
+  border-radius: 999px;
+  padding: 0.12rem 0.55rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  i { color: $primary; margin-right: 0.2rem; }
+}
+
+.card-status-row {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: $dark;
+  margin: 0;
+}
+
+.status-select {
+  border: 1.5px solid $border;
+  border-radius: 8px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.78rem;
+  color: $dark;
+  background: $gray-light;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  &:focus { border-color: $primary; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+// ── Side panel (right) ──────────────────────────
+.card-side {
+  flex-shrink: 0;
+  width: 150px;
+  padding: 1rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  border-left: 1px solid $border;
+  background: $gray-light;
+}
+
+.btn-action {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.6rem;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s, transform 0.15s;
+
+  &.primary {
+    background: $primary;
+    color: #fff;
+    &:hover { background: $primary-dark; transform: translateY(-1px); color: #fff; }
+  }
+
+  &.danger {
+    background: #fff;
+    color: #dc2626;
+    border: 1.5px solid #fecaca;
+    &:hover { background: #fef2f2; border-color: #dc2626; }
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+  }
+}
+
+// ─── Empty state ────────────────────────────────
+.empty-state {
+  text-align: center;
+  padding: 4.5rem 2rem;
+}
+
+.empty-illustration {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: $primary-soft;
   display: flex;
   align-items: center;
   justify-content: center;
+  margin: 0 auto 1.5rem;
+  i { font-size: 2.2rem; color: $primary; }
 }
 
-.badge {
-  padding: 0.5rem 1rem;
+.empty-state h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: $dark;
+  margin-bottom: 0.4rem;
 }
 
-.progress-bar {
-  background-color: var(--bs-primary);
+.empty-state p {
+  color: $gray;
+  font-size: 0.88rem;
+  max-width: 340px;
+  margin: 0 auto 1.3rem;
 }
 
-.card {
-  transition: transform 0.2s;
+.btn-reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: $primary;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 0.55rem 1.3rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s;
+  &:hover { background: $primary-dark; color: #fff; }
 }
 
-.card:hover {
-  transform: translateY(-2px);
+// ─── Responsive ─────────────────────────────────
+@media (max-width: 767.98px) {
+  .toolbar-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .stats-strip {
+    gap: 0.4rem;
+  }
+
+  .stat-chip {
+    font-size: 0.72rem;
+    padding: 0.3rem 0.6rem;
+  }
+
+  .toolbar-selects {
+    flex-direction: column;
+    width: 100%;
+    .select-wrap {
+      width: 100%;
+      select { width: 100%; }
+    }
+  }
+
+  .course-card {
+    flex-direction: column;
+  }
+
+  .card-thumb {
+    width: 100%;
+    height: 210px;
+  }
+
+  .card-side {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid $border;
+    flex-direction: row;
+    padding: 0.75rem 1rem;
+    justify-content: center;
+  }
+
+  .btn-action { width: auto; flex: 1; min-width: 100px; }
 }
 </style>

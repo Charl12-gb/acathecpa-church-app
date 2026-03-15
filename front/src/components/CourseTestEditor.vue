@@ -188,6 +188,12 @@
   </div>
 </template>
 
+<script lang="ts">
+export default {
+  name: 'CourseTestEditor',
+};
+</script>
+
 <script setup lang="ts">
 import { ref, onMounted, computed, nextTick, watch } from 'vue';
 import {
@@ -203,7 +209,6 @@ import type {
   TestQuestion,
   CourseTestCreatePayload,
 } from '../types/api';
-import { QuestionType } from '../types/api';
 
 // Props
 interface Props {
@@ -299,7 +304,7 @@ const loadTest = async () => {
         const formQuestion: FormTestQuestion = {
           id: q.id,
           question_text: q.question_text,
-          question_type: q.question_type === QuestionType.MULTIPLE_CHOICE ? 'multiple_choice' : 'essay',
+          question_type: q.question_type === 'multiple_choice' ? 'multiple_choice' : 'essay',
           points: q.points || 1,
         };
         
@@ -401,7 +406,7 @@ const prepareQuestionForAPI = (question: FormTestQuestion) => {
   if (question.question_type === 'true-false') {
     return {
       ...baseQuestion,
-      question_type: QuestionType.MULTIPLE_CHOICE,
+      question_type: 'multiple_choice',
       options: [
         { text: 'Vrai', is_correct: question.correct_answer === true },
         { text: 'Faux', is_correct: question.correct_answer === false }
@@ -410,13 +415,13 @@ const prepareQuestionForAPI = (question: FormTestQuestion) => {
   } else if (question.question_type === 'multiple_choice') {
     return {
       ...baseQuestion,
-      question_type: QuestionType.MULTIPLE_CHOICE,
+      question_type: 'multiple_choice',
       options: question.options || []
     };
   } else {
     return {
       ...baseQuestion,
-      question_type: QuestionType.ESSAY,
+      question_type: 'essay',
       options: []
     };
   }

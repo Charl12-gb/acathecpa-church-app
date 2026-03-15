@@ -9,6 +9,7 @@ import type {
   UserDistribution,
   MonthlyRegistration,
 } from '../../types/api/admin_dashboard'; // Corrected path if types are in ../../types/api
+import type { Course } from '../../types/api/courseTypes';
 
 const ADMIN_DASHBOARD_BASE_URL = '/admin/dashboard'; // Endpoints are relative to API_V1_STR already in apiClient
 
@@ -37,6 +38,23 @@ export const fetchAdminProfessors = async (): Promise<ProfessorStat[]> => {
     return response.data;
   } catch (error) {
     console.error('Error fetching admin professors stats:', error);
+    throw error;
+  }
+};
+
+export const fetchAdminProfessorCourses = async (
+  professorId: number,
+  skip: number = 0,
+  limit: number = 100,
+): Promise<Course[]> => {
+  try {
+    const response = await apiClient.get<Course[]>(
+      `${ADMIN_DASHBOARD_BASE_URL}/professors/${professorId}/courses`,
+      { params: { skip, limit } },
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching admin professor courses:', error);
     throw error;
   }
 };

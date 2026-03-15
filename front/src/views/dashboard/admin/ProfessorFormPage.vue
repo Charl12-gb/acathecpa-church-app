@@ -56,7 +56,6 @@ const isEditMode = computed(() => !!localProfessorId.value);
 
 const saving = ref(false);
 const localErrors = ref<Record<string, string>>({});
-const showEditForm = ref(true); 
 
 watch(currentProfessor, (newVal) => {
   if (newVal && isEditMode.value) { 
@@ -87,7 +86,6 @@ onMounted(() => {
   if (idFromRoute) {
     localProfessorId.value = Number(idFromRoute);
     fetchProfessor(localProfessorId.value);
-    showEditForm.value = false;
   } else { // Creation mode
     localProfessorId.value = null;
     professorData.value = { 
@@ -95,15 +93,8 @@ onMounted(() => {
       is_active: true, role: UserRole.PROFESSOR,
       professor_profile: { ...defaultProfessorProfileData, user_id: 0 }
     };
-    showEditForm.value = true;
   }
 });
-
-const toggleEditForm = () => {
-  if (isEditMode.value) { 
-    showEditForm.value = !showEditForm.value;
-  }
-};
 
 const defaultNewEducationEntry: EducationEntry = { institution: '', degree: '', field_of_study: '', start_year: null, end_year: null, description: '' };
 const defaultNewExperienceEntry: ExperienceEntry = { company: '', role: '', start_date: '', end_date: '', description: '' };
@@ -113,6 +104,11 @@ const addExperience = () => { if (professorData.value.professor_profile) { if (!
 const removeExperience = (index: number) => { (professorData.value.professor_profile as any)?.experience?.splice(index, 1); };
 const addSkill = () => { if (professorData.value.professor_profile) { if (!professorData.value.professor_profile.skills) { (professorData.value.professor_profile as any).skills = []; } (professorData.value.professor_profile as any).skills.push(''); } };
 const removeSkill = (index: number) => { (professorData.value.professor_profile as any)?.skills?.splice(index, 1); };
+const setSkillFromEvent = (index: number, event: Event) => {
+  const target = event.target as HTMLInputElement | null;
+  if (!target || !professorData.value.professor_profile?.skills) return;
+  professorData.value.professor_profile.skills[index] = target.value;
+};
 
 const saveProfessor = async () => {
   saving.value = true;
@@ -209,15 +205,13 @@ const getError = (field: string): string | undefined => localErrors.value[field]
 const clearError = (field: string) => { if (localErrors.value[field]) { localErrors.value[field] = ''; }};
 
 const pageTitle = computed(() => {
-    return isEditMode.value ?
-        (showEditForm.value ? 'Modifier le profil du professeur' : 'Aperçu du Profil du Professeur') :
-        'Créer un profil de professeur';
+  return isEditMode.value
+    ? 'Modifier le profil du professeur'
+    : 'Créer un profil de professeur';
 });
 // ... (pageSubtitle, hasSocialLinks computed properties remain similar)
 const pageSubtitle = computed(() => {
-    if (isEditMode.value) {
-        return showEditForm.value ? 'Modifiez les informations du profil.' : 'Consultez les informations du profil. Cliquez sur "Passer en Mode Édition" pour modifier.';
-    }
+  if (isEditMode.value) return 'Modifiez les informations du profil.';
     return 'Créez un nouvel utilisateur professeur et son profil associé.';
  });
 const hasSocialLinks = computed(() => {
@@ -228,7 +222,7 @@ const hasSocialLinks = computed(() => {
 </script>
 
 <template>
-  <div class="container py-5">
+  <div class="container-fluid">
     <!-- Header Section (Title, Subtitle, Buttons) -->
     <div class="row mb-4">
       <div class="col-12">
@@ -238,12 +232,7 @@ const hasSocialLinks = computed(() => {
             <p class="text-muted mb-0">{{ pageSubtitle }}</p>
           </div>
           <div class="d-flex align-items-center">
-            <button v-if="isEditMode && !isLoadingItem"
-              type="button" class="btn btn-outline-secondary me-2" @click="toggleEditForm">
-              <i :class="showEditForm ? 'bi bi-eye-fill' : 'bi bi-pencil-square'"></i>
-              {{ showEditForm ? 'Mode Aperçu' : 'Mode Édition' }}
-            </button>
-            <button class="btn btn-primary" @click="saveProfessor" :disabled="isLoadingItem || saving || (isEditMode && !showEditForm)">
+            <button class="btn btn-primary" @click="saveProfessor" :disabled="isLoadingItem || saving">
               <span v-if="saving" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
               <i v-else class="bi bi-check-circle me-2"></i>
               {{ saving ? 'Enregistrement...' : (isEditMode ? 'Mettre à jour Profil' : 'Créer Professeur') }}
@@ -260,16 +249,16 @@ const hasSocialLinks = computed(() => {
     </div>
 
     <!-- Error Display -->
-    <div v-if="localErrors.general && (!isEditMode || showEditForm)" class="alert alert-danger mt-3 small">
+    <div v-if="localErrors.general" class="alert alert-danger mt-3 small">
         {{ localErrors.general }}
     </div>
-    <div v-if="errorItem && (!isEditMode || showEditForm) && !localErrors.general" class="alert alert-danger">
+    <div v-if="errorItem && !localErrors.general" class="alert alert-danger">
         Erreur Store: {{ typeof errorItem === 'object' ? JSON.stringify(errorItem) : errorItem }}
     </div>
 
     <!-- Form Area -->
     <div class="row" v-if="(!isEditMode || (isEditMode && currentProfessor)) && professorData.professor_profile">
-      <div v-if="showEditForm || !isEditMode" class="col-lg-8">
+      <div class="col-lg-8">
         <form @submit.prevent="saveProfessor">
           <!-- User Information Card -->
           <div class="card border-0 shadow-sm mb-4">
@@ -396,7 +385,7 @@ const hasSocialLinks = computed(() => {
             <div class="card-body">
               <div v-for="(_, index) in professorData.professor_profile.skills" :key="index" class="mb-2">
                 <div class="input-group input-group-sm">
-                  <input type="text" class="form-control form-control-sm" v-model="professorData.professor_profile.skills![index]" placeholder="Ex: JavaScript">
+                  <input type="text" class="form-control form-control-sm" :value="professorData.professor_profile.skills?.[index] || ''" @input="setSkillFromEvent(index, $event)" placeholder="Ex: JavaScript">
                   <button class="btn btn-outline-danger" type="button" @click="removeSkill(index)"><i class="bi bi-trash"></i></button>
                 </div>
               </div>
@@ -422,7 +411,7 @@ const hasSocialLinks = computed(() => {
       </div>
 
       <!-- Right Panel: Profile Preview -->
-      <div :class="showEditForm || !isEditMode ? 'col-lg-4' : 'col-lg-8 offset-lg-2'">
+      <div class="col-lg-4">
         <div class="card border-0 shadow-sm sticky-top" style="top: 2rem;">
           <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Aperçu du Profil</h5>
@@ -464,12 +453,12 @@ const hasSocialLinks = computed(() => {
             <div class="mb-3" v-if="hasSocialLinks && professorData.professor_profile.social_links">
                 <small class="text-muted d-block mb-1"><i class="bi bi-share-fill me-2"></i>Réseaux Sociaux</small>
                 <div class="mt-2 d-flex flex-wrap gap-2">
-                    <a v-if="professorData.professor_profile.social_links.linkedin" :href="professorData.professor_profile.social_links.linkedin!" target="_blank" class="btn btn-sm btn-outline-primary" aria-label="LinkedIn"><i class="bi bi-linkedin"></i></a>
-                    <a v-if="professorData.professor_profile.social_links.twitter" :href="professorData.professor_profile.social_links.twitter!" target="_blank" class="btn btn-sm btn-outline-info" aria-label="Twitter X"><i class="bi bi-twitter-x"></i></a>
-                    <a v-if="professorData.professor_profile.social_links.github" :href="professorData.professor_profile.social_links.github!" target="_blank" class="btn btn-sm btn-outline-dark" aria-label="GitHub"><i class="bi bi-github"></i></a>
-                    <a v-if="professorData.professor_profile.social_links.website" :href="professorData.professor_profile.social_links.website!" target="_blank" class="btn btn-sm btn-outline-secondary" aria-label="Site Web"><i class="bi bi-globe"></i></a>
-                    <a v-if="professorData.professor_profile.social_links.orcid" :href="professorData.professor_profile.social_links.orcid!" target="_blank" class="btn btn-sm btn-outline-success" aria-label="ORCID"><i class="bi bi-person-badge"></i></a>
-                    <a v-if="professorData.professor_profile.social_links.google_scholar" :href="professorData.professor_profile.social_links.google_scholar!" target="_blank" class="btn btn-sm btn-outline-danger" aria-label="Google Scholar"><i class="bi bi-mortarboard"></i></a>
+                  <a v-if="professorData.professor_profile.social_links.linkedin" :href="professorData.professor_profile.social_links.linkedin" target="_blank" class="btn btn-sm btn-outline-primary" aria-label="LinkedIn"><i class="bi bi-linkedin"></i></a>
+                  <a v-if="professorData.professor_profile.social_links.twitter" :href="professorData.professor_profile.social_links.twitter" target="_blank" class="btn btn-sm btn-outline-info" aria-label="Twitter X"><i class="bi bi-twitter-x"></i></a>
+                  <a v-if="professorData.professor_profile.social_links.github" :href="professorData.professor_profile.social_links.github" target="_blank" class="btn btn-sm btn-outline-dark" aria-label="GitHub"><i class="bi bi-github"></i></a>
+                  <a v-if="professorData.professor_profile.social_links.website" :href="professorData.professor_profile.social_links.website" target="_blank" class="btn btn-sm btn-outline-secondary" aria-label="Site Web"><i class="bi bi-globe"></i></a>
+                  <a v-if="professorData.professor_profile.social_links.orcid" :href="professorData.professor_profile.social_links.orcid" target="_blank" class="btn btn-sm btn-outline-success" aria-label="ORCID"><i class="bi bi-person-badge"></i></a>
+                  <a v-if="professorData.professor_profile.social_links.google_scholar" :href="professorData.professor_profile.social_links.google_scholar" target="_blank" class="btn btn-sm btn-outline-danger" aria-label="Google Scholar"><i class="bi bi-mortarboard"></i></a>
                 </div>
             </div>
           </div>

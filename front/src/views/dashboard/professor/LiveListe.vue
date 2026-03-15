@@ -1,389 +1,644 @@
 <template>
-    <div class="container py-5">
-      <!-- Header -->
-      <div class="row mb-4">
-        <div class="col-12">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <h1 class="mb-1">Sessions Live</h1>
-              <p class="text-muted mb-0">Gérez vos sessions en direct</p>
-            </div>
-            <RouterLink to="/live-session" class="btn btn-primary">
-              <i class="bi bi-plus-circle me-2"></i>Nouvelle session
-            </RouterLink>
-          </div>
+  <div class="live-sessions-page">
+    <!-- Page Header -->
+    <div class="page-header mb-4">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <h1 class="page-title mb-1">Sessions Live</h1>
+          <p class="page-subtitle mb-0">Gérez et planifiez vos sessions en direct</p>
         </div>
-      </div>
-  
-      <!-- Stats Cards -->
-      <div class="row g-4 mb-4">
-        <div class="col-md-3">
-          <div class="card border-0 shadow-sm">
-            <div class="card-body">
-              <div class="d-flex align-items-center">
-                <div class="rounded-circle bg-primary bg-opacity-10 p-3 me-3">
-                  <i class="bi bi-camera-video text-primary fs-4"></i>
-                </div>
-                <div>
-                  <h6 class="mb-0 text-muted">Total sessions</h6>
-                  <h3 class="mb-0">{{ sessions.length }}</h3>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card border-0 shadow-sm">
-            <div class="card-body">
-              <div class="d-flex align-items-center">
-                <div class="rounded-circle bg-success bg-opacity-10 p-3 me-3">
-                  <i class="bi bi-broadcast text-success fs-4"></i>
-                </div>
-                <div>
-                  <h6 class="mb-0 text-muted">En direct</h6>
-                  <h3 class="mb-0">{{ liveSessions }}</h3>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card border-0 shadow-sm">
-            <div class="card-body">
-              <div class="d-flex align-items-center">
-                <div class="rounded-circle bg-warning bg-opacity-10 p-3 me-3">
-                  <i class="bi bi-calendar-event text-warning fs-4"></i>
-                </div>
-                <div>
-                  <h6 class="mb-0 text-muted">Programmées</h6>
-                  <h3 class="mb-0">{{ scheduledSessions }}</h3>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card border-0 shadow-sm">
-            <div class="card-body">
-              <div class="d-flex align-items-center">
-                <div class="rounded-circle bg-info bg-opacity-10 p-3 me-3">
-                  <i class="bi bi-people text-info fs-4"></i>
-                </div>
-                <div>
-                  <h6 class="mb-0 text-muted">Total participants</h6>
-                  <h3 class="mb-0">{{ totalParticipants }}</h3>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-  
-      <!-- Sessions List -->
-      <div class="row g-4">
-        <div v-for="session in sessions" :key="session.id" class="col-12">
-          <div class="card border-0 shadow-sm">
-            <div class="card-body">
-              <div class="row align-items-center">
-                <div class="col-md-6">
-                  <div class="d-flex align-items-center mb-3">
-                    <div 
-                      class="rounded-circle p-2 me-3"
-                      :class="session.status === 'live' ? 'bg-success bg-opacity-10' : 'bg-warning bg-opacity-10'"
-                    >
-                      <i 
-                        class="bi fs-4"
-                        :class="[
-                          session.status === 'live' ? 'bi-broadcast text-success' : 'bi-calendar-event text-warning'
-                        ]"
-                      ></i>
-                    </div>
-                    <div>
-                      <h5 class="mb-1">{{ session.title }}</h5>
-                      <p class="mb-0 text-muted">{{ session.description }}</p>
-                    </div>
-                  </div>
-  
-                  <div class="d-flex flex-wrap gap-3">
-                    <div class="d-flex align-items-center">
-                      <i class="bi bi-calendar me-2 text-muted"></i>
-                      <span>{{ formatDate(session.scheduledFor) }}</span>
-                    </div>
-                    <div class="d-flex align-items-center">
-                      <i class="bi bi-clock me-2 text-muted"></i>
-                      <span>{{ session.duration }} minutes</span>
-                    </div>
-                    <div class="d-flex align-items-center">
-                      <i class="bi bi-people me-2 text-muted"></i>
-                      <span>{{ session.participants.length }} participants</span>
-                    </div>
-                  </div>
-                </div>
-  
-                <div class="col-md-6 text-md-end mt-3 mt-md-0">
-                  <div 
-                    class="badge mb-3"
-                    :class="session.status === 'live' ? 'bg-success' : 'bg-warning'"
-                  >
-                    {{ session.status === 'live' ? 'En direct' : 'Programmée' }}
-                  </div>
-  
-                  <div class="btn-group d-flex">
-                    <button 
-                      v-if="session.status === 'scheduled'"
-                      class="btn btn-primary"
-                      @click="startSession(session.id)"
-                    >
-                      <i class="bi bi-play-circle me-2"></i>Démarrer
-                    </button>
-                    <button 
-                      v-else-if="session.status === 'live'"
-                      class="btn btn-danger"
-                      @click="endSession(session.id)"
-                    >
-                      <i class="bi bi-stop-circle me-2"></i>Terminer
-                    </button>
-                    <button 
-                      class="btn btn-outline-primary"
-                      @click="copySessionLink(session.id)"
-                    >
-                      <i class="bi bi-link-45deg me-2"></i>Copier le lien
-                    </button>
-                    <button 
-                      class="btn btn-outline-primary"
-                      @click="shareSession(session)"
-                    >
-                      <i class="bi bi-share me-2"></i>Partager
-                    </button>
-                    <RouterLink 
-                      :to="`/live-session/${session.id}`"
-                      class="btn btn-outline-primary"
-                    >
-                      <i class="bi bi-pencil me-2"></i>Modifier
-                    </RouterLink>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-  
-      <!-- Empty State -->
-      <div v-if="sessions.length === 0" class="text-center py-5">
-        <div class="mb-4">
-          <i class="bi bi-camera-video display-1 text-muted"></i>
-        </div>
-        <h3>Aucune session programmée</h3>
-        <p class="text-muted">Commencez par créer votre première session live</p>
-        <RouterLink to="/live-session" class="btn btn-primary">
-          Créer une session
+        <RouterLink to="/live-session" class="btn btn-primary-custom">
+          <i class="bi bi-plus-lg me-2"></i>Nouvelle session
         </RouterLink>
       </div>
-  
-      <!-- Share Modal -->
-      <div 
-        class="modal fade" 
-        id="shareModal" 
-        tabindex="-1" 
-        aria-labelledby="shareModalLabel" 
-        aria-hidden="true"
-      >
-        <div class="modal-dialog">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="shareModalLabel">Partager la session</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    </div>
+
+    <!-- Loading -->
+    <div v-if="loading" class="text-center py-5">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Chargement...</span>
+      </div>
+      <p class="text-muted mt-3">Chargement des sessions...</p>
+    </div>
+
+    <!-- Error -->
+    <div v-else-if="error" class="alert alert-danger d-flex align-items-center">
+      <i class="bi bi-exclamation-triangle me-2"></i>
+      {{ error }}
+      <button class="btn btn-sm btn-outline-danger ms-auto" @click="fetchSessions">Réessayer</button>
+    </div>
+
+    <template v-else>
+      <!-- Stats Strip -->
+      <div class="stats-strip mb-4">
+        <div class="stat-card">
+          <div class="stat-icon" style="background: rgba(36,83,167,0.1);">
+            <i class="bi bi-camera-video" style="color: #2453a7;"></i>
+          </div>
+          <div class="stat-info">
+            <span class="stat-label">Total sessions</span>
+            <span class="stat-value">{{ sessions.length }}</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: rgba(24,121,78,0.1);">
+            <i class="bi bi-broadcast" style="color: #18794e;"></i>
+          </div>
+          <div class="stat-info">
+            <span class="stat-label">En direct</span>
+            <span class="stat-value">{{ liveCount }}</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: rgba(180,83,9,0.1);">
+            <i class="bi bi-calendar-event" style="color: #b45309;"></i>
+          </div>
+          <div class="stat-info">
+            <span class="stat-label">Programmées</span>
+            <span class="stat-value">{{ scheduledCount }}</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: rgba(107,114,128,0.1);">
+            <i class="bi bi-check-circle" style="color: #6b7280;"></i>
+          </div>
+          <div class="stat-info">
+            <span class="stat-label">Terminées</span>
+            <span class="stat-value">{{ endedCount }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter Tabs -->
+      <div class="filter-tabs mb-4">
+        <button
+          v-for="tab in filterTabs"
+          :key="tab.value"
+          class="filter-tab"
+          :class="{ active: activeFilter === tab.value }"
+          @click="activeFilter = tab.value"
+        >
+          {{ tab.label }}
+          <span v-if="tab.count > 0" class="filter-count">{{ tab.count }}</span>
+        </button>
+      </div>
+
+      <!-- Sessions List -->
+      <div class="sessions-list" v-if="filteredSessions.length > 0">
+        <div v-for="session in filteredSessions" :key="session.id" class="session-card">
+          <div class="session-card-left">
+            <div class="session-status-indicator" :class="'status-' + session.status"></div>
+            <div class="session-info">
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <h5 class="session-title mb-0">{{ session.title }}</h5>
+                <span class="status-badge" :class="'badge-' + session.status">
+                  <i class="bi" :class="statusIcon(session.status)"></i>
+                  {{ statusLabel(session.status) }}
+                </span>
+              </div>
+              <p class="session-desc mb-2" v-if="session.description">{{ session.description }}</p>
+              <div class="session-meta">
+                <span class="meta-item">
+                  <i class="bi bi-calendar3"></i>
+                  {{ formatDate(session.scheduled_for) }}
+                </span>
+                <span class="meta-item" v-if="session.duration_minutes">
+                  <i class="bi bi-clock"></i>
+                  {{ session.duration_minutes }} min
+                </span>
+                <span class="meta-item" v-if="session.host">
+                  <i class="bi bi-person"></i>
+                  {{ session.host.name }}
+                </span>
+              </div>
             </div>
-            <div class="modal-body">
-              <div class="mb-3">
-                <label class="form-label">Lien de la session</label>
-                <div class="input-group">
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    :value="currentSessionLink" 
-                    readonly
-                  >
-                  <button 
-                    class="btn btn-outline-primary"
-                    @click="copyToClipboard(currentSessionLink)"
-                  >
-                    <i class="bi bi-clipboard"></i>
-                  </button>
-                </div>
-              </div>
-              <div class="d-flex gap-2">
-                <button 
-                  class="btn btn-outline-primary w-100"
-                  @click="shareViaEmail"
-                >
-                  <i class="bi bi-envelope me-2"></i>Email
-                </button>
-                <button 
-                  class="btn btn-outline-primary w-100"
-                  @click="shareViaWhatsApp"
-                >
-                  <i class="bi bi-whatsapp me-2"></i>WhatsApp
-                </button>
-                <button 
-                  class="btn btn-outline-primary w-100"
-                  @click="shareViaTelegram"
-                >
-                  <i class="bi bi-telegram me-2"></i>Telegram
-                </button>
-              </div>
+          </div>
+          <div class="session-card-right">
+            <div class="session-actions">
+              <button
+                v-if="session.status === 'scheduled'"
+                class="btn btn-sm btn-success-custom"
+                @click="startSession(session.id)"
+                :disabled="actionLoading === session.id"
+              >
+                <i class="bi bi-play-fill me-1"></i>Démarrer
+              </button>
+              <button
+                v-if="session.status === 'live'"
+                class="btn btn-sm btn-danger-custom"
+                @click="endSession(session.id)"
+                :disabled="actionLoading === session.id"
+              >
+                <i class="bi bi-stop-fill me-1"></i>Terminer
+              </button>
+              <RouterLink
+                v-if="session.status === 'live'"
+                :to="`/live-session/${session.id}`"
+                class="btn btn-sm btn-primary-custom"
+              >
+                <i class="bi bi-box-arrow-up-right me-1"></i>Rejoindre
+              </RouterLink>
+              <button
+                class="btn btn-sm btn-outline-custom"
+                @click="copySessionLink(session.id)"
+              >
+                <i class="bi bi-link-45deg"></i>
+              </button>
+              <RouterLink
+                v-if="session.status !== 'ended'"
+                :to="`/live-session/${session.id}`"
+                class="btn btn-sm btn-outline-custom"
+              >
+                <i class="bi bi-pencil"></i>
+              </RouterLink>
+              <button
+                class="btn btn-sm btn-outline-danger-custom"
+                @click="deleteSession(session.id)"
+                :disabled="actionLoading === session.id"
+              >
+                <i class="bi bi-trash3"></i>
+              </button>
             </div>
           </div>
         </div>
       </div>
+
+      <!-- Empty State -->
+      <div v-else class="empty-state">
+        <div class="empty-icon">
+          <i class="bi bi-camera-video"></i>
+        </div>
+        <h3>{{ activeFilter === 'all' ? 'Aucune session programmée' : 'Aucune session ' + filterLabel }}</h3>
+        <p class="text-muted">
+          {{ activeFilter === 'all' ? 'Commencez par créer votre première session live' : 'Aucune session ne correspond à ce filtre' }}
+        </p>
+        <RouterLink v-if="activeFilter === 'all'" to="/live-session" class="btn btn-primary-custom">
+          <i class="bi bi-plus-lg me-2"></i>Créer une session
+        </RouterLink>
+      </div>
+    </template>
+
+    <!-- Toast for copy feedback -->
+    <div v-if="toastMessage" class="copy-toast">
+      <i class="bi bi-check-circle me-2"></i>{{ toastMessage }}
     </div>
-  </template>
-  
-  <script setup lang="ts">
-  import { ref, computed } from 'vue'
-  import type { LiveSession } from '../../../stores/videoConference'
-  
-  // Sample data (replace with actual API calls)
-  const sessions = ref<LiveSession[]>([
-    {
-      id: 1,
-      courseId: 1,
-      title: 'Introduction au Marketing Digital',
-      description: 'Session interactive sur les bases du marketing digital',
-      scheduledFor: '2024-03-20T14:00:00',
-      duration: 60,
-      hostId: 1,
-      status: 'scheduled',
-      participants: [1, 2, 3, 4, 5]
-    },
-    {
-      id: 2,
-      courseId: 2,
-      title: 'Workshop JavaScript Avancé',
-      description: 'Session pratique sur les concepts avancés de JavaScript',
-      scheduledFor: '2024-03-21T15:00:00',
-      duration: 90,
-      hostId: 1,
-      status: 'live',
-      participants: [1, 2, 3]
-    }
-  ])
-  
-  // Computed
-  const liveSessions = computed(() => 
-    sessions.value.filter(session => session.status === 'live').length
-  )
-  
-  const scheduledSessions = computed(() => 
-    sessions.value.filter(session => session.status === 'scheduled').length
-  )
-  
-  const totalParticipants = computed(() => 
-    sessions.value.reduce((sum, session) => sum + session.participants.length, 0)
-  )
-  
-  // Current session for sharing
-  const currentSessionLink = ref('')
-  
-  // Methods
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleString()
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { getAllLiveSessions, updateLiveSessionStatus, deleteLiveSession as apiDeleteSession } from '../../../services/api/liveSession'
+import type { LiveSession } from '../../../types/api/liveSessionTypes'
+
+const sessions = ref<LiveSession[]>([])
+const loading = ref(true)
+const error = ref('')
+const actionLoading = ref<number | null>(null)
+const activeFilter = ref('all')
+const toastMessage = ref('')
+
+const liveCount = computed(() => sessions.value.filter(s => s.status === 'live').length)
+const scheduledCount = computed(() => sessions.value.filter(s => s.status === 'scheduled').length)
+const endedCount = computed(() => sessions.value.filter(s => s.status === 'ended').length)
+
+const filterTabs = computed(() => [
+  { label: 'Toutes', value: 'all', count: sessions.value.length },
+  { label: 'En direct', value: 'live', count: liveCount.value },
+  { label: 'Programmées', value: 'scheduled', count: scheduledCount.value },
+  { label: 'Terminées', value: 'ended', count: endedCount.value },
+])
+
+const filterLabel = computed(() => {
+  const tab = filterTabs.value.find(t => t.value === activeFilter.value)
+  return tab ? tab.label.toLowerCase() : ''
+})
+
+const filteredSessions = computed(() => {
+  if (activeFilter.value === 'all') return sessions.value
+  return sessions.value.filter(s => s.status === activeFilter.value)
+})
+
+const statusLabel = (status: string) => {
+  switch (status) {
+    case 'live': return 'En direct'
+    case 'scheduled': return 'Programmée'
+    case 'ended': return 'Terminée'
+    default: return status
   }
-  
-  const startSession = async (sessionId: number) => {
-    try {
-      // Update session status
-      const session = sessions.value.find(s => s.id === sessionId)
-      if (session) {
-        session.status = 'live'
-      }
-      
-      // Navigate to live session
-      window.location.href = `/live-session/${sessionId}`
-    } catch (error) {
-      console.error('Failed to start session:', error)
-    }
+}
+
+const statusIcon = (status: string) => {
+  switch (status) {
+    case 'live': return 'bi-broadcast'
+    case 'scheduled': return 'bi-calendar-event'
+    case 'ended': return 'bi-check-circle'
+    default: return 'bi-circle'
   }
-  
-  const endSession = async (sessionId: number) => {
-    if (confirm('Êtes-vous sûr de vouloir terminer cette session ?')) {
-      try {
-        const session = sessions.value.find(s => s.id === sessionId)
-        if (session) {
-          session.status = 'ended'
-        }
-      } catch (error) {
-        console.error('Failed to end session:', error)
-      }
-    }
+}
+
+const formatDate = (date: string) => {
+  const d = new Date(date)
+  return d.toLocaleDateString('fr-FR', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+const fetchSessions = async () => {
+  loading.value = true
+  error.value = ''
+  try {
+    sessions.value = await getAllLiveSessions()
+  } catch (err: any) {
+    error.value = err?.response?.data?.detail || 'Impossible de charger les sessions'
+  } finally {
+    loading.value = false
   }
-  
-  const copySessionLink = (sessionId: number) => {
-    const link = `${window.location.origin}/join-session/${sessionId}`
-    navigator.clipboard.writeText(link)
-      .then(() => alert('Lien copié !'))
-      .catch(err => console.error('Failed to copy:', err))
+}
+
+const startSession = async (sessionId: number) => {
+  actionLoading.value = sessionId
+  try {
+    const updated = await updateLiveSessionStatus(sessionId, 'live')
+    const idx = sessions.value.findIndex(s => s.id === sessionId)
+    if (idx !== -1) sessions.value[idx] = updated
+  } catch (err: any) {
+    alert(err?.response?.data?.detail || 'Erreur lors du démarrage')
+  } finally {
+    actionLoading.value = null
   }
-  
-  const shareSession = (session: LiveSession) => {
-    currentSessionLink.value = `${window.location.origin}/join-session/${session.id}`
-    // Open modal (using Bootstrap)
-    const modalElement = document.getElementById('shareModal');
-    if (modalElement) {
-        const modal = new (window as any).bootstrap.Modal(modalElement)
-        modal.show()
-    }
+}
+
+const endSession = async (sessionId: number) => {
+  if (!confirm('Êtes-vous sûr de vouloir terminer cette session ?')) return
+  actionLoading.value = sessionId
+  try {
+    const updated = await updateLiveSessionStatus(sessionId, 'ended')
+    const idx = sessions.value.findIndex(s => s.id === sessionId)
+    if (idx !== -1) sessions.value[idx] = updated
+  } catch (err: any) {
+    alert(err?.response?.data?.detail || 'Erreur lors de la terminaison')
+  } finally {
+    actionLoading.value = null
   }
-  
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-      .then(() => alert('Copié !'))
-      .catch(err => console.error('Failed to copy:', err))
+}
+
+const deleteSession = async (sessionId: number) => {
+  if (!confirm('Supprimer cette session définitivement ?')) return
+  actionLoading.value = sessionId
+  try {
+    await apiDeleteSession(sessionId)
+    sessions.value = sessions.value.filter(s => s.id !== sessionId)
+  } catch (err: any) {
+    alert(err?.response?.data?.detail || 'Erreur lors de la suppression')
+  } finally {
+    actionLoading.value = null
   }
-  
-  const shareViaEmail = () => {
-    const subject = encodeURIComponent('Invitation à une session live')
-    const body = encodeURIComponent(`Rejoignez-moi pour une session live : ${currentSessionLink.value}`)
-    window.open(`mailto:?subject=${subject}&body=${body}`)
+}
+
+const copySessionLink = (sessionId: number) => {
+  const link = `${window.location.origin}/live-session/${sessionId}`
+  navigator.clipboard.writeText(link).then(() => {
+    toastMessage.value = 'Lien copié !'
+    setTimeout(() => { toastMessage.value = '' }, 2000)
+  })
+}
+
+onMounted(fetchSessions)
+</script>
+
+<style scoped lang="scss">
+.live-sessions-page {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.page-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1a2332;
+}
+
+.page-subtitle {
+  color: #6b7280;
+  font-size: 0.95rem;
+}
+
+// Buttons
+.btn-primary-custom {
+  background: #2453a7;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 1.2rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: background 0.2s;
+  &:hover { background: #1a3f8a; color: #fff; }
+}
+
+.btn-success-custom {
+  background: #18794e;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.35rem 0.9rem;
+  font-weight: 500;
+  font-size: 0.8rem;
+  &:hover { background: #126b42; color: #fff; }
+}
+
+.btn-danger-custom {
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.35rem 0.9rem;
+  font-weight: 500;
+  font-size: 0.8rem;
+  &:hover { background: #b91c1c; color: #fff; }
+}
+
+.btn-outline-custom {
+  background: transparent;
+  border: 1px solid #e7edf5;
+  color: #4b5563;
+  border-radius: 6px;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8rem;
+  &:hover { background: #f6f8fc; border-color: #2453a7; color: #2453a7; }
+}
+
+.btn-outline-danger-custom {
+  background: transparent;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  border-radius: 6px;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8rem;
+  &:hover { background: #fef2f2; }
+}
+
+// Stats Strip
+.stats-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+.stat-card {
+  background: #fff;
+  border: 1px solid #e7edf5;
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.stat-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-label {
+  font-size: 0.78rem;
+  color: #6b7280;
+  line-height: 1.2;
+}
+
+.stat-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #1a2332;
+}
+
+// Filter Tabs
+.filter-tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid #e7edf5;
+  padding-bottom: 0;
+}
+
+.filter-tab {
+  background: none;
+  border: none;
+  padding: 0.6rem 1rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+
+  &:hover { color: #2453a7; }
+
+  &.active {
+    color: #2453a7;
+    font-weight: 600;
+    border-bottom-color: #2453a7;
   }
-  
-  const shareViaWhatsApp = () => {
-    const text = encodeURIComponent(`Rejoignez-moi pour une session live : ${currentSessionLink.value}`)
-    window.open(`https://wa.me/?text=${text}`)
+}
+
+.filter-count {
+  background: #e7edf5;
+  color: #4b5563;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 9px;
+  font-weight: 600;
+
+  .active & {
+    background: rgba(36,83,167,0.12);
+    color: #2453a7;
   }
-  
-  const shareViaTelegram = () => {
-    const text = encodeURIComponent(`Rejoignez-moi pour une session live : ${currentSessionLink.value}`)
-    window.open(`https://t.me/share/url?url=${currentSessionLink.value}&text=${text}`)
+}
+
+// Session Cards
+.sessions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.session-card {
+  background: #fff;
+  border: 1px solid #e7edf5;
+  border-radius: 12px;
+  padding: 1.2rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  transition: box-shadow 0.2s, border-color 0.2s;
+
+  &:hover {
+    box-shadow: 0 2px 12px rgba(36,83,167,0.08);
+    border-color: #d0d9e8;
   }
-  </script>
-  
-  <style scoped>
-  .rounded-circle {
-    width: 50px;
-    height: 50px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+}
+
+.session-card-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.session-status-indicator {
+  width: 4px;
+  border-radius: 4px;
+  min-height: 50px;
+  align-self: stretch;
+  flex-shrink: 0;
+
+  &.status-live { background: #18794e; }
+  &.status-scheduled { background: #b45309; }
+  &.status-ended { background: #9ca3af; }
+}
+
+.session-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.session-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1a2332;
+}
+
+.session-desc {
+  font-size: 0.85rem;
+  color: #6b7280;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  white-space: nowrap;
+
+  &.badge-live {
+    background: rgba(24,121,78,0.1);
+    color: #18794e;
   }
-  
-  .badge {
-    padding: 0.5rem 1rem;
+  &.badge-scheduled {
+    background: rgba(180,83,9,0.1);
+    color: #b45309;
   }
-  
-  .btn-group {
-    flex-wrap: wrap;
-    gap: 0.5rem;
+  &.badge-ended {
+    background: rgba(107,114,128,0.1);
+    color: #6b7280;
   }
-  
-  .btn-group .btn {
-    flex: 1;
-  }
-  
-  @media (max-width: 768px) {
-    .btn-group {
-      flex-direction: column;
-    }
-  }
-  </style>
+}
+
+.session-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: #6b7280;
+
+  .bi { font-size: 0.85rem; }
+}
+
+.session-card-right {
+  flex-shrink: 0;
+}
+
+.session-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+// Empty State
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+}
+
+.empty-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(36,83,167,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+
+  .bi { font-size: 2rem; color: #2453a7; }
+}
+
+.empty-state h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #1a2332;
+  margin-bottom: 0.5rem;
+}
+
+// Toast
+.copy-toast {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  background: #1a2332;
+  color: #fff;
+  padding: 0.7rem 1.3rem;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  z-index: 9999;
+  animation: fadeInUp 0.3s ease;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .stats-strip { grid-template-columns: repeat(2, 1fr); }
+  .session-card { flex-direction: column; align-items: flex-start; }
+  .session-card-right { width: 100%; }
+  .session-actions { flex-wrap: wrap; }
+  .filter-tabs { overflow-x: auto; flex-wrap: nowrap; }
+}
+</style>

@@ -1,24 +1,35 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import Navbar from './components/layout/Navbar.vue'
 import Footer from './components/layout/Footer.vue'
+import DashboardLayout from './components/layout/DashboardLayout.vue'
 
 const route = useRoute()
 
-// Liste des routes où on veut cacher Navbar et Footer
 const hideLayoutRoutes = ['/login', '/register', '/forgot-password', '/reset-password']
+
+const isDashboard = computed(() => route.meta.layout === 'dashboard')
+const isAuthPage = computed(() => hideLayoutRoutes.includes(route.path))
 </script>
 
 <template>
-  <!-- Afficher Navbar seulement si la route n'est pas dans hideLayoutRoutes -->
-  <Navbar v-if="!hideLayoutRoutes.includes(route.path)" />
+  <div id="app-root">
+    <!-- Auth pages: aucun layout -->
+    <RouterView v-if="isAuthPage" />
 
-  <main>
-    <RouterView />
-  </main>
+    <!-- Dashboard layout: sidebar + topbar -->
+    <DashboardLayout v-else-if="isDashboard" />
 
-  <!-- Afficher Footer seulement si la route n'est pas dans hideLayoutRoutes -->
-  <Footer v-if="!hideLayoutRoutes.includes(route.path)" />
+    <!-- Public layout: navbar + footer -->
+    <template v-else>
+      <Navbar />
+      <main>
+        <RouterView />
+      </main>
+      <Footer />
+    </template>
+  </div>
 </template>
 
 <style>

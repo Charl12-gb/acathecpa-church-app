@@ -2,6 +2,12 @@
 import { APP_NAME } from '../../config'
 </script>
 
+<script lang="ts">
+export default {
+  name: 'Footer',
+}
+</script>
+
 <template>
   <footer class="bg-light py-4 mt-5 border-top">
     <div class="container">

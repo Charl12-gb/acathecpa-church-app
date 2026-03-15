@@ -232,16 +232,18 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
     getCourseById,
-    fetchFullCourseTest, // New service
-    submitStudentTestAttempt, // New service
+    fetchFullCourseTest,
+    submitStudentTestAttempt,
+    markStudentLessonCompleted,
+    markStudentSectionCompleted,
+    getMyCourseEnrollmentProgress,
 } from '../../../services/api/course';
-import { markLessonCompleted } from '../../../services/api/course';
 import type {
     Course, CourseSection, CourseLesson as ApiCourseLesson,
     CourseTest,
-    EnrollmentProgress, TestSubmissionWithScoreSchema, TestQuestionAttemptSummaryInputSchema // For API calls & state
+    EnrollmentProgress, TestSubmissionWithScoreSchema, TestQuestionAttemptSummaryInputSchema
 } from '../../../types/api';
-import { QuestionType } from '../../../types/api';
+import { QuestionType } from '../../../types/api/courseTypes';
 
 const route = useRoute();
 const router = useRouter();
@@ -313,6 +315,13 @@ const loadCourseAndLesson = async () => {
       if (!currentLesson.value) {
         error.value = `Leçon avec ID ${lessonId} non trouvée dans le cours.`;
       } else {
+        // Load per-student enrollment progress and update is_completed flags
+        try {
+          const progress = await getMyCourseEnrollmentProgress(courseId);
+          enrollmentProgressFromApi.value = progress;
+        } catch (progressErr: any) {
+          console.warn('Could not load enrollment progress:', progressErr.message);
+        }
         // If current section is a quiz, load its data
         await loadQuizDataIfNeeded();
       }
@@ -588,27 +597,36 @@ const completeLesson = async () => {
   if (!course.value || !currentLesson.value || currentLesson.value.is_completed) return;
 
   try {
-    const updatedLesson = await markLessonCompleted(currentLesson.value.id);
-    if (currentLesson.value) { // Check again as it's a ref
-        currentLesson.value.is_completed = updatedLesson.is_completed; // Update with response
+    // Use per-student enrollment endpoint instead of global lesson update
+    const updatedProgress = await markStudentLessonCompleted(course.value.id, currentLesson.value.id);
+    enrollmentProgressFromApi.value = updatedProgress;
+    currentLesson.value.is_completed = true;
+
+    // Auto-check if all lessons of current section are completed, then mark section completed
+    if (currentSection.value) {
+      const allLessonsInSection = currentSection.value.lessons;
+      const allCompleted = allLessonsInSection.every(l => 
+        updatedProgress.completed_lessons.includes(l.id)
+      );
+      if (allCompleted) {
+        await handleMarkSectionCompleted(currentSection.value.id);
+      }
     }
+
     if (hasNextLesson.value) {
       nextLesson();
     }
-    await loadCourseAndLesson();
   } catch (err: any) {
     console.error('Failed to complete lesson:', err);
     error.value = err.message || 'Failed to complete lesson';
-    // Optionally revert UI change if API call fails, though currentLesson.value.is_completed was set from response
   }
 };
 
-const handleMarkSectionCompleted = async (_sectionId: number) => {
+const handleMarkSectionCompleted = async (sectionId: number) => {
     if (!course.value) return;
     try {
-        // NOTE: In a real implementation, you might have a dedicated markSectionCompleted API.
-        // For now, it seems this was intended to use markLessonCompleted or a similar placeholder.
-        // await markSectionCompleted(sectionId);
+        const updatedProgress = await markStudentSectionCompleted(course.value.id, sectionId);
+        enrollmentProgressFromApi.value = updatedProgress;
     } catch (err: any) {
         console.error('Failed to complete section:', err);
     }

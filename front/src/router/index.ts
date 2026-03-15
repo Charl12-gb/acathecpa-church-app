@@ -35,6 +35,7 @@ import LiveListe from '../views/dashboard/professor/LiveListe.vue'
 // Admin Pages
 import AdminProfessorsPage from '../views/dashboard/admin/ProfessorsPage.vue'
 import ProfessorFormPage from '../views/dashboard/admin/ProfessorFormPage.vue'
+import ProfessorDetailPage from '../views/dashboard/admin/ProfessorDetailPage.vue'
 import AdminUsersPage from '../views/dashboard/admin/UsersPage.vue'
 import UserFormPage from '../views/dashboard/admin/UserFormPage.vue'
 
@@ -68,109 +69,115 @@ const router = createRouter({
       path: '/dashboard', 
       name: 'dashboard', 
       component: DashboardPage,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, layout: 'dashboard' }
     },
     { 
       path: '/profile', 
       name: 'profile', 
       component: ProfilePage,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, layout: 'dashboard' }
     },
     { 
       path: '/my-content', 
       name: 'my-content', 
       component: MyContentPage,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, layout: 'dashboard' }
     },
     { 
       path: '/content/editor/:id?', 
       name: 'content-editor', 
       component: ContentEditorPage,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, layout: 'dashboard' }
     },
     
-    // Student routes
+    // Student routes (accessible par student, professor, admin, super_admin)
     { 
       path: '/my-courses', 
       name: 'student-courses', 
       component: StudentCoursesPage,
-      meta: { requiresAuth: true, role: 'student' }
+      meta: { requiresAuth: true, minRole: 'student', layout: 'dashboard' }
     },
     { 
       path: '/course/:id', 
       name: 'course-detail', 
       component: CourseDetailPage,
-      meta: { requiresAuth: true, role: 'student' }
+      meta: { requiresAuth: true, minRole: 'student', layout: 'dashboard' }
     },
     { 
       path: '/certificates', 
       name: 'certificates', 
       component: StudentCertificatesPage,
-      meta: { requiresAuth: true, role: 'student' }
+      meta: { requiresAuth: true, minRole: 'student', layout: 'dashboard' }
     },
     { 
       path: '/browse-courses', 
       name: 'browse-courses', 
       component: BrowseCoursesPage,
-      meta: { requiresAuth: true, role: 'student' }
+      meta: { requiresAuth: true, minRole: 'student', layout: 'dashboard' }
     },
     {
       path: '/lesson/:courseId/:lessonId',
       name: 'lesson-viewer',
       component: LessonViewer,
-      meta: { requiresAuth: true, role: 'student' }
+      meta: { requiresAuth: true, minRole: 'student', layout: 'dashboard' }
     },
     
-    // Professor routes
+    // Professor routes (accessible par professor, admin, super_admin)
     { 
       path: '/manage-courses', 
       name: 'professor-courses', 
       component: ProfessorCoursesPage,
-      meta: { requiresAuth: true, role: 'professor' }
+      meta: { requiresAuth: true, minRole: 'professor', layout: 'dashboard' }
     },
     { 
       path: '/course-editor/:id?', 
       name: 'course-editor', 
       component: CourseEditorPage,
-      meta: { requiresAuth: true, role: 'professor' }
+      meta: { requiresAuth: true, minRole: 'professor', layout: 'dashboard' }
     },
     {
       path: '/live-sessions',
       name: 'live-sessions',
       component: LiveListe,
-      meta: { requiresAuth: true, role: ['professor', 'admin', 'super_admin'] }
+      meta: { requiresAuth: true, minRole: 'professor', layout: 'dashboard' }
     },
     {
       path: '/live-session/:id?',
       name: 'live-session',
       component: LiveSessionPage,
-      meta: { requiresAuth: true, role: ['professor', 'admin', 'super_admin'] }
+      meta: { requiresAuth: true, minRole: 'professor', layout: 'dashboard' }
     },
     
-    // Admin routes
+    // Admin routes (accessible par admin, super_admin)
     { 
       path: '/manage-professors', 
       name: 'manage-professors', 
       component: AdminProfessorsPage,
-      meta: { requiresAuth: true, role: ['admin', 'super_admin'] }
+      meta: { requiresAuth: true, minRole: 'admin', layout: 'dashboard' }
     },
     { 
       path: '/professor-form/:id?', 
       name: 'professor-form', 
       component: ProfessorFormPage,
-      meta: { requiresAuth: true, role: ['admin', 'super_admin'] }
+      meta: { requiresAuth: true, minRole: 'admin', layout: 'dashboard' }
+    },
+    {
+      path: '/professors/:id',
+      name: 'professor-detail',
+      component: ProfessorDetailPage,
+      meta: { requiresAuth: true, minRole: 'admin', layout: 'dashboard' }
     },
     { 
       path: '/manage-users', 
       name: 'manage-users', 
       component: AdminUsersPage,
-      meta: { requiresAuth: true, role: ['admin', 'super_admin'] }
+      meta: { requiresAuth: true, minRole: 'admin', layout: 'dashboard' }
     },
     { 
       path: '/user-form/:id?', 
       name: 'user-form', 
       component: UserFormPage,
-      meta: { requiresAuth: true, role: ['admin', 'super_admin'] }
+      meta: { requiresAuth: true, minRole: 'admin', layout: 'dashboard' }
     },
     
     // Catch-all redirect to home
@@ -181,11 +188,11 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore()
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
-  const requiredRole = to.meta.role as string | string[] | undefined
+  const minRole = to.meta.minRole as string | undefined
 
   if (requiresAuth && !authStore.isAuthenticated) {
     next('/login')
-  } else if (requiredRole && !authStore.hasRole(requiredRole)) {
+  } else if (minRole && !authStore.hasMinRole(minRole)) {
     next('/dashboard')
   } else {
     next()

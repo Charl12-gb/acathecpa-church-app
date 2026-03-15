@@ -8,7 +8,7 @@ export enum LiveSessionStatus {
 
 export interface LiveSession {
   id: number;
-  course_id: number;
+  course_id?: number | null;
   title: string;
   description?: string | null;
   scheduled_for: string; // Or Date
@@ -21,7 +21,7 @@ export interface LiveSession {
 }
 
 export interface LiveSessionCreatePayload {
-  course_id: number;
+  course_id?: number | null;
   title: string;
   description?: string;
   scheduled_for: string; // ISO string
@@ -41,7 +41,8 @@ export interface LiveSessionUpdatePayload {
 
 // For Agora token if backend provides it for joining
 export interface AgoraTokenResponse {
-    token: string;
-    channel: string; // Channel name
-    uid?: number | string; // User ID for Agora
+    app_id: string;
+    token: string | null;
+    channel: string;
+    uid: number;
 }

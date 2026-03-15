@@ -1,80 +1,54 @@
 <template>
-  <div class="container py-5">
-    <!-- Header -->
-    <div class="row mb-4">
-      <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center">
-          <div>
-            <h1 class="mb-1">Mes Contenus</h1>
-            <p class="text-muted mb-0">Gérez vos articles et podcasts</p>
-          </div>
-          <RouterLink to="/content/editor" class="btn btn-primary">
-            <i class="bi bi-plus-circle me-2"></i>Créer un contenu
-          </RouterLink>
+  <div class="my-content-page">
+    <!-- Page Header -->
+    <div class="page-header mb-4">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <h1 class="page-title mb-1">Mes Contenus</h1>
+          <p class="page-subtitle mb-0">Gérez vos articles et podcasts</p>
         </div>
+        <RouterLink to="/content/editor" class="btn btn-primary-custom">
+          <i class="bi bi-plus-lg me-2"></i>Créer un contenu
+        </RouterLink>
       </div>
     </div>
 
-    <!-- Stats Cards -->
-    <div class="row g-4 mb-4">
-      <div class="col-md-3">
-        <div class="card border-0 shadow-sm">
-          <div class="card-body">
-            <div class="d-flex align-items-center">
-              <div class="rounded-circle bg-primary bg-opacity-10 p-3 me-3">
-                <i class="bi bi-file-text text-primary fs-4"></i>
-              </div>
-              <div>
-                <h6 class="mb-0 text-muted">Total contenus</h6>
-                <h3 class="mb-0">{{ userContents.length }}</h3>
-              </div>
-            </div>
-          </div>
+    <!-- Stats Strip -->
+    <div class="stats-strip mb-4">
+      <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(36,83,167,0.1);">
+          <i class="bi bi-file-text" style="color: #2453a7;"></i>
+        </div>
+        <div class="stat-info">
+          <span class="stat-label">Total contenus</span>
+          <span class="stat-value">{{ userContents.length }}</span>
         </div>
       </div>
-      <div class="col-md-3">
-        <div class="card border-0 shadow-sm">
-          <div class="card-body">
-            <div class="d-flex align-items-center">
-              <div class="rounded-circle bg-success bg-opacity-10 p-3 me-3">
-                <i class="bi bi-check-circle text-success fs-4"></i>
-              </div>
-              <div>
-                <h6 class="mb-0 text-muted">Publiés</h6>
-                <h3 class="mb-0">{{ publishedCount }}</h3>
-              </div>
-            </div>
-          </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(24,121,78,0.1);">
+          <i class="bi bi-check-circle" style="color: #18794e;"></i>
+        </div>
+        <div class="stat-info">
+          <span class="stat-label">Publiés</span>
+          <span class="stat-value">{{ publishedCount }}</span>
         </div>
       </div>
-      <div class="col-md-3">
-        <div class="card border-0 shadow-sm">
-          <div class="card-body">
-            <div class="d-flex align-items-center">
-              <div class="rounded-circle bg-warning bg-opacity-10 p-3 me-3">
-                <i class="bi bi-pencil text-warning fs-4"></i>
-              </div>
-              <div>
-                <h6 class="mb-0 text-muted">Brouillons</h6>
-                <h3 class="mb-0">{{ draftCount }}</h3>
-              </div>
-            </div>
-          </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(180,83,9,0.1);">
+          <i class="bi bi-pencil" style="color: #b45309;"></i>
+        </div>
+        <div class="stat-info">
+          <span class="stat-label">Brouillons</span>
+          <span class="stat-value">{{ draftCount }}</span>
         </div>
       </div>
-      <div class="col-md-3">
-        <div class="card border-0 shadow-sm">
-          <div class="card-body">
-            <div class="d-flex align-items-center">
-              <div class="rounded-circle bg-info bg-opacity-10 p-3 me-3">
-                <i class="bi bi-star text-info fs-4"></i>
-              </div>
-              <div>
-                <h6 class="mb-0 text-muted">Premium</h6>
-                <h3 class="mb-0">{{ premiumCount }}</h3>
-              </div>
-            </div>
-          </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(107,114,128,0.1);">
+          <i class="bi bi-star" style="color: #6b7280;"></i>
+        </div>
+        <div class="stat-info">
+          <span class="stat-label">Premium</span>
+          <span class="stat-value">{{ premiumCount }}</span>
         </div>
       </div>
     </div>
@@ -82,7 +56,7 @@
     <!-- Filters -->
     <div class="row mb-4">
       <div class="col-12">
-        <div class="card border-0 shadow-sm">
+        <div class="card app-card filter-card">
           <div class="card-body">
             <div class="row g-3">
               <div class="col-md-4">
@@ -121,7 +95,7 @@
     <!-- Content List -->
     <div class="row g-4">
       <div v-for="content in filteredContents" :key="content.id" class="col-12">
-        <div class="card border-0 shadow-sm">
+        <div class="card app-card list-card">
           <div class="card-body">
             <div class="row">
               <div class="col-md-3">
@@ -173,19 +147,19 @@
                 <div class="d-grid gap-2">
                   <RouterLink 
                     :to="`/content/editor/${content.id}`"
-                    class="btn btn-outline-primary"
+                    class="btn btn-outline-custom"
                   >
                     <i class="bi bi-pencil me-2"></i>Modifier
                   </RouterLink>
                   <button 
                     v-if="content.status === 'draft'"
-                    class="btn btn-outline-success"
+                    class="btn btn-success-custom"
                     @click="publishContent(content.id)"
                   >
                     <i class="bi bi-check-circle me-2"></i>Publier
                   </button>
                   <button 
-                    class="btn btn-outline-danger"
+                    class="btn btn-outline-danger-custom"
                     @click="deleteContent(content.id)"
                   >
                     <i class="bi bi-trash me-2"></i>Supprimer
@@ -199,14 +173,14 @@
     </div>
 
     <!-- Empty State -->
-    <div v-if="filteredContents.length === 0" class="text-center py-5">
-      <div class="mb-4">
-        <i class="bi bi-file-earmark-x display-1 text-muted"></i>
+    <div v-if="filteredContents.length === 0" class="empty-state">
+      <div class="empty-icon">
+        <i class="bi bi-file-earmark-x"></i>
       </div>
       <h3>Aucun contenu trouvé</h3>
       <p class="text-muted">Commencez par créer votre premier contenu</p>
-      <RouterLink to="/content/editor" class="btn btn-primary">
-        Créer un contenu
+      <RouterLink to="/content/editor" class="btn btn-primary-custom">
+        <i class="bi bi-plus-lg me-2"></i>Créer un contenu
       </RouterLink>
     </div>
   </div>
@@ -310,24 +284,156 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
-.rounded-circle {
-  width: 50px;
-  height: 50px;
+<style scoped lang="scss">
+.my-content-page {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.page-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1a2332;
+}
+
+.page-subtitle {
+  color: #6b7280;
+  font-size: 0.95rem;
+}
+
+.btn-primary-custom {
+  background: #2453a7;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 1.2rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  &:hover { background: #1a3f8a; color: #fff; }
+}
+
+.btn-success-custom {
+  background: #18794e;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.8rem;
+  &:hover { background: #126b42; color: #fff; }
+}
+
+.btn-outline-custom {
+  background: transparent;
+  border: 1px solid #e7edf5;
+  color: #4b5563;
+  border-radius: 6px;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.8rem;
+  &:hover { background: #f6f8fc; border-color: #2453a7; color: #2453a7; }
+}
+
+.btn-outline-danger-custom {
+  background: transparent;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  border-radius: 6px;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.8rem;
+  &:hover { background: #fef2f2; }
+}
+
+.app-card {
+  border: 1px solid #e7edf5;
+  border-radius: 12px;
+  box-shadow: none;
+  transition: transform 0.2s, border-color 0.2s;
+  &:hover {
+    transform: translateY(-2px);
+    border-color: #d7e3f4;
+  }
+}
+
+// Stats Strip
+.stats-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+.stat-card {
+  background: #fff;
+  border: 1px solid #e7edf5;
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.stat-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-label {
+  font-size: 0.78rem;
+  color: #6b7280;
+  line-height: 1.2;
+}
+
+.stat-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #1a2332;
+}
+
+.list-card img {
+  border-radius: 10px;
+}
+
+// Empty State
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+}
+
+.empty-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(36,83,167,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+
+  .bi { font-size: 2rem; color: #2453a7; }
+}
+
+.empty-state h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #1a2332;
+  margin-bottom: 0.5rem;
 }
 
 .badge {
-  padding: 0.5rem 1rem;
+  padding: 0.4rem 0.75rem;
 }
 
-.card {
-  transition: transform 0.2s;
-}
-
-.card:hover {
-  transform: translateY(-2px);
+// Responsive
+@media (max-width: 768px) {
+  .stats-strip { grid-template-columns: repeat(2, 1fr); }
 }
 </style>

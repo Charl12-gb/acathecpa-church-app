@@ -36,8 +36,19 @@ export const useAuthStore = defineStore('auth', () => {
   // Computed
   const isAuthenticated = computed(() => !!token.value)
 
+  const ROLE_HIERARCHY: Record<string, number> = {
+    'super_admin': 4,
+    'admin': 3,
+    'professor': 2,
+    'student': 1,
+  }
+
   const getRoleName = (role: User['role']): RoleName => {
     return typeof role === 'string' ? role : role.name
+  }
+
+  const getRoleLevel = (role: string): number => {
+    return ROLE_HIERARCHY[role] ?? 0
   }
   
   const hasRole = (role: RoleName | RoleName[]) => {
@@ -49,6 +60,16 @@ export const useAuthStore = defineStore('auth', () => {
     }
     
     return userRoleName === role
+  }
+
+  /**
+   * Vérifie si l'utilisateur a au minimum le rôle demandé
+   * Hiérarchie : super_admin > admin > professor > student
+   */
+  const hasMinRole = (minRole: RoleName) => {
+    if (!user.value) return false
+    const userRoleName = getRoleName(user.value.role)
+    return getRoleLevel(userRoleName) >= getRoleLevel(minRole)
   }
 
   // Actions
@@ -175,6 +196,7 @@ export const useAuthStore = defineStore('auth', () => {
     error,
     isAuthenticated,
     hasRole,
+    hasMinRole,
     login,
     register,
     logout,

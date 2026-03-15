@@ -246,7 +246,12 @@ export const deleteTestQuestion = async (questionId: number): Promise<TestQuesti
  * Let's define it to take userId, and the caller (e.g., store) provides it.
  */
 export const getUserCertificates = async (userId: number): Promise<CertificateDisplay[]> => {
-  const response = await apiClient.get<CertificateDisplay[]>(`/users/${userId}/certificates/`); // This path is from the original file. The new router uses /courses/users/{user_id}/certificates
+  const response = await apiClient.get<CertificateDisplay[]>(`/courses/users/${userId}/certificates/`);
+  return response.data;
+};
+
+export const getMyCertificates = async (): Promise<CertificateDisplay[]> => {
+  const response = await apiClient.get<CertificateDisplay[]>('/courses/me/certificates');
   return response.data;
 };
 

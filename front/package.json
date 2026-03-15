@@ -47,6 +47,7 @@
     "chart.js": "^4.4.0",
     "pinia": "^2.1.7",
     "socket.io-client": "^4.7.2",
+    "sweetalert2": "^11.26.22",
     "typeit": "^8.8.7",
     "vue": "^3.4.38",
     "vue-chartjs": "^5.2.0",

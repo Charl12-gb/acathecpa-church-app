@@ -4,6 +4,8 @@ import { RouterLink } from 'vue-router';
 import { useProfessorStore } from '../../../stores/professor';
 import { storeToRefs } from 'pinia';
 import { Professor } from '../../../types/api/professorTypes';
+import { fetchAdminProfessors } from '../../../services/api/adminDashboardService';
+import type { ProfessorStat } from '../../../types/api/admin_dashboard';
 
 const professorStore = useProfessorStore();
 
@@ -19,6 +21,16 @@ const {
   toggleProfessorStatus: storeToggleProfessorStatus // Aliased
 } = professorStore;
 
+const professorInsights = ref<Record<number, ProfessorStat>>({});
+
+const loadProfessorInsights = async () => {
+  const stats = await fetchAdminProfessors();
+  professorInsights.value = stats.reduce<Record<number, ProfessorStat>>((acc, item) => {
+    acc[item.id] = item;
+    return acc;
+  }, {});
+};
+
 // Filters (local to component)
 const filters = ref({
   status: 'all', // 'all', 'active', 'inactive'
@@ -26,8 +38,8 @@ const filters = ref({
   sort: 'name' // name, specialization
 });
 
-onMounted(() => {
-  fetchProfessors();
+onMounted(async () => {
+  await Promise.all([fetchProfessors(), loadProfessorInsights()]);
 });
 
 const filteredProfessors = computed(() => {
@@ -69,6 +81,7 @@ const handleDeleteProfessor = async (userId: number) => {
   if (confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur professeur ? Cette action est irréversible.')) {
     try {
       await storeDeleteProfessor(userId);
+      delete professorInsights.value[userId];
       alert('Professeur supprimé avec succès.');
       // The store action already removes the professor from the list,
       // so no need to manually filter professorList.value here.
@@ -89,6 +102,7 @@ const handleToggleStatus = async (professor: Professor) => {
   if (confirm(alertMessage)) {
     try {
       await storeToggleProfessorStatus(professor.id, professor.is_active);
+      await loadProfessorInsights();
       alert(`Statut du professeur mis à jour.`);
       // Store action updates the professor in the list.
     } catch (err: any) {
@@ -99,16 +113,23 @@ const handleToggleStatus = async (professor: Professor) => {
 };
 
 
-// Computed Stats
-const totalProfessors = computed(() => professorList.value.length); // Uses store-managed list
-const totalCoursesPublished = computed(() => 0); // Placeholder - data not in store/model
-const totalStudents = computed(() => 0); // Placeholder
-const averageRating = computed(() => "N/A"); // Placeholder
+const profRows = computed(() => filteredProfessors.value.map((professor) => {
+  const insight = professorInsights.value[professor.id];
+  return {
+    ...professor,
+    courses_count: insight?.courses_count ?? 0,
+    published_courses_count: insight?.published_courses_count ?? 0,
+    students_count: insight?.students_count ?? 0,
+    active_students_count: insight?.active_students_count ?? 0,
+    latest_course_published_at: insight?.latest_course_published_at ?? null,
+    specialization: insight?.specialization ?? professor.professor_profile?.specialization ?? null,
+  };
+}));
 
 </script>
 
 <template>
-  <div class="container py-5">
+  <div class="container-fluid">
     <!-- Header -->
     <div class="row mb-4">
       <div class="col-12">
@@ -139,70 +160,6 @@ const averageRating = computed(() => "N/A"); // Placeholder
 
     <!-- Content when not loading and no error -->
     <template v-if="!isLoadingList && !errorList">
-      <!-- Stats Cards -->
-      <div class="row g-4 mb-4">
-        <div class="col-md-3">
-          <div class="card border-0 shadow-sm">
-            <div class="card-body">
-              <div class="d-flex align-items-center">
-                <div class="rounded-circle bg-primary bg-opacity-10 p-3 me-3">
-                  <i class="bi bi-person-workspace text-primary fs-4"></i>
-                </div>
-                <div>
-                  <h6 class="mb-0 text-muted">Total professeurs</h6>
-                  <h3 class="mb-0">{{ totalProfessors }}</h3>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card border-0 shadow-sm">
-            <div class="card-body">
-              <div class="d-flex align-items-center">
-                <div class="rounded-circle bg-success bg-opacity-10 p-3 me-3">
-                  <i class="bi bi-book text-success fs-4"></i>
-                </div>
-                <div>
-                  <h6 class="mb-0 text-muted">Cours publiés (fictif)</h6>
-                  <h3 class="mb-0">{{ totalCoursesPublished }}</h3>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card border-0 shadow-sm">
-            <div class="card-body">
-              <div class="d-flex align-items-center">
-                <div class="rounded-circle bg-warning bg-opacity-10 p-3 me-3">
-                  <i class="bi bi-people text-warning fs-4"></i>
-                </div>
-                <div>
-                  <h6 class="mb-0 text-muted">Total étudiants (fictif)</h6>
-                  <h3 class="mb-0">{{ totalStudents }}</h3>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card border-0 shadow-sm">
-            <div class="card-body">
-              <div class="d-flex align-items-center">
-                <div class="rounded-circle bg-info bg-opacity-10 p-3 me-3">
-                  <i class="bi bi-star text-info fs-4"></i>
-                </div>
-                <div>
-                  <h6 class="mb-0 text-muted">Note moyenne</h6>
-                  <h3 class="mb-0">{{ averageRating }}</h3>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- Filters -->
       <div class="row mb-4">
         <div class="col-12">
@@ -243,79 +200,108 @@ const averageRating = computed(() => "N/A"); // Placeholder
       </div>
 
       <!-- Professors List -->
-      <div class="row g-4">
-        <div v-for="professor in filteredProfessors" :key="professor.id" class="col-12">
-          <div class="card border-0 shadow-sm">
-            <div class="card-body p-4">
-              <div class="row align-items-center">
-                <div class="col-md-3">
-                  <div class="d-flex align-items-center mb-3 mb-md-0">
-                    <div class="avatar-placeholder rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3">
-                      <span class="fs-5 fw-bold">{{ professor.name ? professor.name.charAt(0).toUpperCase() : 'P' }}</span>
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center border-bottom">
+          <h5 class="mb-0">Liste des professeurs</h5>
+          <span class="result-pill">{{ filteredProfessors.length }} resultat(s)</span>
+        </div>
+
+        <div class="prof-table-wrap">
+          <table class="table table-hover align-middle mb-0 prof-table">
+            <thead>
+              <tr>
+                <th>Professeur</th>
+                <th>Contact</th>
+                <th>Specialisation</th>
+                <th>Statut</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="professor in profRows" :key="professor.id">
+                <td>
+                  <div class="d-flex align-items-center gap-3">
+                    <div class="avatar-placeholder rounded-circle bg-primary text-white d-flex align-items-center justify-content-center">
+                      <span class="fs-6 fw-bold">{{ professor.name ? professor.name.charAt(0).toUpperCase() : 'P' }}</span>
                     </div>
-                    <div>
-                      <h5 class="mb-0 fs-6 fw-semibold">{{ professor.name || 'N/A' }}</h5>
-                      <p class="mb-0 text-muted small">{{ professor.professor_profile?.specialization || 'Non spécifiée' }}</p>
+                    <div class="prof-ident">
+                      <div class="fw-semibold text-dark">{{ professor.name || 'N/A' }}</div>
+                      <small class="text-muted">
+                        Inscrit le {{ professor.created_at ? new Date(professor.created_at).toLocaleDateString() : 'N/A' }}
+                      </small>
                     </div>
                   </div>
-                </div>
-                <div class="col-md-3">
-                  <div class="mb-1 small">
-                    <i class="bi bi-envelope me-2 text-muted"></i>
-                    {{ professor.email }}
+                </td>
+
+                <td>
+                  <div class="small fw-medium">{{ professor.email }}</div>
+                  <div class="small text-muted">{{ professor.phone || 'Téléphone non renseigné' }}</div>
+                  <div class="small text-muted">{{ professor.country || 'Pays non renseigné' }}</div>
+                </td>
+
+                <td>
+                  <span class="spec-pill">
+                    {{ professor.specialization || 'Non specifiee' }}
+                  </span>
+                  <div class="small text-muted mt-2">
+                    <i class="bi bi-journal-check me-1"></i>
+                    {{ professor.published_courses_count }} cours publies / {{ professor.courses_count }} total
                   </div>
-                  <div class="small">
-                    <i class="bi bi-telephone me-2 text-muted"></i>
-                    {{ professor.phone || 'N/A' }}
+                  <div class="small text-muted">
+                    <i class="bi bi-people me-1"></i>
+                    {{ professor.active_students_count }} etudiants actifs / {{ professor.students_count }} inscrits
                   </div>
-                </div>
-                <div class="col-md-2 text-center">
-                   <!-- Placeholder for stats like Courses/Students if data were available -->
-                   <div class="py-2 rounded bg-light">
-                     <small class="text-muted d-block">Profil</small>
-                     <RouterLink :to="{ name: 'professor-form', params: { id: professor.id } }" class="fw-semibold">
-                        Voir/Modifier
-                     </RouterLink>
-                   </div>
-                </div>
-                <div class="col-md-1 text-center">
-                   <span
-                    :class="[
-                      'badge fs-xs',
-                      professor.is_active ? 'bg-success-subtle text-success-emphasis' : 'bg-danger-subtle text-danger-emphasis'
-                    ]"
-                  >
+                  <div v-if="professor.latest_course_published_at" class="small text-muted">
+                    <i class="bi bi-calendar-event me-1"></i>
+                    Derniere publication: {{ new Date(professor.latest_course_published_at).toLocaleDateString() }}
+                  </div>
+                </td>
+
+                <td>
+                  <span :class="[
+                    'status-pill',
+                    professor.is_active ? 'status-active' : 'status-inactive'
+                  ]">
+                    <i :class="['bi me-1', professor.is_active ? 'bi-check-circle' : 'bi-pause-circle']"></i>
                     {{ professor.is_active ? 'Actif' : 'Inactif' }}
                   </span>
-                </div>
-                <div class="col-md-3">
-                  <div class="d-flex justify-content-end align-items-center gap-2">
+                </td>
+
+                <td class="text-end">
+                  <div class="btn-group btn-group-sm">
+                    <RouterLink
+                      :to="{ name: 'professor-detail', params: { id: professor.id } }"
+                      class="btn btn-outline-info"
+                      title="Details"
+                    >
+                      <i class="bi bi-eye"></i>
+                    </RouterLink>
                     <RouterLink
                       :to="{ name: 'professor-form', params: { id: professor.id } }"
-                      class="btn btn-sm btn-outline-secondary"
+                      class="btn btn-outline-primary"
                       title="Modifier"
                     >
-                      <i class="bi bi-pencil"></i>
+                      <i class="bi bi-pencil-square"></i>
                     </RouterLink>
                     <button
-                      class="btn btn-sm btn-outline-secondary"
+                      class="btn btn-outline-secondary"
                       @click="handleToggleStatus(professor)"
-                      :title="professor.is_active ? 'Désactiver' : 'Activer'"
+                      :title="professor.is_active ? 'Desactiver' : 'Activer'"
                     >
                       <i :class="['bi', professor.is_active ? 'bi-toggle-on' : 'bi-toggle-off']"></i>
                     </button>
                     <button
-                      class="btn btn-sm btn-outline-danger"
+                      class="btn btn-outline-danger"
                       @click="handleDeleteProfessor(professor.id)"
                       title="Supprimer"
                     >
                       <i class="bi bi-trash"></i>
                     </button>
                   </div>
-                </div>
-              </div>
-            </div>
-          </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -342,6 +328,82 @@ const averageRating = computed(() => "N/A"); // Placeholder
   padding: 0.4em 0.6em;
 }
 
+.result-pill {
+  padding: 0.32rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: #f6f8fc;
+  border: 1px solid #e6ebf3;
+  color: #43536b;
+}
+
+.prof-table-wrap {
+  overflow-x: auto;
+}
+
+.prof-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f8fafc;
+  color: #5b6b84;
+  border-bottom: 1px solid #e7edf5;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.prof-table tbody tr {
+  border-bottom: 1px solid #eef3f8;
+}
+
+.prof-table tbody tr:nth-child(even) {
+  background: #fcfdff;
+}
+
+.prof-table tbody tr:hover {
+  background: #f6faff;
+}
+
+.prof-ident {
+  min-width: 180px;
+}
+
+.spec-pill {
+  display: inline-block;
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid #d7e4ff;
+  background: #eff5ff;
+  color: #2453a7;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.28rem 0.64rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.status-active {
+  color: #18794e;
+  background: #eaf8f1;
+  border: 1px solid #c7efd9;
+}
+
+.status-inactive {
+  color: #b02a37;
+  background: #fdecef;
+  border: 1px solid #f8c6cd;
+}
+
 .card {
   transition: box-shadow 0.2s ease-in-out;
 }
@@ -350,19 +412,17 @@ const averageRating = computed(() => "N/A"); // Placeholder
   box-shadow: 0 .5rem 1rem rgba(0,0,0,.1)!important; /* Enhanced shadow on hover */
 }
 
-/* Make stat cards slightly smaller if needed, or adjust padding */
-.card-body .d-flex .rounded-circle { /* Specific to stats cards icons */
-  width: 40px;
-  height: 40px;
-}
-.card-body .d-flex h3 { /* Specific to stats cards numbers */
-  font-size: 1.5rem;
-}
 .input-group-text {
   border-right: 0; /* For seamless search input */
 }
 .form-control.border-start-0 {
   border-left:0;
+}
+
+@media (max-width: 991.98px) {
+  .prof-table {
+    min-width: 760px;
+  }
 }
 
 </style>

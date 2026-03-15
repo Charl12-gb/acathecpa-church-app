@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
-import { RouterLink } from 'vue-router'
+import { onMounted, computed, ref } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia' 
 import { useAdminDashboardStore } from '../../../stores/adminDashboardStore'
+import { useProfessorStore } from '../../../stores/professor'
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title } from 'chart.js'
 import { Doughnut, Line } from 'vue-chartjs'
 
@@ -20,9 +21,37 @@ const {
   error
 } = storeToRefs(adminDashboardStore);
 
+const professorStore = useProfessorStore();
+const router = useRouter();
+const deletingProfessorId = ref<number | null>(null);
+
 onMounted(() => {
   adminDashboardStore.loadAllAdminDashboardData();
 });
+
+const handleDeleteProfessor = async (professorId: number) => {
+  const confirmed = window.confirm('Supprimer ce professeur ? Cette action est irreversible.');
+  if (!confirmed) return;
+
+  deletingProfessorId.value = professorId;
+  try {
+    await professorStore.deleteProfessor(professorId);
+    await adminDashboardStore.loadAllAdminDashboardData();
+  } catch (err) {
+    console.error('Erreur lors de la suppression du professeur:', err);
+    window.alert('Echec de suppression du professeur.');
+  } finally {
+    deletingProfessorId.value = null;
+  }
+};
+
+const goToSystemSettings = () => {
+  router.push('/manage-users');
+};
+
+const goToReports = () => {
+  router.push('/manage-users');
+};
 
 const computedUserDistributionChartData = computed(() => {
   if (!userDistribution.value) {
@@ -171,7 +200,7 @@ export default {
     </div>
 
     <!-- Main Dashboard Content -->
-    <div v.if="!isLoading && !error" class="row g-4">
+    <div v-if="!isLoading && !error" class="row g-4">
       <!-- Left Column -->
       <div class="col-lg-8">
         <div class="card border-0 shadow-sm mb-4">
@@ -222,7 +251,12 @@ export default {
                       <RouterLink :to="`/professor-form/${professor.id}`" class="btn btn-sm btn-outline-primary me-1">
                         <i class="bi bi-pencil"></i>
                       </RouterLink>
-                      <button class="btn btn-sm btn-outline-danger">
+                      <button
+                        class="btn btn-sm btn-outline-danger"
+                        @click="handleDeleteProfessor(professor.id)"
+                        :disabled="deletingProfessorId === professor.id"
+                        :title="deletingProfessorId === professor.id ? 'Suppression en cours...' : 'Supprimer ce professeur'"
+                      >
                         <i class="bi bi-trash"></i>
                       </button>
                     </td>
@@ -312,10 +346,10 @@ export default {
               <RouterLink to="/professor-form" class="btn btn-primary">
                 <i class="bi bi-person-plus me-2"></i> Ajouter un professeur
               </RouterLink>
-              <button class="btn btn-outline-primary">
+              <button class="btn btn-outline-primary" @click="goToSystemSettings">
                 <i class="bi bi-gear me-2"></i> Paramètres du système
               </button>
-              <button class="btn btn-outline-primary">
+              <button class="btn btn-outline-primary" @click="goToReports">
                 <i class="bi bi-file-earmark-text me-2"></i> Générer des rapports
               </button>
             </div>

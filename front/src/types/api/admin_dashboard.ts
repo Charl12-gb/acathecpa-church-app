@@ -28,10 +28,22 @@ export interface ProfessorStat {
   email: string;
   /** Number of courses taught by the professor. */
   courses_count: number;
+  /** Number of published courses by the professor. */
+  published_courses_count: number;
   /** Total number of students enrolled in the professor's courses. */
   students_count: number;
+  /** Number of active students enrolled in the professor's courses. */
+  active_students_count: number;
   /** Average rating of the professor's courses. */
   average_rating: number;
+  /** Professor specialization. */
+  specialization?: string | null;
+  /** Professor phone number. */
+  phone?: string | null;
+  /** Account status. */
+  is_active: boolean;
+  /** Latest published course date in ISO format. */
+  latest_course_published_at?: string | null;
 }
 
 /**

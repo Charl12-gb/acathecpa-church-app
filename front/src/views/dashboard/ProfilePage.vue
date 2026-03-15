@@ -19,6 +19,7 @@ const form = ref({
 const formSubmitted = ref(false)
 const loading = ref(false)
 const error = ref('')
+const activeTab = ref<'personal' | 'security' | 'notifications'>('personal')
 
 // Fill form with current user data
 onMounted(() => {
@@ -73,7 +74,7 @@ const countries = [
 </script>
 
 <template>
-  <div class="container py-5">
+  <div class="container-fluid">
     <div class="row mb-4">
       <div class="col-12">
         <h1 class="mb-0">Mon Profil</h1>
@@ -99,21 +100,40 @@ const countries = [
           </div>
         </div>
 
-        <!-- Profile Navigation -->
-        <div class="list-group shadow-sm">
-          <a href="#personal-info" class="list-group-item list-group-item-action active">
-            <i class="bi bi-person me-2"></i> Informations personnelles
-          </a>
-          <a href="#security" class="list-group-item list-group-item-action">
-            <i class="bi bi-shield-lock me-2"></i> Sécurité
-          </a>
-          <a href="#notifications" class="list-group-item list-group-item-action">
-            <i class="bi bi-bell me-2"></i> Notifications
-          </a>
-        </div>
       </div>
 
       <div class="col-lg-9">
+        <div class="card border-0 shadow-sm mb-4 tabs-shell">
+          <div class="card-body py-2 px-2">
+            <div class="nav nav-pills profile-tabs" role="tablist" aria-label="Sections profil">
+              <button
+                type="button"
+                class="nav-link"
+                :class="{ active: activeTab === 'personal' }"
+                @click="activeTab = 'personal'"
+              >
+                <i class="bi bi-person me-2"></i>Informations personnelles
+              </button>
+              <button
+                type="button"
+                class="nav-link"
+                :class="{ active: activeTab === 'security' }"
+                @click="activeTab = 'security'"
+              >
+                <i class="bi bi-shield-lock me-2"></i>Sécurité
+              </button>
+              <button
+                type="button"
+                class="nav-link"
+                :class="{ active: activeTab === 'notifications' }"
+                @click="activeTab = 'notifications'"
+              >
+                <i class="bi bi-bell me-2"></i>Notifications
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Success Message -->
         <div v-if="formSubmitted" class="alert alert-success alert-dismissible fade show" role="alert">
           Votre profil a été mis à jour avec succès.
@@ -127,7 +147,7 @@ const countries = [
         </div>
 
         <!-- Personal Information -->
-        <div id="personal-info" class="card border-0 shadow-sm mb-4">
+        <div v-if="activeTab === 'personal'" class="card border-0 shadow-sm mb-4">
           <div class="card-header bg-white py-3">
             <h5 class="mb-0">Informations personnelles</h5>
           </div>
@@ -212,7 +232,7 @@ const countries = [
         </div>
 
         <!-- Security Settings -->
-        <div id="security" class="card border-0 shadow-sm mb-4">
+        <div v-if="activeTab === 'security'" class="card border-0 shadow-sm mb-4">
           <div class="card-header bg-white py-3">
             <h5 class="mb-0">Sécurité</h5>
           </div>
@@ -271,7 +291,7 @@ const countries = [
         </div>
 
         <!-- Notification Settings -->
-        <div id="notifications" class="card border-0 shadow-sm">
+        <div v-if="activeTab === 'notifications'" class="card border-0 shadow-sm">
           <div class="card-header bg-white py-3">
             <h5 class="mb-0">Préférences de notification</h5>
           </div>
@@ -335,9 +355,27 @@ const countries = [
   color: #6c757d;
 }
 
-.list-group-item.active {
+.tabs-shell {
+  background: #f8fbff;
+  border: 1px solid #e8eef7;
+}
+
+.profile-tabs {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.profile-tabs .nav-link {
+  border-radius: 10px;
+  color: #4f617e;
+  font-weight: 600;
+  padding: 0.6rem 0.9rem;
+}
+
+.profile-tabs .nav-link.active {
   background-color: var(--bs-primary);
-  border-color: var(--bs-primary);
+  color: #fff;
 }
 
 .form-check-input:checked {
