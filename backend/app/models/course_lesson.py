@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Enum as SQLAlchemyEnum, Text, ForeignKey, Boolean, DateTime
 from datetime import datetime
 from sqlalchemy.orm import relationship
-from .user import Base 
+from app.database import Base
 import enum
 
 class LessonType(enum.Enum):

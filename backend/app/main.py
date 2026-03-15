@@ -2,11 +2,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
-# from sqlalchemy.orm import Session # Removed as it was only for on_startup type hinting
+
+# Import all models first so SQLAlchemy mapper can resolve all relationships
+from app.models import *  # noqa: F401,F403
 
 from app.core.config import settings
 # Updated import for professor_router to get both routers
 from app.routers import user_router, content_router, course_router, live_session_router, auth as auth_router
+from app.routers.payment_router import router as payment_router
 from app.routers.professor_router import router as professor_main_router, admin_dashboard_router # Import both routers
 from app.routers.student_router import student_dashboard_router # Import student_dashboard_router
 # Import permission routers
@@ -55,6 +58,7 @@ app.include_router(live_session_router.router)
 app.include_router(professor_main_router) # Use the imported professor_main_router
 app.include_router(admin_dashboard_router) # Add the new admin_dashboard_router
 app.include_router(student_dashboard_router) # Add the new student_dashboard_router
+app.include_router(payment_router) # Payment router
 
 # Include permission routers
 app.include_router(roles_router)

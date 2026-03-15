@@ -357,10 +357,15 @@ def enroll_student_in_course(db: Session, course_id: int, user_id: int) -> Optio
     if existing_enrollment:
         return "AlreadyEnrolled"
 
+    # Payment gate: non-free courses require a completed payment
+    if not course.is_free and (course.price is not None and course.price > 0):
+        from app.services.payment_service import has_completed_payment
+        if not has_completed_payment(db, user_id, course_id):
+            return "PaymentRequired"
+
     enrollment = enrollment_model(
         user_id=user_id,
         course_id=course_id,
-        # Default values for progress fields are set in the model
     )
     db.add(enrollment)
     db.commit()
@@ -399,7 +404,7 @@ def get_course_instructor_courses(db: Session, instructor_id: int, skip: int = 0
 # --- Progress Tracking Functions ---
 
 def _calculate_progress_percentage(db: Session, enrollment: enrollment_model) -> float:
-    """Helper function to calculate course completion percentage."""
+    """Helper function to calculate course completion percentage based on lessons completed."""
     course = db.query(course_model.Course).options(
         selectinload(course_model.Course.sections).selectinload(course_section_model.CourseSection.lessons)
     ).filter(course_model.Course.id == enrollment.course_id).first()
@@ -408,39 +413,54 @@ def _calculate_progress_percentage(db: Session, enrollment: enrollment_model) ->
         return 0.0
 
     total_lessons = sum(len(section.lessons) for section in course.sections)
-    total_sections = len(course.sections)
-
-    # Example: progress can be based on completed lessons and sections.
-    # Adjust weighting as per application requirements.
-    # For instance, if tests also contribute, that logic would be added here.
+    if total_lessons == 0:
+        return 0.0
 
     completed_lessons_count = len(enrollment.completed_lessons or [])
-    completed_sections_count = len(enrollment.completed_sections or [])
-
-    progress = 0.0
-    if total_lessons > 0:
-        progress += (completed_lessons_count / total_lessons) * 50  # Assign 50% weight to lessons
-    if total_sections > 0:
-        progress += (completed_sections_count / total_sections) * 50 # Assign 50% weight to sections
-
-    return min(progress, 100.0) # Ensure progress doesn't exceed 100%
+    return min(round((completed_lessons_count / total_lessons) * 100, 1), 100.0)
 
 def mark_lesson_completed(db: Session, user_id: int, course_id: int, lesson_id: int) -> Optional[enrollment_model]:
     enrollment = get_enrollment(db, user_id=user_id, course_id=course_id)
     if not enrollment:
-        return None # Or raise HTTPException
+        return None
 
     if lesson_id not in enrollment.completed_lessons:
-        # Create a new list and append to trigger SQLAlchemy's change detection for JSONB
         new_completed_lessons = list(enrollment.completed_lessons)
         new_completed_lessons.append(lesson_id)
         enrollment.completed_lessons = new_completed_lessons
+
+        # Auto-complete parent section if all its lessons are now done
+        _auto_complete_sections(db, enrollment, course_id)
 
         enrollment.progress_percentage = _calculate_progress_percentage(db, enrollment)
         db.add(enrollment)
         db.commit()
         db.refresh(enrollment)
     return enrollment
+
+
+def _auto_complete_sections(db: Session, enrollment: enrollment_model, course_id: int):
+    """Auto-mark sections as completed when all their lessons are done."""
+    course = db.query(course_model.Course).options(
+        selectinload(course_model.Course.sections).selectinload(course_section_model.CourseSection.lessons)
+    ).filter(course_model.Course.id == course_id).first()
+    if not course:
+        return
+
+    completed_lesson_ids = set(enrollment.completed_lessons or [])
+    completed_section_ids = set(enrollment.completed_sections or [])
+    changed = False
+
+    for section in course.sections:
+        if section.id in completed_section_ids:
+            continue
+        section_lesson_ids = {lesson.id for lesson in section.lessons}
+        if section_lesson_ids and section_lesson_ids.issubset(completed_lesson_ids):
+            completed_section_ids.add(section.id)
+            changed = True
+
+    if changed:
+        enrollment.completed_sections = list(completed_section_ids)
 
 def mark_section_completed(db: Session, user_id: int, course_id: int, section_id: int) -> Optional[enrollment_model]:
     enrollment = get_enrollment(db, user_id=user_id, course_id=course_id)
@@ -531,8 +551,11 @@ def check_and_issue_certificate(db: Session, user_id: int, course_id: int) -> Op
     if not all_lesson_ids.issubset(completed_lesson_ids):
         return "NotAllLessonsCompleted"
 
-    # 3. Check completion of all sections (Optional, if lessons imply section completion)
-    # For explicitness, let's check sections as well.
+    # 3. Auto-complete sections whose lessons are all done, then verify
+    _auto_complete_sections(db, enrollment, course_id)
+    db.add(enrollment)
+    db.flush()
+
     all_section_ids = {s.id for s in course.sections}
     completed_section_ids = set(enrollment.completed_sections or [])
     if not all_section_ids.issubset(completed_section_ids):
@@ -584,13 +607,23 @@ def check_and_issue_certificate(db: Session, user_id: int, course_id: int) -> Op
 
 
 def create_certificate(db: Session, certificate_in: certificate_schema.CertificateCreate) -> Optional[certificate_model.Certificate]:
-    # Implementation from previous step
+    import uuid
     existing_certificate = db.query(certificate_model.Certificate).filter(
         certificate_model.Certificate.user_id == certificate_in.user_id,
         certificate_model.Certificate.course_id == certificate_in.course_id
     ).first()
     if existing_certificate: return existing_certificate
-    db_certificate = certificate_model.Certificate(**certificate_in.dict())
+
+    verification_code = f"CERT-{uuid.uuid4().hex[:10].upper()}"
+    certificate_url = f"/certificates/verify/{verification_code}"
+
+    db_certificate = certificate_model.Certificate(
+        user_id=certificate_in.user_id,
+        course_id=certificate_in.course_id,
+        issue_date=certificate_in.issue_date,
+        verification_code=verification_code,
+        certificate_url=certificate_url,
+    )
     db.add(db_certificate)
     db.commit()
     db.refresh(db_certificate)

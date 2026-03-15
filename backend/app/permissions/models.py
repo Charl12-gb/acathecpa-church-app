@@ -1,8 +1,6 @@
 from sqlalchemy import Column, String, DateTime, ForeignKey, Enum as SQLAlchemyEnum, Integer
 from sqlalchemy.orm import relationship
-# from sqlalchemy.ext.declarative import declarative_base # Not needed if importing Base
 from datetime import datetime
-from app.models.user import User
 import uuid
 
 # Import Base from the central database.py

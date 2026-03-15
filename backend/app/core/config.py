@@ -42,5 +42,9 @@ class Settings:
     VALIDATE_CERTS: bool = os.getenv("VALIDATE_CERTS", "True").lower() == "true"
     MAIL_ENABLED: bool = os.getenv("MAIL_ENABLED", "True").lower() == "true"
 
+    # Agora Settings
+    AGORA_APP_ID: Optional[str] = os.getenv("AGORA_APP_ID")
+    AGORA_APP_CERTIFICATE: Optional[str] = os.getenv("AGORA_APP_CERTIFICATE")
+
 
 settings = Settings()

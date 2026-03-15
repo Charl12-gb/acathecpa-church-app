@@ -72,6 +72,11 @@ ROLES_PERMISSIONS_DATA = {
         {'permission': 'manage_professor_profiles', 'title': 'Manage Professor Profiles', 'category': 'User Management'}
     ],
     'admin': [
+        {'permission': 'view_own_profile', 'title': 'View Own Profile', 'category': 'User Management'},
+        {'permission': 'edit_own_profile', 'title': 'Edit Own Profile', 'category': 'User Management'},
+        {'permission': 'manage_own_account', 'title': 'Manage Own Account', 'category': 'User Management'},
+        {'permission': 'create_user', 'title': 'Create User', 'category': 'User Management'},
+        {'permission': 'delete_any_user', 'title': 'Delete Any User', 'category': 'User Management'},
         {'permission': 'view_any_user', 'title': 'View Any User Profile', 'category': 'User Management'},
         {'permission': 'edit_any_user', 'title': 'Edit Any User Profile', 'category': 'User Management'},
         {'permission': 'view_role', 'title': 'View Role', 'category': 'Role Management'},

@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 from typing import Optional, List
 from sqlalchemy import func, extract
 from fastapi import HTTPException, status
@@ -82,6 +82,23 @@ def delete_professor_profile(db: Session, *, user_id: int) -> Optional[Professor
     db.commit()
     return db_profile
 
+
+def get_professor_courses_for_admin(
+    db: Session,
+    *,
+    professor_id: int,
+    skip: int = 0,
+    limit: int = 100,
+) -> List[CourseModel]:
+    return (
+        db.query(CourseModel)
+        .filter(CourseModel.instructor_id == professor_id)
+        .order_by(CourseModel.updated_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
 async def get_admin_dashboard_stats_service(db: Session) -> AdminDashboardStats:
     """
     Récupère les statistiques globales pour le tableau de bord de l'administrateur.
@@ -115,11 +132,30 @@ async def get_admin_professors_service(db: Session) -> List[ProfessorStats]:
     professor_stats_list = []
     for prof in professors:
         courses_count = db.query(func.count(CourseModel.id)).filter(CourseModel.instructor_id == prof.id).scalar()
+
+        published_courses_count = db.query(func.count(CourseModel.id)).filter(
+            CourseModel.instructor_id == prof.id,
+            CourseModel.status == CourseStatus.published
+        ).scalar()
+
+        latest_published_course_date = db.query(func.max(CourseModel.created_at)).filter(
+            CourseModel.instructor_id == prof.id,
+            CourseModel.status == CourseStatus.published
+        ).scalar()
         
         students_count_query = db.query(func.count(Enrollment.user_id.distinct())) \
             .join(CourseModel, Enrollment.course_id == CourseModel.id) \
             .filter(CourseModel.instructor_id == prof.id)
         students_count = students_count_query.scalar()
+
+        enrolled_student = aliased(UserModel)
+        active_students_count = db.query(func.count(Enrollment.user_id.distinct())) \
+            .join(CourseModel, Enrollment.course_id == CourseModel.id) \
+            .join(enrolled_student, enrolled_student.id == Enrollment.user_id) \
+            .filter(
+                CourseModel.instructor_id == prof.id,
+                enrolled_student.is_active == True
+            ).scalar()
 
         average_rating = 0.0  # à implémenter si tu veux la note moyenne des cours
 
@@ -129,8 +165,14 @@ async def get_admin_professors_service(db: Session) -> List[ProfessorStats]:
                 name=prof.name or "N/A",
                 email=prof.email,
                 courses_count=courses_count or 0,
+                published_courses_count=published_courses_count or 0,
                 students_count=students_count or 0,
-                average_rating=average_rating
+                active_students_count=active_students_count or 0,
+                average_rating=average_rating,
+                specialization=prof.professor_profile.specialization if prof.professor_profile else None,
+                phone=prof.phone,
+                is_active=bool(prof.is_active),
+                latest_course_published_at=latest_published_course_date.isoformat() + "Z" if latest_published_course_date else None
             )
         )
     return professor_stats_list

@@ -85,12 +85,12 @@ class RequirePermission:
         #         detail="User inactive"
         #     )
 
-        # Super_admin check:
+        # Super_admin / admin check: full access bypass
         if current_user.role_id:
             # Fetch the role name using role_id from the User object
             role = db.query(models.Roles).filter(models.Roles.id == current_user.role_id).first()
-            if role and role.name == "super_admin":
-                return current_user # Super_admin has all permissions
+            if role and role.name in ("super_admin", "admin"):
+                return current_user # super_admin and admin have all permissions
 
         has_perm = check_permission(user=current_user, permission_name=self.permission_name, db=db)
         if not has_perm:

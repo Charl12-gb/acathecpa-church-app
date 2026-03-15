@@ -60,15 +60,24 @@ def read_single_course(
         if current_user.id != db_course.instructor_id and not is_admin_role:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to view this draft course")
 
-    # 👇 Intégration de la progression identique à la logique fonctionnelle
+    # 👇 Use per-student enrollment data for progress calculation
     progress = None
     if current_user:
-        total_lessons = sum(len(section.lessons) for section in db_course.sections)
-        completed_lessons = sum(
-            1 for section in db_course.sections for lesson in section.lessons if lesson.is_completed
-        )
-        progress = round((completed_lessons / total_lessons) * 100, 1) if total_lessons else 0.0
-        db_course.progress = progress
+        enrollment = course_service.get_enrollment(db, user_id=current_user.id, course_id=course_id)
+        if enrollment:
+            # Auto-complete sections whose lessons are all done
+            course_service._auto_complete_sections(db, enrollment, course_id)
+            db.commit()
+
+            total_lessons = sum(len(section.lessons) for section in db_course.sections)
+            completed_lesson_ids = set(enrollment.completed_lessons or [])
+            completed_count = sum(1 for section in db_course.sections for lesson in section.lessons if lesson.id in completed_lesson_ids)
+            progress = round((completed_count / total_lessons) * 100, 1) if total_lessons else 0.0
+            db_course.progress = progress
+            # Update is_completed flags for the response based on this student's enrollment
+            for section in db_course.sections:
+                for lesson in section.lessons:
+                    lesson.is_completed = lesson.id in completed_lesson_ids
 
     return db_course
 
@@ -333,7 +342,7 @@ def delete_existing_question(
     return deleted_question
 
 # --- Enrollment Endpoints ---
-@router.post("/{course_id}/enroll", response_model=user_schema.User) 
+@router.post("/{course_id}/enroll", status_code=status.HTTP_201_CREATED)
 def enroll_in_course(
     course_id: int,
     db: Session = Depends(auth_deps.get_db),
@@ -341,20 +350,18 @@ def enroll_in_course(
 ):
     result = course_service.enroll_student_in_course(db, course_id, current_user.id)
     if result == "NotFound":
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course or user not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cours ou utilisateur introuvable")
     if result == "AlreadyEnrolled":
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User already enrolled in this course")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Vous êtes déjà inscrit à ce cours")
     if result == "CourseNotPublished":
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Course is not published")
-    if isinstance(result, str) and result not in ["NotFound", "AlreadyEnrolled", "CourseNotPublished"]:
-        # Catch other service error strings
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Could not enroll in course: {result}")
-    if not isinstance(result, UserModel) and result not in [current_user]: # If service returns Course model on success
-         # This path might be hit if service returns the course model on success, adjust as needed
-         pass # Or return a specific user schema if that's the contract
-    return current_user # Assuming current_user is the enrolled user to be returned
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Le cours n'est pas publié")
+    if result == "PaymentRequired":
+        raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Paiement requis pour ce cours")
+    if isinstance(result, str):
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Erreur d'inscription : {result}")
+    return {"message": "Inscription réussie", "course_id": course_id, "user_id": current_user.id}
 
-@router.post("/{course_id}/unenroll", response_model=user_schema.User)
+@router.post("/{course_id}/unenroll")
 def unenroll_from_course(
     course_id: int,
     db: Session = Depends(auth_deps.get_db),
@@ -362,12 +369,12 @@ def unenroll_from_course(
 ):
     result = course_service.unenroll_student_from_course(db, course_id, current_user.id)
     if result == "NotFound":
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course or user not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cours ou utilisateur introuvable")
     if result == "NotEnrolled":
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User is not enrolled in this course")
-    if isinstance(result, str) and result not in ["NotFound", "NotEnrolled"]:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Could not unenroll from course: {result}")
-    return current_user
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Vous n'êtes pas inscrit à ce cours")
+    if isinstance(result, str) and result not in ["NotFound", "NotEnrolled", "UnenrolledSuccessfully"]:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Erreur de désinscription : {result}")
+    return {"message": "Désinscription réussie", "course_id": course_id}
 
 @router.get("/me/enrolled", response_model=List[course_schema.Course])
 def get_my_enrolled_courses(
@@ -376,6 +383,16 @@ def get_my_enrolled_courses(
     skip: int = 0, limit: int = 20
 ):
     return course_service.get_user_enrolled_courses(db, current_user.id, skip, limit)
+
+@router.get("/me/certificates", response_model=List[certificate_schema.CertificateDisplay],
+            summary="Get all certificates for the current user")
+def get_my_certificates(
+    db: Session = Depends(auth_deps.get_db),
+    current_user: UserModel = Depends(auth_deps.get_current_active_user),
+    skip: int = 0,
+    limit: int = 50,
+):
+    return course_service.get_certificates_for_user(db, user_id=current_user.id, skip=skip, limit=limit)
 
 @router.get("/instructor/me", response_model=List[course_schema.Course])
 def get_my_instructed_courses(
@@ -478,19 +495,17 @@ def get_my_course_progress(
     if not course:
         raise HTTPException(status_code=404, detail="Course not found.")
 
+    # Use enrollment.completed_lessons (per-student) instead of lesson.is_completed (global)
     total_lessons = sum(len(section.lessons) for section in course.sections)
-    completed_lesson_ids = [
-        lesson.id
-        for section in course.sections
-        for lesson in section.lessons
-        if lesson.is_completed
-    ]
+    completed_lesson_ids = list(enrollment.completed_lessons or [])
 
     progress = round((len(completed_lesson_ids) / total_lessons) * 100, 1) if total_lessons else 0.0
 
-    # Facultatif : mise à jour de l'enrollment
+    # Auto-complete sections whose lessons are all done
+    course_service._auto_complete_sections(db, enrollment, course_id)
+
+    # Update enrollment with recalculated progress
     enrollment.progress_percentage = progress
-    enrollment.completed_lessons = completed_lesson_ids
     db.commit()
 
     return EnrollmentProgress(
@@ -577,22 +592,22 @@ def check_and_try_issue_certificate(
 
     if isinstance(result, str):
         if result == "EnrollmentNotFound":
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not enrolled in this course.")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vous n'êtes pas inscrit à ce cours.")
         if result == "CourseNotFound":
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found.")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cours introuvable.")
         if result == "CertificateAlreadyIssued":
-            # Not an error, just return a message or the existing certificate?
-            # For now, let's try to fetch and return it.
             existing_cert = course_service.get_certificate_for_course_by_user(db, user_id=current_user.id, course_id=course_id)
             if existing_cert: return existing_cert
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result) # Should not happen if cert exists
-        if result == "NotAllLessonsCompleted" or \
-           result == "NotAllSectionsCompleted" or \
-           result.startswith("PointsNotMet"):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Certificate requirements not met: {result}")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Le certificat a déjà été délivré.")
+        if result == "NotAllLessonsCompleted":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Toutes les leçons n'ont pas été complétées.")
+        if result == "NotAllSectionsCompleted":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Toutes les sections n'ont pas été complétées.")
+        if result.startswith("PointsNotMet"):
+            parts = result.split(":")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Points insuffisants : {parts[1] if len(parts) > 1 else 'non atteint'}")
         if result == "CertificateCreationError":
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not create certificate due to an internal error.")
-        # Default for other string messages from service
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Erreur interne lors de la création du certificat.")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result)
 
     if not result: # Should be caught by string checks, but as a fallback

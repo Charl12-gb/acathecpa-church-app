@@ -68,7 +68,7 @@ def require_professor(current_user: User = Depends(get_current_active_user)) -> 
     return current_user
 
 def require_student(current_user: User = Depends(get_current_active_user)) -> User:
-    if current_user.role.name not in [UserRoleEnum.student, UserRoleEnum.admin, UserRoleEnum.super_admin]:
+    if current_user.role.name not in [UserRoleEnum.student, UserRoleEnum.professor, UserRoleEnum.admin, UserRoleEnum.super_admin]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="The user doesn't have enough privileges (Student role required)"

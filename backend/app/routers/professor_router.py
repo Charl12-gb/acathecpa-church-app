@@ -9,6 +9,7 @@ from app.services import professor_service as dashboard_services
 from app.dependencies import auth as auth_deps
 from app.schemas import professor as professor_schema
 from app.schemas import user as user_schema
+from app.schemas import course as course_schema
 from app.permissions.dependencies import RequirePermission
 from app.core.config import settings
 from app.models.user import User as UserModel
@@ -70,6 +71,29 @@ async def get_admin_dashboard_professors(
     - **average_rating**: Average rating of their courses.
     """
     return await dashboard_services.get_admin_professors_service(db=db)
+
+
+@admin_dashboard_router.get(
+    "/professors/{professor_id}/courses",
+    response_model=List[course_schema.Course],
+    summary="Get Courses of a Professor",
+)
+async def get_admin_professor_courses(
+    professor_id: int,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_admin: UserModel = Depends(auth_deps.require_admin),
+):
+    """
+    Retrieve all courses created by a specific professor.
+    """
+    return dashboard_services.get_professor_courses_for_admin(
+        db=db,
+        professor_id=professor_id,
+        skip=skip,
+        limit=limit,
+    )
 
 @admin_dashboard_router.get("/recent-activities", response_model=List[RecentActivity], summary="Get Recent Activities")
 async def get_admin_dashboard_recent_activities(

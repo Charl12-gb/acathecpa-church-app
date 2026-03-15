@@ -19,9 +19,6 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# Import all models here so Base has them registered
-from app.models import *
-
 # Dependency to get DB session
 def get_db():
     db = SessionLocal()

@@ -14,6 +14,7 @@ from app.models.course_lesson import CourseLesson
 from app.models.course_test import CourseTest
 from app.models.test_question import TestQuestion, QuestionType
 from app.models.enrollments import Enrollment
+from app.models.payment import Payment
 
 # Accès à la configuration Alembic
 config = context.config

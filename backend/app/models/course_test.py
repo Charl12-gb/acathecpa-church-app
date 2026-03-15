@@ -1,7 +1,6 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey # duration was missing, passingScore, maxAttempts
+from sqlalchemy import Column, Integer, String, Text, ForeignKey
 from sqlalchemy.orm import relationship
-from .user import Base
-from app.models.test_question import TestQuestion
+from app.database import Base
 
 class CourseTest(Base):
     __tablename__ = "course_tests"

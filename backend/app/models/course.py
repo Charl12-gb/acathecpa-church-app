@@ -34,6 +34,7 @@ class Course(Base):
     live_sessions = relationship("LiveSession", back_populates="course")
     certificates = relationship("Certificate", back_populates="course", cascade="all, delete-orphan")
     enrollments = relationship("Enrollment", back_populates="course", cascade="all, delete-orphan")
+    payments = relationship("Payment", back_populates="course", cascade="all, delete-orphan")
     enrolled_students = relationship("User", secondary="enrollments", back_populates="enrolled_courses")
 
     def __repr__(self):

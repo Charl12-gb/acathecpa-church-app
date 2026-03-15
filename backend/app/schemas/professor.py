@@ -73,8 +73,14 @@ class ProfessorStats(BaseModel):
     name: str = Field(..., description="Professor's full name.")
     email: str = Field(..., description="Professor's email address.")
     courses_count: int = Field(..., description="Number of courses taught by the professor.")
+    published_courses_count: int = Field(..., description="Number of published courses by the professor.")
     students_count: int = Field(..., description="Total number of students enrolled in the professor's courses.")
+    active_students_count: int = Field(..., description="Number of active students enrolled in the professor's courses.")
     average_rating: float = Field(..., description="Average rating of the professor's courses.")
+    specialization: Optional[str] = Field(default=None, description="Professor specialization.")
+    phone: Optional[str] = Field(default=None, description="Professor phone number.")
+    is_active: bool = Field(..., description="Whether the professor account is active.")
+    latest_course_published_at: Optional[str] = Field(default=None, description="Latest published course date in ISO format.")
 
 
 class RecentActivity(BaseModel):

@@ -1,7 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, Enum as SQLAlchemyEnum, ForeignKey, Text
 from sqlalchemy.orm import relationship
-from .user import Base
-from .course import Course # Import Course
+from app.database import Base
 from datetime import datetime
 import enum
 
@@ -22,7 +21,7 @@ class LiveSession(Base):
     __tablename__ = "live_sessions"
 
     id = Column(Integer, primary_key=True, index=True)
-    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
+    course_id = Column(Integer, ForeignKey("courses.id"), nullable=True)
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     scheduled_for = Column(DateTime, nullable=False)

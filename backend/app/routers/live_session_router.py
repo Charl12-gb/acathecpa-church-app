@@ -13,6 +13,21 @@ from app.permissions.dependencies import RequirePermission
 
 router = APIRouter(prefix=f"{settings.API_V1_STR}/live-sessions", tags=["Live Sessions"])
 
+@router.get("/", response_model=List[ls_schema.LiveSession])
+def read_all_live_sessions(
+    skip: int = 0,
+    limit: int = 50,
+    db: Session = Depends(auth_deps.get_db),
+    current_user: UserModel = Depends(RequirePermission("view_live_sessions_for_course"))
+):
+    """List all live sessions. Professors see only their own, admins see all."""
+    role_name = current_user.role.name if current_user.role else None
+    if role_name in ["admin", "super_admin"]:
+        sessions = ls_service.get_all_live_sessions(db, skip, limit)
+    else:
+        sessions = ls_service.get_live_sessions_for_host(db, current_user.id, skip, limit)
+    return sessions
+
 @router.post("/", response_model=ls_schema.LiveSession, status_code=status.HTTP_201_CREATED)
 def create_new_live_session(
     session_in: ls_schema.LiveSessionCreate,
@@ -94,24 +109,57 @@ def delete_existing_live_session(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=deleted_session)
     return deleted_session
 
-# Placeholder for Agora token generation endpoint
-# @router.post("/{session_id}/join-token", response_model=ls_schema.AgoraToken) # Define AgoraToken schema
-# def get_agora_join_token(
-#     session_id: int,
-#     db: Session = Depends(auth_deps.get_db),
-#     current_user: UserModel = Depends(auth_deps.get_current_active_user)
-# ):
-#     db_session = ls_service.get_live_session(db, session_id)
-#     if not db_session:
-#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Live session not found")
-#     
-#     # Check if user is allowed to join (e.g., enrolled in course)
-#     # ... authorization logic ...
-# 
-#     # Check if session is live or scheduled
-#     if db_session.status not in [ls_model.LiveSessionStatus.scheduled, ls_model.LiveSessionStatus.live]:
-#         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Session is not available to join")
-# 
-#     # token = ls_service.generate_agora_token(db_session.agora_channel_name, current_user.id)
-#     # return {"token": token, "channel_name": db_session.agora_channel_name}
-#     raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Agora token generation not implemented")
+@router.patch("/{session_id}/status", response_model=ls_schema.LiveSession)
+def update_live_session_status(
+    session_id: int,
+    status_update: ls_schema.LiveSessionStatusUpdate,
+    db: Session = Depends(auth_deps.get_db),
+    current_user: UserModel = Depends(RequirePermission("edit_live_session"))
+):
+    """Update only the status of a live session (scheduled -> live -> ended)."""
+    result = ls_service.update_live_session_status(db, session_id, status_update.status, current_user)
+    if result == "NotAuthorized":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this live session")
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Live session not found")
+    if isinstance(result, str):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result)
+    return result
+
+from app.models.live_session import LiveSessionStatus as LSStatus
+
+@router.post("/{session_id}/join", response_model=ls_schema.AgoraJoinResponse)
+def join_live_session(
+    session_id: int,
+    db: Session = Depends(auth_deps.get_db),
+    current_user: UserModel = Depends(RequirePermission("view_live_session_detail"))
+):
+    """Get Agora credentials to join a live session."""
+    db_session = ls_service.get_live_session(db, session_id)
+    if not db_session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Live session not found")
+
+    if db_session.status == LSStatus.ended:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cette session est terminée")
+
+    if not settings.AGORA_APP_ID:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="La visioconférence n'est pas configurée. Veuillez définir AGORA_APP_ID."
+        )
+
+    token = None
+    if settings.AGORA_APP_CERTIFICATE:
+        token = ls_service.generate_agora_token(
+            settings.AGORA_APP_ID,
+            settings.AGORA_APP_CERTIFICATE,
+            db_session.agora_channel_name,
+            current_user.id
+        )
+
+    return {
+        "app_id": settings.AGORA_APP_ID,
+        "channel": db_session.agora_channel_name,
+        "token": token,
+        "uid": current_user.id
+    }

@@ -12,7 +12,7 @@ class LiveSessionBase(BaseModel):
     status: LiveSessionStatus = LiveSessionStatus.scheduled
 
 class LiveSessionCreate(LiveSessionBase):
-    course_id: int
+    course_id: Optional[int] = None
     host_id: Optional[int] = None # Will be set from current user usually
     agora_channel_name: Optional[str] = None # Can be auto-generated
 
@@ -24,9 +24,19 @@ class LiveSessionUpdate(BaseModel):
     status: Optional[LiveSessionStatus] = None
     agora_channel_name: Optional[str] = None
 
+class LiveSessionStatusUpdate(BaseModel):
+    status: LiveSessionStatus
+
+class AgoraJoinResponse(BaseModel):
+    app_id: str
+    channel: str
+    token: Optional[str] = None
+    uid: int
+
+
 class LiveSession(LiveSessionBase):
     id: int
-    course_id: int
+    course_id: Optional[int] = None
     host_id: int
     host: Optional[User] = None
     agora_channel_name: Optional[str] = None
