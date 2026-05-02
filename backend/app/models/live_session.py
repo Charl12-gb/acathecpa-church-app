@@ -15,7 +15,7 @@ class LiveSessionStatus(enum.Enum):
 #     Column('live_session_id', Integer, ForeignKey('live_sessions.id'), primary_key=True)
 # )
 # The 'participants' array in the store seems to be dynamic based on who joins.
-# For persistent tracking, a table like above would be needed. For now, assume it's managed by Agora/app logic.
+# For persistent tracking, a table like above would be needed.
 
 class LiveSession(Base):
     __tablename__ = "live_sessions"
@@ -28,13 +28,15 @@ class LiveSession(Base):
     duration_minutes = Column(Integer, nullable=True) # Duration in minutes
     host_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     status = Column(SQLAlchemyEnum(LiveSessionStatus), default=LiveSessionStatus.scheduled)
+    actual_started_at = Column(DateTime, nullable=True)
+    actual_ended_at = Column(DateTime, nullable=True)
     
-    # Fields for Agora integration if needed persistently
-    agora_channel_name = Column(String, nullable=True, unique=True) # Channel name should be unique
-    # agora_token = Column(String, nullable=True) # Tokens are often short-lived and generated on demand
+    # Meeting room identifier for Jitsi/JaaS.
+    meeting_room_name = Column(String, nullable=True, unique=True)
 
     course = relationship("Course", back_populates="live_sessions")
     host = relationship("User", back_populates="hosted_live_sessions")
+    attendances = relationship("LiveSessionAttendance", back_populates="live_session", cascade="all, delete-orphan")
     # participants = relationship("User", secondary=live_session_participants, back_populates="attended_live_sessions")
 
 

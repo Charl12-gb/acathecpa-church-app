@@ -28,6 +28,7 @@ class User(Base):
     authored_content = relationship("Content", back_populates="author")
     instructed_courses = relationship("Course", back_populates="instructor")
     hosted_live_sessions = relationship("LiveSession", back_populates="host")
+    live_session_attendances = relationship("LiveSessionAttendance", back_populates="user", cascade="all, delete-orphan")
     role = relationship("Roles", back_populates="users")
     user_permissions = relationship("UserPermissions", back_populates="user")
     professor_profile = relationship("ProfessorProfile", back_populates="user", uselist=False)  # Add relationship

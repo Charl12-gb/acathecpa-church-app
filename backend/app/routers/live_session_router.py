@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List
 
 from app.schemas import live_session as ls_schema
 from app.models.user import User as UserModel # UserRole removed as permissions handle roles
@@ -34,43 +34,38 @@ def create_new_live_session(
     db: Session = Depends(auth_deps.get_db),
     current_user: UserModel = Depends(RequirePermission("create_live_session"))
 ):
-    # Authorization (e.g. is user instructor of the course_id in session_in) is handled in the service layer.
     result = ls_service.create_live_session(db=db, session=session_in, host_id=current_user.id)
-    
+
     if result == "CourseNotFound":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
     if result == "NotAuthorizedToHost":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User not authorized to host sessions for this course")
-    if result == "HostUserNotFound": 
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Host user not found") # Should be caught by RequirePermission
-    if isinstance(result, str): 
+    if result == "HostUserNotFound":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Host user not found")
+    if isinstance(result, str):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result)
-        
+
     return result
 
 @router.get("/course/{course_id}", response_model=List[ls_schema.LiveSession], dependencies=[Depends(RequirePermission("view_live_sessions_for_course"))])
 def read_sessions_for_course(
-    course_id: int, 
-    skip: int = 0, 
-    limit: int = 20, 
+    course_id: int,
+    skip: int = 0,
+    limit: int = 20,
     db: Session = Depends(auth_deps.get_db)
-    # current_user: UserModel = Depends(RequirePermission("view_live_sessions_for_course")) - if user object needed
 ):
-    # Service should handle visibility based on user's enrollment or admin status for the course_id.
     db_course = db.query(course_model.Course).filter(course_model.Course.id == course_id).first()
     if not db_course:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
-        
+
     sessions = ls_service.get_live_sessions_for_course(db, course_id, skip, limit)
     return sessions
 
 @router.get("/{session_id}", response_model=ls_schema.LiveSession, dependencies=[Depends(RequirePermission("view_live_session_detail"))])
 def read_single_live_session(
-    session_id: int, 
+    session_id: int,
     db: Session = Depends(auth_deps.get_db)
-    # current_user: UserModel = Depends(RequirePermission("view_live_session_detail")) - if user object needed
 ):
-    # Service should handle visibility
     db_session = ls_service.get_live_session(db, session_id)
     if not db_session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Live session not found")
@@ -83,13 +78,12 @@ def update_existing_live_session(
     db: Session = Depends(auth_deps.get_db),
     current_user: UserModel = Depends(RequirePermission("edit_live_session"))
 ):
-    # Service layer `update_live_session` should handle ownership/admin check using current_user.
     updated_session = ls_service.update_live_session(db, session_id, session_in, current_user)
     if updated_session == "NotAuthorized":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this live session")
-    if updated_session is None: 
+    if updated_session is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Live session not found")
-    if isinstance(updated_session, str): 
+    if isinstance(updated_session, str):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=updated_session)
     return updated_session
 
@@ -99,13 +93,12 @@ def delete_existing_live_session(
     db: Session = Depends(auth_deps.get_db),
     current_user: UserModel = Depends(RequirePermission("delete_live_session"))
 ):
-    # Service layer `delete_live_session` should handle ownership/admin check.
     deleted_session = ls_service.delete_live_session(db, session_id, current_user)
     if deleted_session == "NotAuthorized":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this live session")
-    if deleted_session is None: # Not found
+    if deleted_session is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Live session not found")
-    if isinstance(deleted_session, str): # Catch any other string error messages from service
+    if isinstance(deleted_session, str):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=deleted_session)
     return deleted_session
 
@@ -128,13 +121,40 @@ def update_live_session_status(
 
 from app.models.live_session import LiveSessionStatus as LSStatus
 
-@router.post("/{session_id}/join", response_model=ls_schema.AgoraJoinResponse)
+@router.get("/{session_id}/attendance", response_model=ls_schema.LiveSessionAttendanceSummary)
+def read_live_session_attendance(
+    session_id: int,
+    db: Session = Depends(auth_deps.get_db),
+    current_user: UserModel = Depends(RequirePermission("view_live_session_detail"))
+):
+    summary = ls_service.get_live_session_attendance_summary(db, session_id)
+    if summary is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Live session not found")
+    return summary
+
+@router.post("/{session_id}/reschedule", response_model=ls_schema.LiveSession, status_code=status.HTTP_201_CREATED)
+def reschedule_existing_live_session(
+    session_id: int,
+    payload: ls_schema.LiveSessionReschedule,
+    db: Session = Depends(auth_deps.get_db),
+    current_user: UserModel = Depends(RequirePermission("edit_live_session"))
+):
+    result = ls_service.reschedule_live_session(db, session_id, payload, current_user)
+    if result == "NotAuthorized":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to reschedule this live session")
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Live session not found")
+    if isinstance(result, str):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result)
+    return result
+
+@router.post("/{session_id}/join", response_model=ls_schema.JitsiJoinResponse)
 def join_live_session(
     session_id: int,
     db: Session = Depends(auth_deps.get_db),
     current_user: UserModel = Depends(RequirePermission("view_live_session_detail"))
 ):
-    """Get Agora credentials to join a live session."""
+    """Get Jitsi/JaaS credentials to join a live session."""
     db_session = ls_service.get_live_session(db, session_id)
     if not db_session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Live session not found")
@@ -142,24 +162,35 @@ def join_live_session(
     if db_session.status == LSStatus.ended:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cette session est terminée")
 
-    if not settings.AGORA_APP_ID:
+    if not settings.JITSI_APP_ID:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="La visioconférence n'est pas configurée. Veuillez définir AGORA_APP_ID."
+            detail="La visioconférence n'est pas configurée. Veuillez définir JITSI_APP_ID."
         )
 
-    token = None
-    if settings.AGORA_APP_CERTIFICATE:
-        token = ls_service.generate_agora_token(
-            settings.AGORA_APP_ID,
-            settings.AGORA_APP_CERTIFICATE,
-            db_session.agora_channel_name,
-            current_user.id
-        )
+    room = db_session.meeting_room_name or f"live-session-{db_session.id}"
+    domain = settings.JITSI_DOMAIN
+    url = f"https://{domain}/{settings.JITSI_APP_ID}/{room}"
+    ls_service.record_live_session_join(db, db_session, current_user)
 
     return {
-        "app_id": settings.AGORA_APP_ID,
-        "channel": db_session.agora_channel_name,
-        "token": token,
+        "app_id": settings.JITSI_APP_ID,
+        "domain": domain,
+        "room": room,
+        "url": url,
+        "jwt": settings.JITSI_JWT,
         "uid": current_user.id
     }
+
+@router.post("/{session_id}/leave")
+def leave_live_session(
+    session_id: int,
+    db: Session = Depends(auth_deps.get_db),
+    current_user: UserModel = Depends(RequirePermission("view_live_session_detail"))
+):
+    db_session = ls_service.get_live_session(db, session_id)
+    if not db_session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Live session not found")
+
+    ls_service.record_live_session_leave(db, session_id, current_user)
+    return {"detail": "Presence updated"}

@@ -42,9 +42,10 @@ class Settings:
     VALIDATE_CERTS: bool = os.getenv("VALIDATE_CERTS", "True").lower() == "true"
     MAIL_ENABLED: bool = os.getenv("MAIL_ENABLED", "True").lower() == "true"
 
-    # Agora Settings
-    AGORA_APP_ID: Optional[str] = os.getenv("AGORA_APP_ID")
-    AGORA_APP_CERTIFICATE: Optional[str] = os.getenv("AGORA_APP_CERTIFICATE")
+    # Jitsi / JaaS Settings
+    JITSI_APP_ID: Optional[str] = os.getenv("JITSI_APP_ID")
+    JITSI_JWT: Optional[str] = os.getenv("JITSI_JWT")
+    JITSI_DOMAIN: str = os.getenv("JITSI_DOMAIN", "8x8.vc")
 
 
 settings = Settings()

@@ -2,6 +2,7 @@
 # puisse résoudre toutes les relationships déclarées par string.
 from .content import Content
 from .live_session import LiveSession
+from .live_session_attendance import LiveSessionAttendance
 from .course_section import CourseSection
 from .course_lesson import CourseLesson
 from .course_test import CourseTest
@@ -19,6 +20,7 @@ from app.permissions.models import Roles, Permissions, RolesPermissions, UserPer
 __all__ = [
     "Content",
     "LiveSession",
+    "LiveSessionAttendance",
     "CourseSection",
     "CourseLesson",
     "CourseTest",

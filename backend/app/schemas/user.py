@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from typing import Optional, List
 from datetime import datetime
 from app.permissions.schemas import RoleBase
@@ -48,9 +48,7 @@ class User(UserBase):
     # authored_content: List['Content'] = [] # Forward reference for circular deps
     # instructed_courses: List['Course'] = []
 
-    class Config:
-        orm_mode = True # Enables Pydantic to work with ORM objects
-        use_enum_values = True # Ensures enum values are used, not enum objects
+    model_config = ConfigDict(from_attributes=True, use_enum_values=True)
 
 class ProfessorUserAndProfileCreate(UserBase): # Hérite des champs utilisateur de UserBase
     password: str = Field(..., min_length=8) # Mot de passe requis pour un nouvel utilisateur
