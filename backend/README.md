@@ -1,88 +1,168 @@
-# Backend (FastAPI Application)
+# Backend Django (DRF)
 
-This directory contains the FastAPI backend for the application. It provides APIs for user authentication, content management, course handling, and live sessions.
+Migration progressive du backend FastAPI vers **Django REST Framework**.
 
-## Project Structure
+> Modules en place : **Auth + Users + Permissions/Rôles**, **Courses (Sections / Lessons / Tests / Questions)**, **Enrollments + Progression + Certificates**, **Content (articles + podcasts)**, **Payments**, **Live Sessions + Attendance**, **Student Dashboard**, **Professors (profils + Admin Dashboard + Professor Dashboard)**.
 
--   `app/`: Main application code.
-    -   `core/`: Configuration (settings).
-    -   `models/`: SQLAlchemy database models.
-    -   `schemas/`: Pydantic schemas for data validation and serialization.
-    -   `routers/`: API endpoint definitions.
-    -   `services/`: Business logic.
-    -   `dependencies/`: Shared dependencies (e.g., authentication).
-    -   `database.py`: Database engine and session setup.
--   `alembic/`: Alembic migration scripts and configuration.
--   `tests/`: Pytest unit and integration tests.
--   `main.py`: FastAPI application entry point.
--   `.env.example`: Example environment variables. Copy to `.env` and fill in your values.
--   `requirements.txt`: Python dependencies.
--   `alembic.ini`: Alembic configuration file.
+---
 
-## Setup and Running
+## 1. Prérequis
 
-1.  **Create a Python virtual environment:**
-    ```bash
-    python -m venv venv
-    source venv/bin/activate  # On Windows: venv\Scripts\activate
-    ```
+- Python ≥ 3.11
+- MySQL 8.x ou MariaDB 10.4+ (déjà disponible via XAMPP)
+- Un environnement virtuel Python
 
-2.  **Install dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
+---
 
-3.  **Set up environment variables:**
-    *   Copy `.env.example` to a new file named `.env`.
-    *   Update the `.env` file with your actual database connection details (PostgreSQL), JWT secret key, etc.
-    ```env
-    DATABASE_URL=postgresql://your_user:your_password@your_host:5432/your_db_name
-    SECRET_KEY=your_strong_secret_key
-    ALGORITHM=HS256
-    ACCESS_TOKEN_EXPIRE_MINUTES=30
-    REFRESH_TOKEN_EXPIRE_DAYS=7
-    ```
+## 2. Installation
 
-4.  **Database Migrations (PostgreSQL server must be running and accessible):**
-    *   The initial migration script has been generated in `alembic/versions/`.
+```bash
+cd backend_django
+python -m venv .venv
+source .venv/bin/activate            # macOS / Linux
+pip install --upgrade pip
+pip install -r requirements.txt
+cp .env.example .env                 # puis éditer les valeurs
+```
 
-    * Generate the initial migration script:
-    ```bash
-    alembic revision --autogenerate -m "initial migration"
-    ```
-    
-    *   To apply migrations and create database tables, run:
-        ```bash
-        # Ensure your .env file is configured and your PostgreSQL server is running
-        alembic upgrade head
-        ```
-    *   (Note: If you need to generate a new migration after model changes: `alembic revision -m "description_of_changes"`)
+### 2.1 Créer la base MySQL
 
+Via phpMyAdmin (XAMPP) ou en ligne de commande :
 
-5.  **Run the FastAPI development server:**
-    ```bash
-    uvicorn app.main:app --reload
-    ```
-    The application will typically be available at `http://127.0.0.1:8000`.
-    API documentation (Swagger UI) will be at `http://127.0.0.1:8000/docs`.
+```sql
+CREATE DATABASE acathecpa CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
 
-## Testing
+---
 
-1.  Ensure you have a separate test database configured (e.g., by appending `_test` to your main database name in `DATABASE_URL` for tests, or configure `TEST_DATABASE_URL` in `tests/conftest.py`).
-2.  The `tests/conftest.py` attempts to run migrations on the test database.
-3.  Run tests using pytest:
-    ```bash
-    pytest
-    ```
+## 3. Migrations
 
-# Seeder uniquement les rôles et permissions
-python manage.py seed-roles-permissions
+```bash
+# Générer (uniquement si tu as modifié des modèles)
+python manage.py makemigrations app_permissions accounts courses enrollments content payments live_sessions professors
 
-# Seeder uniquement l'utilisateur admin
-python manage.py seed-default-user
+# Appliquer
+python manage.py migrate
+```
 
-# Seeder tout d'un coup
-python manage.py seed-all
+---
 
-# Voir l'aide
-python manage.py --help
+## 4. Lancer le serveur
+
+```bash
+python manage.py runserver 0.0.0.0:8000
+```
+
+- API : http://localhost:8000/api/v1/
+- Admin Django : http://localhost:8000/admin/
+- Swagger UI : http://localhost:8000/api/docs/
+- Schéma OpenAPI : http://localhost:8000/api/schema/
+
+---
+
+## 5. Commandes utiles
+
+### 5.1 Commandes Django de base
+
+| Commande | Description |
+|---|---|
+| `python manage.py runserver 0.0.0.0:8000` | Lance le serveur de dev |
+| `python manage.py makemigrations [app_label]` | Génère les fichiers de migration |
+| `python manage.py migrate [app_label]` | Applique les migrations |
+| `python manage.py showmigrations` | Liste l'état de toutes les migrations |
+| `python manage.py createsuperuser` | Crée un super-utilisateur Django (accès `/admin`) |
+| `python manage.py shell` | Ouvre un shell Python avec l'ORM chargé |
+| `python manage.py dbshell` | Ouvre un shell SQL sur la base configurée |
+| `python manage.py collectstatic` | Collecte les fichiers statiques (production) |
+| `python manage.py check` | Vérifie la configuration du projet |
+| `python manage.py spectacular --file schema.yml` | Exporte le schéma OpenAPI dans un fichier |
+
+### 5.2 Commandes de seed
+
+| Commande | Description |
+|---|---|
+| `python manage.py seed_permissions` | Crée les rôles (`super_admin`, `admin`, `professor`, `student`), toutes les permissions et leurs assignations rôle ↔ permission. **À lancer en premier après `migrate`.** |
+| `python manage.py seed_default_user --email <email> --password <pwd> [--name "<Nom>"]` | Crée (ou met à jour) un compte `super_admin`. `--name` par défaut : `"Super Admin"`. |
+| `python manage.py seed_demo_data` | Insère un jeu de données de démo : professeurs, cours avec sections/leçons/tests, contenu (articles + podcasts), étudiant inscrit. |
+
+#### Ordre recommandé pour un projet vierge
+
+```bash
+python manage.py migrate
+python manage.py seed_permissions
+python manage.py seed_default_user --email=admin@acathecpa.local --password=Admin123
+python manage.py seed_demo_data        # optionnel
+python manage.py createsuperuser       # optionnel, pour /admin Django
+```
+
+### 5.3 Tests
+
+```bash
+pytest                  # exécute la suite (62 tests)
+pytest -x               # arrête au premier échec
+pytest -k <pattern>     # filtre par nom
+pytest --cov=apps       # couverture (si pytest-cov installé)
+```
+
+La configuration `config/settings_test.py` utilise SQLite en mémoire et désactive les migrations (`MIGRATION_MODULES`) pour créer les tables directement à partir des modèles.
+
+---
+
+## 6. Modèle de permissions
+
+Identique au backend FastAPI :
+
+- `super_admin` et `admin` → bypass automatique (toutes permissions accordées).
+- Sinon, vérification dans cet ordre :
+  1. Le rôle de l'utilisateur a-t-il la permission ?
+     - Oui → vérifie qu'il n'y a pas un override `Remove` au niveau utilisateur.
+  2. L'utilisateur a-t-il un override `Add` ?
+  3. Sinon → refusé.
+
+Implémenté dans [apps/permissions/permissions.py](apps/permissions/permissions.py).
+
+---
+
+## 7. Documentation des endpoints
+
+La liste complète des routes, paramètres et schémas est disponible **automatiquement** :
+
+- **Swagger UI** : http://localhost:8000/api/docs/
+- **Schéma OpenAPI brut** : http://localhost:8000/api/schema/
+
+Modules exposés sous `/api/v1/` : `auth`, `users`, `permissions`, `courses`, `contents`, `payments`, `live-sessions`, `student/dashboard`, `professors`, `admin/dashboard`, `certificates`, `contact`.
+
+---
+
+## 8. Mapping FastAPI → DRF
+
+| FastAPI | Django REST Framework |
+|--------|---|
+| `APIRouter` | `urls.py` + `DefaultRouter` |
+| Pydantic schemas | DRF `Serializer` / `ModelSerializer` |
+| SQLAlchemy `Base` + `Column` | `django.db.models.Model` |
+| `Depends(get_db)` | ORM Django (pas de session manuelle) |
+| `Depends(get_current_user)` | `IsAuthenticated` + `request.user` |
+| `RequirePermission("xxx")` | `HasPermission.with_name("xxx")` |
+| Alembic | `python manage.py migrate` |
+| `python-jose` | `djangorestframework-simplejwt` + `pyjwt` |
+| `passlib bcrypt` | `set_password()` (PBKDF2 par défaut) |
+
+> ⚠️ Les hashs de mot de passe FastAPI (bcrypt via passlib) **ne sont pas compatibles** avec PBKDF2 par défaut de Django.
+> Si tu veux importer les utilisateurs existants, ajoute `'django.contrib.auth.hashers.BCryptPasswordHasher'` en tête de `PASSWORD_HASHERS`.
+
+---
+
+## 9. État d'avancement
+
+- [x] `accounts` — Auth, users, JWT, refresh token
+- [x] `app_permissions` — rôles, permissions, overrides utilisateur
+- [x] `courses` — Course, Section, Lesson, Test, Question
+- [x] `enrollments` — inscriptions, progression, soumissions de tests, certificats
+- [x] `content` — articles & podcasts
+- [x] `payments` — initiation + confirmation + payment gate sur l'inscription payante
+- [x] `live_sessions` — sessions Jitsi/JaaS, présence, reschedule
+- [x] `student_dashboard` — stats, recommandations, activité hebdo
+- [x] `professors` — profils, création professeur, Admin Dashboard, Professor Dashboard
+- [x] Seeds : `seed_permissions`, `seed_default_user`, `seed_demo_data`
+- [x] Tests `pytest-django` — **62 tests** verts
