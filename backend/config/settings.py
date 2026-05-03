@@ -184,6 +184,9 @@ CORS_ALLOWED_ORIGINS = env_list(
 )
 CORS_ALLOW_CREDENTIALS = True
 
+# Origines CSRF de confiance (Django requiert le schéma complet : https://...)
+CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", "")
+
 
 # --------------------------------------------------------------------------- #
 # Email

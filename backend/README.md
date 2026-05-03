@@ -90,7 +90,7 @@ python manage.py runserver 0.0.0.0:8000
 ```bash
 python manage.py migrate
 python manage.py seed_permissions
-python manage.py seed_default_user --email=admin@acathecpa.local --password=Admin123
+python manage.py seed_default_user --email=admin@acathecpa.local --password=Admin123 
 python manage.py seed_demo_data        # optionnel
 python manage.py createsuperuser       # optionnel, pour /admin Django
 ```
