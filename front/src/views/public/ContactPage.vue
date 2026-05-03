@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { sendContactMessage } from '../../services/api/contact'
 
 const contactForm = ref({
   name: '',
@@ -16,11 +17,14 @@ const submitForm = async () => {
   loading.value = true
   error.value = ''
   try {
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await sendContactMessage({ ...contactForm.value })
     contactForm.value = { name: '', email: '', subject: '', message: '' }
     formSubmitted.value = true
   } catch (err: any) {
-    error.value = err.message || 'Une erreur est survenue. Veuillez réessayer.'
+    error.value =
+      err?.response?.data?.detail ||
+      err?.message ||
+      'Une erreur est survenue. Veuillez réessayer.'
   } finally {
     loading.value = false
   }
@@ -177,6 +181,8 @@ const submitForm = async () => {
 </template>
 
 <style scoped lang="scss">
+@use "sass:color";
+
 $primary:    #C14428;
 $secondary:  #1B7A78;
 $accent:     #F4A300;
@@ -200,7 +206,7 @@ $shadow-lg:  0 8px 40px rgba(0,0,0,.10);
 /* ═══════ HERO ═══════ */
 .page-hero {
   position: relative;
-  background: linear-gradient(160deg, $success 0%, darken($secondary, 10%) 100%);
+  background: linear-gradient(160deg, $success 0%, color.adjust($secondary, $lightness: -10%) 100%);
   padding: 110px 24px 60px;
   text-align: center;
   overflow: hidden;
@@ -413,7 +419,7 @@ textarea {
   cursor: pointer;
   transition: all .25s;
   align-self: flex-start;
-  &:hover:not(:disabled) { background: darken($secondary, 8%); transform: translateY(-1px); box-shadow: 0 4px 16px rgba($secondary, .3); }
+  &:hover:not(:disabled) { background: color.adjust($secondary, $lightness: -8%); transform: translateY(-1px); box-shadow: 0 4px 16px rgba($secondary, .3); }
   &:disabled { opacity: .65; cursor: not-allowed; }
 }
 .btn-spinner {
@@ -533,7 +539,7 @@ textarea {
   display: grid;
   place-items: center;
   margin-bottom: 14px;
-  i { font-size: 1.2rem; color: darken($accent, 10%); }
+  i { font-size: 1.2rem; color: color.adjust($accent, $lightness: -10%); }
 }
 
 /* ═══════ MAP ═══════ */

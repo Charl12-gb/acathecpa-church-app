@@ -70,6 +70,13 @@
               :src="article.mediaUrl || 'https://placehold.co/600x340?text=Article'"
               :alt="article.title"
             />
+            <span
+              v-if="isPremium(article)"
+              class="card-premium"
+              :title="`Contenu premium · ${article.price} XOF`"
+            >
+              <i class="bi bi-star-fill"></i> Premium · {{ article.price }} XOF
+            </span>
             <span class="card-format" :class="article.format">
               <i :class="article.format === 'video' ? 'bi bi-play-circle-fill' : 'bi bi-file-earmark-text-fill'"></i>
               {{ article.format === 'video' ? 'Vidéo' : 'Texte' }}
@@ -123,6 +130,10 @@ const articles = ref<Content[]>([])
 const loading = ref(false)
 const error = ref('')
 
+// L'API DRF renvoie `is_premium` (snake_case) tandis que le type front utilise `isPremium`
+const isPremium = (item: Content): boolean =>
+  Boolean(item.isPremium || (item as unknown as Record<string, unknown>).is_premium)
+
 const filters = ref({
   search: '',
   tag: '',
@@ -174,6 +185,8 @@ onMounted(() => { loadArticles() })
 </script>
 
 <style scoped lang="scss">
+@use "sass:color";
+
 $primary:    #C14428;
 $secondary:  #1B7A78;
 $accent:     #F4A300;
@@ -197,7 +210,7 @@ $shadow-lg:  0 8px 40px rgba(0,0,0,.10);
 /* ═══════ HERO ═══════ */
 .page-hero {
   position: relative;
-  background: linear-gradient(160deg, $success 0%, darken($secondary, 10%) 100%);
+  background: linear-gradient(160deg, $success 0%, color.adjust($secondary, $lightness: -10%) 100%);
   padding: 110px 24px 60px;
   text-align: center;
   overflow: hidden;
@@ -389,7 +402,7 @@ $shadow-lg:  0 8px 40px rgba(0,0,0,.10);
 .card-format {
   position: absolute;
   top: 14px;
-  left: 14px;
+  right: 14px;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -403,6 +416,23 @@ $shadow-lg:  0 8px 40px rgba(0,0,0,.10);
   color: #fff;
   background: rgba($secondary, .85);
   &.video { background: rgba($primary, .85); }
+}
+.card-premium {
+  position: absolute;
+  top: 50px;
+  right: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .03em;
+  color: $dark;
+  background: linear-gradient(135deg, #FFD86B 0%, $accent 100%);
+  box-shadow: 0 4px 14px rgba($accent, .5);
+  i { color: $primary; }
 }
 .card-body {
   padding: 20px;
@@ -505,7 +535,7 @@ $shadow-lg:  0 8px 40px rgba(0,0,0,.10);
   font-size: .9rem;
   cursor: pointer;
   transition: .2s;
-  &:hover { background: darken($secondary, 8%); transform: translateY(-1px); }
+  &:hover { background: color.adjust($secondary, $lightness: -8%); transform: translateY(-1px); }
 }
 
 /* ═══════ RESPONSIVE ═══════ */

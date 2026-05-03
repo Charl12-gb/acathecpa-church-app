@@ -383,6 +383,8 @@ const getCourseCategory = (course: Course) => {
 </template>
 
 <style scoped lang="scss">
+@use "sass:color";
+
 // ─── Palette ────────────────────────────────────
 $primary:     #2453a7;
 $primary-dark:#1a3f8a;
@@ -506,7 +508,7 @@ $radius:      14px;
   justify-content: space-between;
   gap: 0.75rem;
   padding-top: 0.75rem;
-  border-top: 1px solid lighten($border, 3%);
+  border-top: 1px solid color.adjust($border, $lightness: 3%);
 }
 
 // ─── Category pills ─────────────────────────────
@@ -619,7 +621,7 @@ $radius:      14px;
   transition: box-shadow 0.25s ease, border-color 0.25s ease;
 
   &:hover {
-    border-color: lighten($primary, 28%);
+    border-color: color.adjust($primary, $lightness: 28%);
     box-shadow: 0 8px 30px rgba($primary, 0.1);
   }
 }
@@ -1137,7 +1139,7 @@ $radius:      14px;
     background: $gray-light;
     color: $gray;
     border: 1px solid $border;
-    &:hover:not(:disabled) { color: $dark; border-color: darken($border, 8%); }
+    &:hover:not(:disabled) { color: $dark; border-color: color.adjust($border, $lightness: -8%); }
   }
 
   &:disabled { opacity: 0.6; cursor: not-allowed; }

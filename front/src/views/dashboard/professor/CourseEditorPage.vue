@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, nextTick } from 'vue';
+import { ref, onMounted, computed, nextTick, defineAsyncComponent } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { categories } from '../../../services/utils';
 import CourseTestEditor from '../../../components/CourseTestEditor.vue';
+const FileUploader = defineAsyncComponent(() => import('../../../components/FileUploader.vue'));
+import { resolveMediaUrl } from '../../../services/api/upload';
 import {
   getCourseById,
   createCourse,
@@ -559,8 +561,13 @@ const previewLessons = (section: any) => {
             </div>
 
             <div class="field">
-              <label>URL de l'image du cours</label>
-              <input type="url" v-model="courseForm.image_url" placeholder="https://example.com/image.jpg">
+              <label>Image du cours</label>
+              <FileUploader
+                v-model="courseForm.image_url"
+                category="image"
+                accept="image/*"
+                help-text="PNG, JPG, WebP (max 10 Mo)"
+              />
             </div>
 
             <div class="field-row">
@@ -682,9 +689,13 @@ const previewLessons = (section: any) => {
 
                 <!-- Video content -->
                 <div v-else-if="section.content_type === 'video'" class="field">
-                  <label>URL de la Vidéo</label>
-                  <input type="url" v-model="section.video_url" placeholder="https://www.youtube.com/watch?v=…">
-                  <span class="field-hint"><i class="bi bi-info-circle"></i> YouTube, Vimeo, liens directs (.mp4, .webm, .ogg)</span>
+                  <label>Fichier Vidéo</label>
+                  <FileUploader
+                    v-model="section.video_url"
+                    category="video"
+                    accept="video/*"
+                    help-text="MP4, WebM, MOV, M4V (max 500 Mo)"
+                  />
                 </div>
 
                 <!-- Quiz content -->
@@ -799,7 +810,7 @@ const previewLessons = (section: any) => {
           <div class="preview-body">
             <!-- Image -->
             <div class="preview-img-wrap">
-              <img v-if="courseForm.image_url" :src="courseForm.image_url" @error="handleImageError" alt="Aperçu">
+              <img v-if="courseForm.image_url" :src="resolveMediaUrl(courseForm.image_url)" @error="handleImageError" alt="Aperçu">
               <div v-else class="preview-img-empty"><i class="bi bi-image"></i><span>Aucune image</span></div>
             </div>
 

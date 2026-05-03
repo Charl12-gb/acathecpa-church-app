@@ -1,7 +1,6 @@
 <template>
   <!-- ======================== MEETING MODE ======================== -->
   <div v-if="inMeeting" class="meeting-container">
-    <!-- Top bar -->
     <div class="meeting-topbar">
       <div class="meeting-info">
         <span class="meeting-title">{{ session?.title }}</span>
@@ -9,213 +8,36 @@
         <span class="meeting-timer">{{ formatDuration(sessionDuration) }}</span>
       </div>
       <div class="meeting-topbar-right">
-        <span class="participant-badge">
-          <i class="bi bi-people-fill"></i> {{ videoStore.participantCount }}
-        </span>
-      </div>
-    </div>
-
-    <!-- Main area -->
-    <div class="meeting-body">
-      <div class="meeting-stage" :class="{ 'has-panel': showPanel }">
-        <div class="video-grid" :class="gridLayoutClass">
-          <!-- Local video tile -->
-          <div class="video-tile" :class="{ 'screen-sharing': videoStore.isScreenSharing }">
-            <div ref="localVideoEl" class="video-frame"></div>
-            <div v-if="!videoStore.isVideoOn && !videoStore.isScreenSharing" class="video-off-overlay">
-              <div class="avatar-circle avatar-lg">
-                {{ currentUser?.name?.charAt(0)?.toUpperCase() || 'V' }}
-              </div>
-            </div>
-            <div class="tile-bottom">
-              <span class="tile-name">Vous</span>
-              <i v-if="!videoStore.isAudioOn" class="bi bi-mic-mute-fill tile-mic-icon"></i>
-            </div>
-          </div>
-
-          <!-- Remote participant tiles -->
-          <div
-            v-for="p in videoStore.participantList"
-            :key="p.uid"
-            class="video-tile"
-          >
-            <div :ref="el => setRemoteVideoRef(p.uid, el)" class="video-frame"></div>
-            <div v-if="!p.hasVideo" class="video-off-overlay">
-              <div class="avatar-circle avatar-lg">
-                {{ p.name?.charAt(0)?.toUpperCase() || '?' }}
-              </div>
-            </div>
-            <div class="tile-bottom">
-              <span class="tile-name">{{ p.name }}</span>
-              <i v-if="!p.hasAudio" class="bi bi-mic-mute-fill tile-mic-icon"></i>
-            </div>
-          </div>
-
-          <!-- Waiting for participants -->
-          <div v-if="videoStore.participantList.length === 0" class="video-tile waiting-tile">
-            <div class="waiting-content">
-              <i class="bi bi-people fs-1 mb-2 d-block"></i>
-              <p class="mb-1">En attente de participants...</p>
-              <small class="text-muted">Partagez le lien de la session</small>
-              <button class="btn btn-sm btn-outline-light mt-3" @click="copySessionLink">
-                <i class="bi bi-link-45deg me-1"></i>Copier le lien
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Side panel (participants / chat) -->
-      <transition name="panel-slide">
-        <div v-if="showPanel" class="meeting-panel">
-          <div class="panel-header">
-            <div class="panel-tabs">
-              <button
-                :class="{ active: activePanel === 'participants' }"
-                @click="activePanel = 'participants'"
-              >
-                <i class="bi bi-people me-1"></i>Participants ({{ videoStore.participantCount }})
-              </button>
-              <button
-                :class="{ active: activePanel === 'chat' }"
-                @click="activePanel = 'chat'"
-              >
-                <i class="bi bi-chat-dots me-1"></i>Chat
-              </button>
-            </div>
-            <button class="panel-close-btn" @click="showPanel = false">
-              <i class="bi bi-x-lg"></i>
-            </button>
-          </div>
-
-          <!-- Participants list -->
-          <div v-if="activePanel === 'participants'" class="panel-body">
-            <div class="participant-item">
-              <div class="avatar-circle avatar-sm">{{ currentUser?.name?.charAt(0)?.toUpperCase() || 'V' }}</div>
-              <div class="p-name">{{ currentUser?.name || 'Vous' }} <small class="text-muted">(Organisateur)</small></div>
-              <div class="p-icons">
-                <i class="bi" :class="videoStore.isAudioOn ? 'bi-mic-fill' : 'bi-mic-mute-fill text-danger'"></i>
-                <i class="bi" :class="videoStore.isVideoOn ? 'bi-camera-video-fill' : 'bi-camera-video-off-fill text-danger'"></i>
-              </div>
-            </div>
-            <div v-for="p in videoStore.participantList" :key="p.uid" class="participant-item">
-              <div class="avatar-circle avatar-sm">{{ p.name?.charAt(0)?.toUpperCase() || '?' }}</div>
-              <div class="p-name">{{ p.name }}</div>
-              <div class="p-icons">
-                <i class="bi" :class="p.hasAudio ? 'bi-mic-fill' : 'bi-mic-mute-fill text-danger'"></i>
-                <i class="bi" :class="p.hasVideo ? 'bi-camera-video-fill' : 'bi-camera-video-off-fill text-danger'"></i>
-              </div>
-            </div>
-            <div v-if="videoStore.participantList.length === 0" class="text-center text-muted py-4">
-              <i class="bi bi-person-plus d-block mb-2" style="font-size: 1.5rem;"></i>
-              Aucun autre participant
-            </div>
-          </div>
-
-          <!-- Chat panel -->
-          <div v-else class="panel-body panel-chat-body">
-            <div class="chat-messages-list" ref="chatScrollRef">
-              <div
-                v-for="(msg, i) in videoStore.messages"
-                :key="i"
-                class="chat-bubble"
-                :class="{ own: msg.userId === currentUser?.id }"
-              >
-                <div class="chat-meta">
-                  <strong>{{ msg.userName }}</strong>
-                  <small>{{ formatTime(msg.timestamp) }}</small>
-                </div>
-                <div class="chat-text">{{ msg.message }}</div>
-              </div>
-              <div v-if="videoStore.messages.length === 0" class="text-center text-muted py-4">
-                <i class="bi bi-chat-dots d-block mb-2" style="font-size: 1.5rem;"></i>
-                Aucun message
-              </div>
-            </div>
-            <div class="chat-input-area">
-              <input
-                v-model="chatInput"
-                @keyup.enter="handleSendChat"
-                placeholder="Envoyer un message..."
-                class="chat-input-field"
-              >
-              <button class="chat-send-btn" @click="handleSendChat" :disabled="!chatInput.trim()">
-                <i class="bi bi-send-fill"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-      </transition>
-    </div>
-
-    <!-- Control bar -->
-    <div class="meeting-controls">
-      <div class="controls-center">
-        <button
-          class="ctrl-btn"
-          :class="{ off: !videoStore.isAudioOn }"
-          @click="videoStore.toggleAudio()"
-          :title="videoStore.isAudioOn ? 'Couper le micro' : 'Activer le micro'"
-        >
-          <i class="bi" :class="videoStore.isAudioOn ? 'bi-mic-fill' : 'bi-mic-mute-fill'"></i>
-        </button>
-        <button
-          class="ctrl-btn"
-          :class="{ off: !videoStore.isVideoOn }"
-          @click="videoStore.toggleVideo()"
-          :title="videoStore.isVideoOn ? 'Couper la caméra' : 'Activer la caméra'"
-        >
-          <i class="bi" :class="videoStore.isVideoOn ? 'bi-camera-video-fill' : 'bi-camera-video-off-fill'"></i>
-        </button>
-        <button
-          class="ctrl-btn"
-          :class="{ active: videoStore.isScreenSharing }"
-          @click="videoStore.isScreenSharing ? videoStore.stopScreenShare() : videoStore.startScreenShare()"
-          title="Partager l'écran"
-        >
-          <i class="bi bi-display"></i>
-        </button>
-        <button
-          class="ctrl-btn"
-          :class="{ active: handRaised }"
-          @click="handRaised = !handRaised"
-          title="Lever la main"
-        >
-          <i class="bi bi-hand-index-thumb-fill"></i>
-        </button>
-        <div class="ctrl-divider"></div>
-        <button
-          class="ctrl-btn"
-          :class="{ active: showPanel && activePanel === 'chat' }"
-          @click="togglePanel('chat')"
-          title="Chat"
-        >
-          <i class="bi bi-chat-dots-fill"></i>
-          <span v-if="unreadMessages > 0" class="ctrl-badge">{{ unreadMessages }}</span>
-        </button>
-        <button
-          class="ctrl-btn"
-          :class="{ active: showPanel && activePanel === 'participants' }"
-          @click="togglePanel('participants')"
-          title="Participants"
-        >
-          <i class="bi bi-people-fill"></i>
-        </button>
-        <button class="ctrl-btn" @click="copySessionLink" title="Copier le lien">
+        <button class="meeting-topbar-btn" @click="copySessionLink">
           <i class="bi bi-link-45deg"></i>
+          Copier le lien
         </button>
-        <div class="ctrl-divider"></div>
-        <button class="ctrl-btn ctrl-leave" @click="handleLeaveMeeting" title="Quitter l'appel">
+        <button class="meeting-topbar-btn meeting-topbar-btn-danger" @click="handleLeaveMeeting">
           <i class="bi bi-telephone-x-fill"></i>
+          Quitter
         </button>
         <button
           v-if="session?.host_id === currentUser?.id"
-          class="ctrl-btn ctrl-end"
+          class="meeting-topbar-btn meeting-topbar-btn-end"
           @click="handleEndMeeting"
-          title="Terminer pour tous"
         >
           <i class="bi bi-stop-circle-fill"></i>
+          Terminer pour tous
         </button>
+      </div>
+    </div>
+
+    <div class="meeting-body">
+      <iframe
+        v-if="meetingEmbedUrl"
+        :src="meetingEmbedUrl"
+        class="meeting-iframe"
+        allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write"
+      ></iframe>
+      <div v-else class="meeting-fallback">
+        <i class="bi bi-camera-video-off"></i>
+        <p>Impossible de charger la salle Jitsi.</p>
+        <button class="meeting-topbar-btn" @click="handleLeaveMeeting">Retour</button>
       </div>
     </div>
   </div>
@@ -362,6 +184,9 @@
                 <div v-if="videoStore.error" class="alert alert-danger mt-3 small">
                   {{ videoStore.error }}
                 </div>
+                <div class="alert alert-info mt-2 small">
+                  La session sera intégrée directement dans cette page via Jitsi.
+                </div>
                 <button
                   class="btn btn-primary-custom btn-lg mt-4"
                   @click="handleJoinMeeting"
@@ -400,8 +225,16 @@
                   <span class="detail-value">{{ formatDate(session.scheduled_for) }}</span>
                 </div>
                 <div class="detail-row" v-if="session.duration_minutes">
-                  <span class="detail-label">Durée</span>
+                  <span class="detail-label">Durée prévue</span>
                   <span class="detail-value">{{ session.duration_minutes }} minutes</span>
+                </div>
+                <div class="detail-row" v-if="session.actual_started_at">
+                  <span class="detail-label">Démarrée à</span>
+                  <span class="detail-value">{{ formatDate(session.actual_started_at) }}</span>
+                </div>
+                <div class="detail-row" v-if="session.actual_ended_at">
+                  <span class="detail-label">Terminée à</span>
+                  <span class="detail-value">{{ formatDate(session.actual_ended_at) }}</span>
                 </div>
                 <div class="detail-row">
                   <span class="detail-label">Statut</span>
@@ -417,18 +250,97 @@
             <div class="action-card">
               <div class="action-card-header">Actions rapides</div>
               <div class="action-card-body">
-                <button class="action-btn" @click="copySessionLink">
+                <button v-if="session.status !== 'ended'" class="action-btn" @click="copySessionLink">
                   <i class="bi bi-link-45deg"></i><span>Copier le lien</span>
                 </button>
                 <button v-if="session.status === 'scheduled'" class="action-btn action-btn-success" @click="changeStatus('live')" :disabled="actionLoading">
                   <i class="bi bi-play-fill"></i><span>Démarrer la session</span>
                 </button>
-                <button v-if="session.status === 'live'" class="action-btn action-btn-danger" @click="changeStatus('ended')" :disabled="actionLoading">
-                  <i class="bi bi-stop-fill"></i><span>Terminer la session</span>
+                <button v-if="session.status === 'ended'" class="action-btn action-btn-reschedule" @click="handleReschedule">
+                  <i class="bi bi-arrow-repeat"></i><span>Reprogrammer</span>
                 </button>
                 <button class="action-btn action-btn-danger" @click="deleteCurrentSession">
                   <i class="bi bi-trash3"></i><span>Supprimer la session</span>
                 </button>
+              </div>
+            </div>
+
+            <!-- Quick attendance summary in sidebar for ended sessions -->
+            <div v-if="session.status === 'ended' && attendance" class="action-card mt-3">
+              <div class="action-card-header"><i class="bi bi-people me-2"></i>Résumé présence</div>
+              <div class="attendance-summary-mini">
+                <div class="att-mini-stat">
+                  <span class="att-mini-value">{{ attendance.unique_attendees }}</span>
+                  <span class="att-mini-label">Participants</span>
+                </div>
+                <div class="att-mini-stat">
+                  <span class="att-mini-value text-success">{{ attendance.attendance_rate ? Math.round(attendance.attendance_rate) + '%' : '—' }}</span>
+                  <span class="att-mini-label">Taux</span>
+                </div>
+                <div class="att-mini-stat">
+                  <span class="att-mini-value">{{ formatDuration(attendance.actual_duration_seconds) }}</span>
+                  <span class="att-mini-label">Durée</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Attendance Panel (ended sessions) -->
+          <div v-if="session.status === 'ended'" class="col-12 mt-4">
+            <div class="detail-card attendance-card">
+              <div class="detail-card-header">
+                <i class="bi bi-people-fill me-2"></i>Détails de présence
+              </div>
+              <div class="attendance-card-body">
+                <div v-if="attendanceLoading" class="text-center py-4">
+                  <div class="spinner-border spinner-border-sm text-primary"></div>
+                  <p class="text-muted mt-2 mb-0 small">Chargement des données...</p>
+                </div>
+                <template v-else-if="attendance">
+                  <div v-if="attendance.attendees.length > 0" class="table-responsive">
+                    <table class="attendance-table">
+                      <thead>
+                        <tr>
+                          <th>Participant</th>
+                          <th>Première connexion</th>
+                          <th>Temps de présence</th>
+                          <th>Connexions</th>
+                          <th>Statut</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="att in attendance.attendees" :key="att.user_id">
+                          <td>
+                            <div class="att-user">
+                              <div class="att-avatar">{{ (att.user_name || att.user_email || '#')[0].toUpperCase() }}</div>
+                              <div>
+                                <div class="att-user-name">{{ att.user_name || `Utilisateur #${att.user_id}` }}</div>
+                                <div class="att-user-email" v-if="att.user_email">{{ att.user_email }}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td>{{ att.first_joined_at ? formatDate(att.first_joined_at) : '—' }}</td>
+                          <td><span class="att-duration">{{ formatDuration(att.total_duration_seconds) }}</span></td>
+                          <td>{{ att.join_count }}</td>
+                          <td>
+                            <span class="att-status-badge" :class="att.is_present ? 'att-present' : 'att-left'">
+                              <i class="bi" :class="att.is_present ? 'bi-circle-fill' : 'bi-dash-circle'"></i>
+                              {{ att.is_present ? 'Connecté' : 'Parti' }}
+                            </span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div v-else class="empty-attendance">
+                    <i class="bi bi-person-x"></i>
+                    <p>Aucun participant n'a été enregistré pour cette session.</p>
+                  </div>
+                </template>
+                <div v-else class="empty-attendance">
+                  <i class="bi bi-exclamation-circle"></i>
+                  <p>Données de présence non disponibles.</p>
+                </div>
               </div>
             </div>
           </div>
@@ -440,6 +352,39 @@
     <div v-if="toastMessage" class="copy-toast">
       <i class="bi bi-check-circle me-2"></i>{{ toastMessage }}
     </div>
+
+    <!-- Reschedule Modal -->
+    <Teleport to="body">
+      <div v-if="showRescheduleModal" class="modal-overlay" @click.self="closeRescheduleModal">
+        <div class="modal-dialog-custom">
+          <div class="modal-header-custom">
+            <h5 class="modal-title-custom"><i class="bi bi-arrow-repeat me-2"></i>Reprogrammer la session</h5>
+            <button class="modal-close-btn" @click="closeRescheduleModal">&times;</button>
+          </div>
+          <div class="modal-body-custom">
+            <div class="form-group mb-3">
+              <label class="form-label-custom">Nouvelle date <span class="text-danger">*</span></label>
+              <input type="date" class="form-input-custom" v-model="rescheduleForm.date" required>
+            </div>
+            <div class="form-group mb-3">
+              <label class="form-label-custom">Nouvelle heure <span class="text-danger">*</span></label>
+              <input type="time" class="form-input-custom" v-model="rescheduleForm.time" required>
+            </div>
+            <div class="form-group mb-3">
+              <label class="form-label-custom">Durée (minutes) <span class="text-muted fw-normal">(optionnel)</span></label>
+              <input type="number" class="form-input-custom" v-model.number="rescheduleForm.duration_minutes" min="15" max="480" placeholder="60">
+            </div>
+          </div>
+          <div class="modal-footer-custom">
+            <button class="btn btn-outline-custom" @click="closeRescheduleModal">Annuler</button>
+            <button class="btn btn-primary-custom" @click="confirmReschedule" :disabled="!rescheduleForm.date || !rescheduleForm.time || rescheduleLoading">
+              <span v-if="rescheduleLoading" class="spinner-border spinner-border-sm me-2"></span>
+              Reprogrammer
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -454,7 +399,10 @@ import {
   updateLiveSession as apiUpdate,
   updateLiveSessionStatus,
   deleteLiveSession as apiDelete,
+  getLiveSessionAttendance,
+  rescheduleLiveSession,
 } from '../../../services/api/liveSession'
+import type { LiveSessionAttendanceSummary } from '../../../types/api/liveSessionTypes'
 import { getInstructorCourses } from '../../../services/api/course'
 import type { LiveSession } from '../../../types/api/liveSessionTypes'
 
@@ -465,6 +413,7 @@ const videoStore = useVideoConferenceStore()
 
 const currentUser = computed(() => authStore.user)
 const isNewSession = computed(() => !route.params.id)
+const meetingEmbedUrl = computed(() => videoStore.activeMeetingUrl)
 
 // Management state
 const session = ref<LiveSession | null>(null)
@@ -485,26 +434,35 @@ const sessionForm = ref({
   isInstant: false,
 })
 
+// Helper: default date/time = now + 15 minutes
+const getDefaultDateTime = () => {
+  const d = new Date(Date.now() + 15 * 60 * 1000)
+  const date = d.toISOString().split('T')[0]
+  const time = d.toTimeString().slice(0, 5)
+  return { date, time }
+}
+
+// Initialize form defaults for new session
+const initFormDefaults = () => {
+  const def = getDefaultDateTime()
+  sessionForm.value.date = def.date
+  sessionForm.value.time = def.time
+}
+
 // Meeting state
 const inMeeting = ref(false)
-const showPanel = ref(false)
-const activePanel = ref<'participants' | 'chat'>('participants')
-const chatInput = ref('')
 const sessionDuration = ref(0)
 const durationInterval = ref<ReturnType<typeof setInterval> | null>(null)
-const handRaised = ref(false)
-const unreadMessages = ref(0)
 const joiningMeeting = ref(false)
+
+// Attendance state
+const attendance = ref<LiveSessionAttendanceSummary | null>(null)
+const attendanceLoading = ref(false)
 
 // Pre-join state
 const previewVideoEl = ref<HTMLElement | null>(null)
 const previewAudioOn = ref(true)
 const previewVideoOn = ref(true)
-
-// Meeting refs
-const localVideoEl = ref<HTMLElement | null>(null)
-const remoteVideoRefs = ref<Record<number, HTMLElement | null>>({})
-const chatScrollRef = ref<HTMLElement | null>(null)
 
 // Helpers
 const statusLabel = (s: string) => ({ live: 'En direct', scheduled: 'Programmée', ended: 'Terminée' }[s] || s)
@@ -512,7 +470,6 @@ const statusIcon = (s: string) => ({ live: 'bi-broadcast', scheduled: 'bi-calend
 const formatDate = (d: string) => new Date(d).toLocaleDateString('fr-FR', {
   weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
 })
-const formatTime = (t: string) => new Date(t).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 const formatDuration = (seconds: number) => {
   const h = Math.floor(seconds / 3600)
   const m = Math.floor((seconds % 3600) / 60)
@@ -520,58 +477,6 @@ const formatDuration = (seconds: number) => {
   if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
   return `${m}:${s.toString().padStart(2, '0')}`
 }
-
-// Video grid layout
-const totalTiles = computed(() => videoStore.participantList.length + 1)
-const gridLayoutClass = computed(() => {
-  const n = totalTiles.value
-  if (n <= 1) return 'grid-1'
-  if (n === 2) return 'grid-2'
-  if (n <= 4) return 'grid-4'
-  if (n <= 6) return 'grid-6'
-  return 'grid-many'
-})
-
-// Remote video ref setter
-function setRemoteVideoRef(uid: number, el: HTMLElement | null) {
-  remoteVideoRefs.value[uid] = el
-}
-
-// Watch for local video track to play into DOM
-watch(() => videoStore.localVideoTrack, (track) => {
-  if (track && localVideoEl.value) {
-    track.play(localVideoEl.value)
-  }
-}, { immediate: true })
-
-// Watch for screen share track to play into local tile
-watch(() => videoStore.screenVideoTrack, (track) => {
-  if (track && localVideoEl.value) {
-    track.play(localVideoEl.value)
-  }
-})
-
-// Watch for remote participants video tracks
-watch(() => videoStore.participantList, (list) => {
-  nextTick(() => {
-    list.forEach(p => {
-      const el = remoteVideoRefs.value[p.uid]
-      if (p.videoTrack && el) {
-        p.videoTrack.play(el)
-      }
-    })
-  })
-}, { deep: true })
-
-// Track unread messages when chat panel is closed
-watch(() => videoStore.messages.length, () => {
-  if (!showPanel.value || activePanel.value !== 'chat') {
-    unreadMessages.value++
-  }
-  nextTick(() => {
-    if (chatScrollRef.value) chatScrollRef.value.scrollTop = chatScrollRef.value.scrollHeight
-  })
-})
 
 // Fix: reload data when route params change (navigation without full page reload)
 watch(() => route.params.id, async (newId, oldId) => {
@@ -592,10 +497,20 @@ const loadData = async () => {
       const id = parseInt(route.params.id as string)
       session.value = await getLiveSessionById(id)
 
-      // If session is live, start camera preview
-      if (session.value?.status === 'live') {
+      // Load attendance for ended sessions
+      if (session.value?.status === 'ended') {
+        attendanceLoading.value = true
+        try { attendance.value = await getLiveSessionAttendance(id) } catch { /* ignore */ }
+        attendanceLoading.value = false
+      }
+
+      // Start local preview for all non-ended sessions (scheduled/live)
+      if (session.value?.status !== 'ended') {
         await initPreview()
       }
+    } else {
+      // Default date/time for new session form
+      initFormDefaults()
     }
   } catch (err: any) {
     alert(err?.response?.data?.detail || 'Session introuvable')
@@ -632,20 +547,11 @@ const handleJoinMeeting = async () => {
   if (!session.value || !currentUser.value) return
   joiningMeeting.value = true
   try {
-    await videoStore.joinMeeting(session.value.id, currentUser.value.id, currentUser.value.name || 'Utilisateur')
+    await videoStore.joinMeeting(session.value.id, currentUser.value.name || 'Utilisateur')
     inMeeting.value = true
-    videoStore.isAudioOn = previewAudioOn.value
-    videoStore.isVideoOn = previewVideoOn.value
 
     // Start duration timer
     durationInterval.value = setInterval(() => { sessionDuration.value++ }, 1000)
-
-    // Play local video in meeting view
-    nextTick(() => {
-      if (videoStore.localVideoTrack && localVideoEl.value) {
-        videoStore.localVideoTrack.play(localVideoEl.value)
-      }
-    })
   } catch {
     // Error is displayed via videoStore.error
   } finally {
@@ -659,7 +565,6 @@ const handleLeaveMeeting = async () => {
   inMeeting.value = false
   if (durationInterval.value) { clearInterval(durationInterval.value); durationInterval.value = null }
   sessionDuration.value = 0
-  showPanel.value = false
   // Reload session data
   if (session.value) session.value = await getLiveSessionById(session.value.id)
 }
@@ -674,24 +579,6 @@ const handleEndMeeting = async () => {
   } catch (err: any) {
     alert(err?.response?.data?.detail || 'Erreur')
   }
-}
-
-// Panel toggle
-const togglePanel = (panel: 'participants' | 'chat') => {
-  if (showPanel.value && activePanel.value === panel) {
-    showPanel.value = false
-  } else {
-    activePanel.value = panel
-    showPanel.value = true
-    if (panel === 'chat') unreadMessages.value = 0
-  }
-}
-
-// Chat
-const handleSendChat = () => {
-  if (!chatInput.value.trim() || !currentUser.value) return
-  videoStore.sendChatMessage(chatInput.value, currentUser.value.id, currentUser.value.name || 'Vous')
-  chatInput.value = ''
 }
 
 // Session form helpers
@@ -800,6 +687,39 @@ const copySessionLink = () => {
   })
 }
 
+const handleReschedule = () => {
+  if (!session.value) return
+  const def = getDefaultDateTime()
+  rescheduleForm.value = { date: def.date, time: def.time, duration_minutes: session.value.duration_minutes || null }
+  showRescheduleModal.value = true
+}
+
+// Reschedule modal state
+const showRescheduleModal = ref(false)
+const rescheduleLoading = ref(false)
+const rescheduleForm = ref<{ date: string; time: string; duration_minutes: number | null }>({ date: '', time: '', duration_minutes: null })
+
+const closeRescheduleModal = () => { showRescheduleModal.value = false }
+
+const confirmReschedule = async () => {
+  if (!session.value || !rescheduleForm.value.date || !rescheduleForm.value.time) return
+  rescheduleLoading.value = true
+  try {
+    const scheduled_for = `${rescheduleForm.value.date}T${rescheduleForm.value.time}:00`
+    const payload: any = { scheduled_for }
+    if (rescheduleForm.value.duration_minutes) payload.duration_minutes = rescheduleForm.value.duration_minutes
+    const updated = await rescheduleLiveSession(session.value.id, payload)
+    session.value = updated
+    toastMessage.value = 'Session reprogrammée !'
+    setTimeout(() => { toastMessage.value = '' }, 2000)
+    closeRescheduleModal()
+  } catch (err: any) {
+    alert(err?.response?.data?.detail || 'Erreur lors de la reprogrammation')
+  } finally {
+    rescheduleLoading.value = false
+  }
+}
+
 onMounted(loadData)
 
 onUnmounted(async () => {
@@ -827,51 +747,43 @@ onUnmounted(async () => {
 .meeting-title { font-weight: 600; font-size: 0.9rem; color: #e8eaed; }
 .meeting-separator { color: #5f6368; }
 .meeting-timer { font-family: monospace; font-size: 0.85rem; color: #9aa0a6; }
-.participant-badge {
-  background: #3c4043; padding: 0.25rem 0.6rem; border-radius: 16px;
-  font-size: 0.8rem; color: #e8eaed; display: inline-flex; align-items: center; gap: 0.4rem;
+
+.meeting-topbar-right { display: flex; align-items: center; gap: 0.6rem; }
+.meeting-topbar-btn {
+  border: 1px solid #4a4b4f;
+  background: #3c4043;
+  color: #e8eaed;
+  border-radius: 999px;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
 }
+.meeting-topbar-btn-danger { background: #ea4335; border-color: #ea4335; color: #fff; }
+.meeting-topbar-btn-end { background: #c5221f; border-color: #c5221f; color: #fff; }
 
 .meeting-body { flex: 1; display: flex; overflow: hidden; }
-.meeting-stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 8px; transition: all 0.3s; }
-.meeting-stage.has-panel { margin-right: 0; }
-
-/* Video grid layouts */
-.video-grid {
-  display: grid; gap: 8px; width: 100%; height: 100%;
-  padding: 4px; align-content: center;
+.meeting-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #111827;
 }
-.grid-1 { grid-template-columns: 1fr; max-width: 960px; margin: 0 auto; }
-.grid-2 { grid-template-columns: 1fr 1fr; max-width: 1200px; margin: 0 auto; }
-.grid-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
-.grid-6 { grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr; }
-.grid-many { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
-
-.video-tile {
-  position: relative; border-radius: 12px; overflow: hidden;
-  background: #3c4043; min-height: 200px;
-}
-.video-frame {
-  width: 100%; height: 100%; position: absolute; top: 0; left: 0;
-  :deep(video) { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
+.meeting-fallback {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: #e8eaed;
 }
 .video-off-overlay {
   position: absolute; top: 0; left: 0; right: 0; bottom: 0;
   display: flex; align-items: center; justify-content: center;
   background: #3c4043;
 }
-.tile-bottom {
-  position: absolute; bottom: 0; left: 0; right: 0;
-  padding: 0.4rem 0.8rem; display: flex; align-items: center; gap: 0.4rem;
-  background: linear-gradient(transparent, rgba(0,0,0,0.6));
-}
-.tile-name { font-size: 0.8rem; color: #fff; font-weight: 500; }
-.tile-mic-icon { color: #ea4335; font-size: 0.75rem; }
-.waiting-tile {
-  display: flex; align-items: center; justify-content: center;
-  background: #2d2e31; grid-column: 1 / -1;
-}
-.waiting-content { text-align: center; color: #9aa0a6; padding: 2rem; }
 
 /* Avatar circles */
 .avatar-circle {
@@ -883,92 +795,6 @@ onUnmounted(async () => {
 .avatar-sm { width: 32px; height: 32px; font-size: 0.85rem; background: #5f6368; }
 
 /* Side panel */
-.meeting-panel {
-  width: 340px; background: #fff; border-left: 1px solid #e0e0e0;
-  display: flex; flex-direction: column; color: #202124;
-}
-.panel-header {
-  display: flex; align-items: center; padding: 0.6rem; border-bottom: 1px solid #e0e0e0;
-}
-.panel-tabs {
-  display: flex; flex: 1; gap: 0;
-  button {
-    flex: 1; border: none; background: none; padding: 0.5rem; font-size: 0.8rem;
-    font-weight: 500; color: #5f6368; cursor: pointer; border-bottom: 2px solid transparent;
-    transition: all 0.2s;
-    &.active { color: #1a73e8; border-bottom-color: #1a73e8; }
-    &:hover { background: #f1f3f4; }
-  }
-}
-.panel-close-btn {
-  border: none; background: none; color: #5f6368; padding: 0.4rem;
-  border-radius: 50%; cursor: pointer; display: flex; align-items: center;
-  &:hover { background: #f1f3f4; }
-}
-.panel-body { flex: 1; overflow-y: auto; padding: 0.5rem; }
-.panel-chat-body { display: flex; flex-direction: column; padding: 0; }
-
-/* Participants list */
-.participant-item {
-  display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.8rem; border-radius: 8px;
-  &:hover { background: #f1f3f4; }
-}
-.p-name { flex: 1; font-size: 0.85rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.p-icons { display: flex; gap: 0.5rem; font-size: 0.85rem; color: #5f6368; }
-
-/* Chat */
-.chat-messages-list { flex: 1; overflow-y: auto; padding: 0.8rem; }
-.chat-bubble {
-  margin-bottom: 0.6rem;
-  .chat-meta { display: flex; justify-content: space-between; font-size: 0.7rem; margin-bottom: 0.15rem;
-    strong { color: #202124; } small { color: #9aa0a6; }
-  }
-  .chat-text { font-size: 0.85rem; color: #3c4043; padding: 0.4rem 0.7rem; background: #f1f3f4; border-radius: 8px; }
-  &.own .chat-text { background: #e8f0fe; color: #174ea6; }
-}
-.chat-input-area {
-  display: flex; gap: 0.4rem; padding: 0.6rem 0.8rem; border-top: 1px solid #e0e0e0;
-}
-.chat-input-field {
-  flex: 1; border: 1px solid #dadce0; border-radius: 24px; padding: 0.45rem 1rem;
-  font-size: 0.85rem; outline: none; background: #f1f3f4;
-  &:focus { border-color: #1a73e8; background: #fff; }
-}
-.chat-send-btn {
-  border: none; background: #1a73e8; color: #fff; border-radius: 50%;
-  width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
-  cursor: pointer; &:disabled { opacity: 0.5; }
-  &:hover:not(:disabled) { background: #1557b0; }
-}
-
-/* Control bar */
-.meeting-controls {
-  padding: 0.8rem 1.5rem; background: #2d2e31; border-top: 1px solid #3c4043;
-  display: flex; justify-content: center;
-}
-.controls-center { display: flex; align-items: center; gap: 0.5rem; }
-.ctrl-btn {
-  width: 48px; height: 48px; border-radius: 50%; border: none;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; font-size: 1.15rem; transition: all 0.2s;
-  background: #3c4043; color: #e8eaed; position: relative;
-  &:hover { background: #4a4b4f; }
-  &.off { background: #ea4335; color: #fff; }
-  &.active { background: #394457; color: #8ab4f8; }
-}
-.ctrl-leave { background: #ea4335; color: #fff; &:hover { background: #d93025; } }
-.ctrl-end { background: #c5221f; color: #fff; &:hover { background: #a31815; } }
-.ctrl-divider { width: 1px; height: 32px; background: #5f6368; margin: 0 0.4rem; }
-.ctrl-badge {
-  position: absolute; top: 2px; right: 2px; min-width: 18px; height: 18px;
-  background: #ea4335; color: #fff; font-size: 0.65rem; font-weight: 700;
-  border-radius: 9px; display: flex; align-items: center; justify-content: center;
-}
-
-/* Panel slide transition */
-.panel-slide-enter-active, .panel-slide-leave-active { transition: all 0.25s ease; }
-.panel-slide-enter-from, .panel-slide-leave-to { transform: translateX(100%); opacity: 0; }
-
 /* ============================== PRE-JOIN ============================== */
 .prejoin-card {
   background: #fff; border: 1px solid #e7edf5; border-radius: 16px;
@@ -1003,9 +829,8 @@ onUnmounted(async () => {
 @media (max-width: 768px) {
   .prejoin-main { flex-direction: column; }
   .prejoin-video-wrapper { width: 100%; height: 220px; }
-  .meeting-panel { width: 100%; position: absolute; right: 0; top: 0; bottom: 0; z-index: 10; }
-  .video-grid { grid-template-columns: 1fr !important; }
-  .ctrl-btn { width: 42px; height: 42px; font-size: 1rem; }
+  .meeting-topbar { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+  .meeting-topbar-right { flex-wrap: wrap; }
 }
 
 /* ============================== MANAGEMENT MODE ============================== */
@@ -1085,4 +910,73 @@ onUnmounted(async () => {
   animation: fadeInUp 0.3s ease;
 }
 @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Reschedule action btn */
+.action-btn-reschedule { color: #2453a7; &:hover { background: rgba(36,83,167,0.08); } }
+
+/* Attendance summary mini (sidebar) */
+.attendance-summary-mini {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; padding: 1rem;
+}
+.att-mini-stat { text-align: center; }
+.att-mini-value { display: block; font-size: 1.25rem; font-weight: 700; color: #1a2332; }
+.att-mini-label { font-size: 0.72rem; color: #6b7280; }
+
+/* Attendance card */
+.attendance-card-body { padding: 1.2rem; }
+.attendance-table {
+  width: 100%; border-collapse: separate; border-spacing: 0;
+  font-size: 0.85rem;
+  th { padding: 0.65rem 0.8rem; background: #f8fafc; color: #6b7280; font-weight: 600;
+       font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.02em;
+       border-bottom: 1px solid #e7edf5; text-align: left; }
+  td { padding: 0.7rem 0.8rem; border-bottom: 1px solid #f3f4f6; color: #374151; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f8fafc; }
+}
+.att-user { display: flex; align-items: center; gap: 0.6rem; }
+.att-avatar {
+  width: 32px; height: 32px; border-radius: 50%; background: #e7edf5;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; font-weight: 700; color: #2453a7; flex-shrink: 0;
+}
+.att-user-name { font-weight: 500; color: #1a2332; font-size: 0.85rem; }
+.att-user-email { font-size: 0.75rem; color: #9ca3af; }
+.att-duration { font-family: monospace; font-size: 0.82rem; color: #374151; }
+.att-status-badge {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  font-size: 0.75rem; font-weight: 500; padding: 0.2rem 0.55rem; border-radius: 6px;
+  &.att-present { background: rgba(24,121,78,0.1); color: #18794e; }
+  &.att-left { background: rgba(107,114,128,0.1); color: #6b7280; }
+  .bi { font-size: 0.5rem; }
+}
+.empty-attendance {
+  text-align: center; padding: 2rem 1rem; color: #9ca3af;
+  .bi { font-size: 2rem; display: block; margin-bottom: 0.5rem; }
+  p { margin: 0; font-size: 0.875rem; }
+}
+
+/* Reschedule Modal */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.5); display: flex;
+  align-items: center; justify-content: center; z-index: 10001;
+  animation: fadeIn 0.2s ease;
+}
+.modal-dialog-custom {
+  background: #fff; border-radius: 16px; width: 100%; max-width: 440px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2); overflow: hidden;
+  animation: slideUp 0.25s ease;
+}
+.modal-header-custom {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.2rem 1.5rem; border-bottom: 1px solid #e7edf5;
+}
+.modal-title-custom { font-size: 1.05rem; font-weight: 700; color: #1a2332; margin: 0; }
+.modal-close-btn { background: none; border: none; font-size: 1.5rem; color: #6b7280; cursor: pointer; &:hover { color: #1a2332; } }
+.modal-body-custom { padding: 1.5rem; }
+.modal-footer-custom { display: flex; gap: 0.75rem; justify-content: flex-end; padding: 1rem 1.5rem; border-top: 1px solid #e7edf5; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 </style>

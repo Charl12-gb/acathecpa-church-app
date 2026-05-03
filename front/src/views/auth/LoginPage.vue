@@ -1,8 +1,22 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import { APP_NAME } from '../../config'
+
+onMounted(() => {
+  console.log(
+    '%c📋 Identifiants de test par profil',
+    'font-weight:bold; font-size:14px; color:#2453a7;'
+  )
+  console.table([
+    { Profil: 'Super Admin', Email: 'admin@example.com', 'Mot de passe': 'admin123' },
+    { Profil: 'Professeur 1', Email: 'prof1@example.com', 'Mot de passe': 'password123' },
+    { Profil: 'Professeur 2', Email: 'prof2@example.com', 'Mot de passe': 'password123' },
+    { Profil: 'Professeur 3', Email: 'prof3@example.com', 'Mot de passe': 'password123' },
+    { Profil: 'Étudiant', Email: 'student@example.com', 'Mot de passe': 'password123' },
+  ])
+})
 
 const authStore = useAuthStore()
 const loading = computed(() => authStore.loading)

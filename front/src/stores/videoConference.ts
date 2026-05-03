@@ -1,13 +1,5 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import AgoraRTC, {
-  type IAgoraRTCClient,
-  type IMicrophoneAudioTrack,
-  type ICameraVideoTrack,
-  type ILocalVideoTrack,
-  type IAgoraRTCRemoteUser,
-} from 'agora-rtc-sdk-ng'
-import AgoraRTM from 'agora-rtm-sdk'
 import apiClient from '../services/api'
 
 export interface Participant {
@@ -27,16 +19,54 @@ export interface ChatMessage {
   timestamp: string
 }
 
-export const useVideoConferenceStore = defineStore('videoConference', () => {
-  // RTC
-  const rtcClient = ref<IAgoraRTCClient | null>(null)
-  const localAudioTrack = ref<IMicrophoneAudioTrack | null>(null)
-  const localVideoTrack = ref<ICameraVideoTrack | null>(null)
-  const screenVideoTrack = ref<ILocalVideoTrack | null>(null)
+interface LocalTrackLike {
+  play: (container: HTMLElement) => void
+  setEnabled: (enabled: boolean) => void
+  stop: () => void
+  close: () => void
+}
 
-  // RTM
-  const rtmClient = ref<any>(null)
-  const rtmChannel = ref<any>(null)
+class BrowserMediaTrack implements LocalTrackLike {
+  private mediaTrack: MediaStreamTrack
+  private kind: 'audio' | 'video'
+
+  constructor(track: MediaStreamTrack, kind: 'audio' | 'video') {
+    this.mediaTrack = track
+    this.kind = kind
+  }
+
+  play(container: HTMLElement) {
+    const stream = new MediaStream([this.mediaTrack])
+    const element = document.createElement(this.kind === 'video' ? 'video' : 'audio') as HTMLVideoElement | HTMLAudioElement
+    element.autoplay = true
+    if (this.kind === 'video') {
+      ;(element as HTMLVideoElement).playsInline = true
+      ;(element as HTMLVideoElement).muted = true
+    }
+    element.srcObject = stream
+    container.innerHTML = ''
+    container.appendChild(element)
+  }
+
+  setEnabled(enabled: boolean) {
+    this.mediaTrack.enabled = enabled
+  }
+
+  stop() {
+    this.mediaTrack.stop()
+  }
+
+  close() {
+    this.stop()
+  }
+}
+
+export const useVideoConferenceStore = defineStore('videoConference', () => {
+  const localAudioTrack = ref<LocalTrackLike | null>(null)
+  const localVideoTrack = ref<LocalTrackLike | null>(null)
+  const screenVideoTrack = ref<LocalTrackLike | null>(null)
+  const activeMeetingUrl = ref('')
+  const activeSessionId = ref<number | null>(null)
 
   // State
   const isJoined = ref(false)
@@ -53,11 +83,15 @@ export const useVideoConferenceStore = defineStore('videoConference', () => {
   // Create local tracks for preview (before joining)
   async function createLocalTracks() {
     try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true })
+      const audio = stream.getAudioTracks()[0]
+      const video = stream.getVideoTracks()[0]
+
       if (!localAudioTrack.value) {
-        localAudioTrack.value = await AgoraRTC.createMicrophoneAudioTrack()
+        localAudioTrack.value = new BrowserMediaTrack(audio, 'audio')
       }
       if (!localVideoTrack.value) {
-        localVideoTrack.value = await AgoraRTC.createCameraVideoTrack()
+        localVideoTrack.value = new BrowserMediaTrack(video, 'video')
       }
     } catch (e: any) {
       console.error('Failed to create local tracks:', e)
@@ -78,115 +112,29 @@ export const useVideoConferenceStore = defineStore('videoConference', () => {
     }
   }
 
-  // Join a meeting via the backend /join endpoint
-  async function joinMeeting(sessionId: number, userId: number, userName: string) {
+  // Join a meeting via backend /join and expose the Jitsi URL for in-page embedding.
+  async function joinMeeting(sessionId: number, userName: string) {
     error.value = ''
 
     try {
-      // 1. Get join config from backend
       const { data: joinConfig } = await apiClient.post(`/live-sessions/${sessionId}/join`)
-      const { app_id, channel, token, uid } = joinConfig
 
-      // 2. Create RTC client
-      rtcClient.value = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' })
-
-      // 3. Setup event handlers BEFORE joining
-      rtcClient.value.on('user-joined', (user: IAgoraRTCRemoteUser) => {
-        if (!participants.value.has(user.uid as number)) {
-          participants.value.set(user.uid as number, {
-            uid: user.uid as number,
-            name: `Participant ${user.uid}`,
-            hasAudio: false,
-            hasVideo: false,
-            isHost: false,
-          })
-        }
-      })
-
-      rtcClient.value.on('user-published', async (user: IAgoraRTCRemoteUser, mediaType: string) => {
-        await rtcClient.value!.subscribe(user, mediaType)
-        const existing = participants.value.get(user.uid as number)
-        const p = existing || {
-          uid: user.uid as number,
-          name: `Participant ${user.uid}`,
-          hasAudio: false,
-          hasVideo: false,
-          isHost: false,
-        }
-        if (mediaType === 'audio') {
-          p.hasAudio = true
-          p.audioTrack = user.audioTrack
-          user.audioTrack?.play()
-        }
-        if (mediaType === 'video') {
-          p.hasVideo = true
-          p.videoTrack = user.videoTrack
-        }
-        participants.value.set(user.uid as number, { ...p })
-      })
-
-      rtcClient.value.on('user-unpublished', (user: IAgoraRTCRemoteUser, mediaType: string) => {
-        const p = participants.value.get(user.uid as number)
-        if (p) {
-          if (mediaType === 'audio') { p.hasAudio = false; p.audioTrack = undefined }
-          if (mediaType === 'video') { p.hasVideo = false; p.videoTrack = undefined }
-          participants.value.set(user.uid as number, { ...p })
-        }
-      })
-
-      rtcClient.value.on('user-left', (user: IAgoraRTCRemoteUser) => {
-        participants.value.delete(user.uid as number)
-      })
-
-      // 4. Join RTC channel
-      await rtcClient.value.join(app_id, channel, token || null, uid || userId)
-
-      // 5. Create and publish local tracks
-      if (!localAudioTrack.value) {
-        localAudioTrack.value = await AgoraRTC.createMicrophoneAudioTrack()
+      const joinUrl = new URL(joinConfig.url)
+      if (joinConfig.jwt) {
+        joinUrl.searchParams.set('jwt', joinConfig.jwt)
       }
-      if (!localVideoTrack.value) {
-        localVideoTrack.value = await AgoraRTC.createCameraVideoTrack()
-      }
-      await rtcClient.value.publish([localAudioTrack.value, localVideoTrack.value])
-
-      // 6. Setup RTM for chat and participant names
-      try {
-        rtmClient.value = AgoraRTM.createInstance(app_id)
-        await rtmClient.value.login({ uid: userId.toString() })
-        rtmChannel.value = rtmClient.value.createChannel(channel)
-        await rtmChannel.value.join()
-
-        rtmChannel.value.sendMessage({
-          text: JSON.stringify({ type: 'user-info', userId, userName })
-        })
-
-        rtmChannel.value.on('ChannelMessage', (msg: any, senderId: string) => {
-          try {
-            const data = JSON.parse(msg.text)
-            if (data.type === 'chat') {
-              messages.value.push({
-                userId: data.userId,
-                userName: data.userName,
-                message: data.message,
-                timestamp: new Date().toISOString()
-              })
-            } else if (data.type === 'user-info') {
-              const p = participants.value.get(data.userId)
-              if (p) {
-                p.name = data.userName
-                participants.value.set(data.userId, { ...p })
-              }
-            }
-          } catch { /* ignore malformed messages */ }
-        })
-      } catch (e) {
-        console.warn('RTM setup failed, chat disabled:', e)
-      }
+      joinUrl.hash = [
+        'config.prejoinPageEnabled=false',
+        'config.startWithAudioMuted=false',
+        'config.startWithVideoMuted=false',
+        `userInfo.displayName="${encodeURIComponent(userName)}"`
+      ].join('&')
 
       isJoined.value = true
       isAudioOn.value = true
       isVideoOn.value = true
+      activeMeetingUrl.value = joinUrl.toString()
+      activeSessionId.value = sessionId
 
     } catch (e: any) {
       error.value = e?.response?.data?.detail || e?.message || 'Erreur de connexion'
@@ -196,6 +144,13 @@ export const useVideoConferenceStore = defineStore('videoConference', () => {
 
   // Leave meeting
   async function leaveMeeting() {
+    // Notify backend of leave
+    if (activeSessionId.value) {
+      try {
+        await apiClient.post(`/live-sessions/${activeSessionId.value}/leave`)
+      } catch { /* best-effort */ }
+    }
+
     try {
       if (screenVideoTrack.value) {
         screenVideoTrack.value.stop()
@@ -212,18 +167,6 @@ export const useVideoConferenceStore = defineStore('videoConference', () => {
         localVideoTrack.value.close()
         localVideoTrack.value = null
       }
-      if (rtcClient.value) {
-        await rtcClient.value.leave()
-        rtcClient.value = null
-      }
-      if (rtmChannel.value) {
-        await rtmChannel.value.leave()
-        rtmChannel.value = null
-      }
-      if (rtmClient.value) {
-        await rtmClient.value.logout()
-        rtmClient.value = null
-      }
     } catch { /* cleanup errors are expected */ }
 
     participants.value.clear()
@@ -232,6 +175,8 @@ export const useVideoConferenceStore = defineStore('videoConference', () => {
     isAudioOn.value = true
     isVideoOn.value = true
     isScreenSharing.value = false
+    activeMeetingUrl.value = ''
+    activeSessionId.value = null
     error.value = ''
   }
 
@@ -252,38 +197,30 @@ export const useVideoConferenceStore = defineStore('videoConference', () => {
   }
 
   async function startScreenShare() {
-    if (!rtcClient.value) return
+    if (!navigator.mediaDevices || !('getDisplayMedia' in navigator.mediaDevices)) return
     try {
-      screenVideoTrack.value = await AgoraRTC.createScreenVideoTrack({}) as ILocalVideoTrack
-      if (localVideoTrack.value) await rtcClient.value.unpublish(localVideoTrack.value)
-      await rtcClient.value.publish(screenVideoTrack.value)
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
+      const screenTrack = stream.getVideoTracks()[0]
+      screenVideoTrack.value = new BrowserMediaTrack(screenTrack, 'video')
       isScreenSharing.value = true
-      screenVideoTrack.value.on('track-ended', () => { stopScreenShare() })
+      screenTrack.onended = () => { stopScreenShare() }
     } catch (e) {
       console.error('Screen share failed:', e)
     }
   }
 
   async function stopScreenShare() {
-    if (!rtcClient.value || !screenVideoTrack.value) return
+    if (!screenVideoTrack.value) return
     try {
-      await rtcClient.value.unpublish(screenVideoTrack.value)
       screenVideoTrack.value.stop()
       screenVideoTrack.value.close()
       screenVideoTrack.value = null
-      if (localVideoTrack.value) await rtcClient.value.publish(localVideoTrack.value)
       isScreenSharing.value = false
     } catch { /* ignore */ }
   }
 
   async function sendChatMessage(message: string, userId: number, userName: string) {
-    if (rtmChannel.value) {
-      try {
-        await rtmChannel.value.sendMessage({
-          text: JSON.stringify({ type: 'chat', userId, userName, message })
-        })
-      } catch { /* ignore */ }
-    }
+    // Local only (Jitsi chat is handled inside Jitsi UI).
     messages.value.push({ userId, userName, message, timestamp: new Date().toISOString() })
   }
 
@@ -292,6 +229,8 @@ export const useVideoConferenceStore = defineStore('videoConference', () => {
     isAudioOn,
     isVideoOn,
     isScreenSharing,
+    activeMeetingUrl,
+    activeSessionId,
     localAudioTrack,
     localVideoTrack,
     screenVideoTrack,

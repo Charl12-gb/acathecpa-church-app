@@ -91,7 +91,7 @@ apiClient.interceptors.response.use(
         localStorage.removeItem('token');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
-        router.push({ name: 'Login', query: { sessionExpired: 'true' } });
+        router.push({ name: 'login', query: { sessionExpired: 'true' } });
         return Promise.reject(err);
       } finally {
         isRefreshing = false;

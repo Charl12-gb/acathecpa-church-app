@@ -286,21 +286,17 @@
             </span>
             <div>
               <h3>{{ contentForm.format === 'audio' ? 'Fichier Audio' : contentForm.format === 'video' ? 'Fichier Vidéo' : 'Document PDF' }}</h3>
-              <p>Ajoutez le lien vers votre média</p>
+              <p>Téléversez votre média depuis votre ordinateur</p>
             </div>
           </div>
           <div class="field">
-            <label>URL du média</label>
-            <div class="media-input-wrap">
-              <span class="media-icon">
-                <i :class="contentForm.format === 'audio' ? 'bi bi-soundwave' : contentForm.format === 'video' ? 'bi bi-camera-video' : 'bi bi-file-pdf'"></i>
-              </span>
-              <input type="url" v-model="contentForm.mediaUrl" placeholder="https://…">
-            </div>
-            <span class="field-hint">
-              <i class="bi bi-info-circle"></i>
-              {{ contentForm.format === 'audio' ? 'Lien vers un fichier audio (.mp3, .wav, .ogg)' : contentForm.format === 'video' ? 'YouTube, Vimeo, ou lien direct (.mp4)' : 'Lien vers un fichier PDF' }}
-            </span>
+            <label>Fichier média</label>
+            <FileUploader
+              v-model="contentForm.mediaUrl"
+              :category="mediaCategory"
+              :accept="mediaAccept"
+              :help-text="mediaHelpText"
+            />
           </div>
         </div>
       </div>
@@ -321,9 +317,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useContentStore } from '../../../stores/content'
+const FileUploader = defineAsyncComponent(() => import('../../../components/FileUploader.vue'))
 import ContentEditor from '../../../components/content/ContentEditor.vue'
 
 const route = useRoute()
@@ -350,6 +347,22 @@ const contentForm = ref({
 })
 
 const tagsInput = ref('')
+
+const mediaCategory = computed<'audio' | 'video' | 'document'>(() => {
+  if (contentForm.value.format === 'audio') return 'audio'
+  if (contentForm.value.format === 'video') return 'video'
+  return 'document'
+})
+const mediaAccept = computed(() => {
+  if (contentForm.value.format === 'audio') return 'audio/*'
+  if (contentForm.value.format === 'video') return 'video/*'
+  return 'application/pdf'
+})
+const mediaHelpText = computed(() => {
+  if (contentForm.value.format === 'audio') return 'MP3, WAV, OGG, M4A (max 100 Mo)'
+  if (contentForm.value.format === 'video') return 'MP4, WebM, MOV (max 500 Mo)'
+  return 'PDF, DOC, DOCX (max 50 Mo)'
+})
 
 // Step navigation
 const validateStep1 = (): boolean => {

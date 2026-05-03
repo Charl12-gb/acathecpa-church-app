@@ -74,6 +74,13 @@
             <div class="play-overlay">
               <i class="bi" :class="podcast.format === 'video' ? 'bi-play-circle-fill' : 'bi-headphones'"></i>
             </div>
+            <span
+              v-if="isPremium(podcast)"
+              class="card-premium"
+              :title="`Contenu premium · ${podcast.price} XOF`"
+            >
+              <i class="bi bi-star-fill"></i> Premium · {{ podcast.price }} XOF
+            </span>
             <span class="card-format" :class="podcast.format">
               <i :class="podcast.format === 'audio' ? 'bi bi-soundwave' : 'bi bi-camera-video-fill'"></i>
               {{ podcast.format === 'audio' ? 'Audio' : 'Vidéo' }}
@@ -128,6 +135,10 @@ const podcasts = ref<Content[]>([])
 const loading = ref(false)
 const error = ref('')
 
+// L'API DRF renvoie `is_premium` (snake_case) tandis que le type front utilise `isPremium`
+const isPremium = (item: Content): boolean =>
+  Boolean(item.isPremium || (item as unknown as Record<string, unknown>).is_premium)
+
 const filters = ref({
   search: '',
   format: '',
@@ -177,6 +188,8 @@ onMounted(() => { loadPodcasts() })
 </script>
 
 <style scoped lang="scss">
+@use "sass:color";
+
 $primary:    #C14428;
 $secondary:  #1B7A78;
 $accent:     #F4A300;
@@ -200,7 +213,7 @@ $shadow-lg:  0 8px 40px rgba(0,0,0,.10);
 /* ═══════ HERO ═══════ */
 .page-hero {
   position: relative;
-  background: linear-gradient(160deg, $success 0%, darken($secondary, 10%) 100%);
+  background: linear-gradient(160deg, $success 0%, color.adjust($secondary, $lightness: -10%) 100%);
   padding: 110px 24px 60px;
   text-align: center;
   overflow: hidden;
@@ -407,7 +420,7 @@ $shadow-lg:  0 8px 40px rgba(0,0,0,.10);
 .card-format {
   position: absolute;
   top: 12px;
-  left: 12px;
+  right: 12px;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -421,6 +434,23 @@ $shadow-lg:  0 8px 40px rgba(0,0,0,.10);
   color: #fff;
   &.audio { background: rgba($success, .85); }
   &.video { background: rgba($primary, .85); }
+}
+.card-premium {
+  position: absolute;
+  top: 46px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  border-radius: 20px;
+  font-size: .7rem;
+  font-weight: 800;
+  letter-spacing: .03em;
+  color: $dark;
+  background: linear-gradient(135deg, #FFD86B 0%, $accent 100%);
+  box-shadow: 0 4px 14px rgba($accent, .5);
+  i { color: $primary; }
 }
 .card-body {
   padding: 20px;
@@ -522,7 +552,7 @@ $shadow-lg:  0 8px 40px rgba(0,0,0,.10);
   font-size: .9rem;
   cursor: pointer;
   transition: .2s;
-  &:hover { background: darken($primary, 8%); transform: translateY(-1px); }
+  &:hover { background: color.adjust($primary, $lightness: -8%); transform: translateY(-1px); }
 }
 
 /* ═══════ RESPONSIVE ═══════ */

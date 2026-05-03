@@ -139,10 +139,19 @@
                 <i class="bi bi-box-arrow-up-right me-1"></i>Rejoindre
               </RouterLink>
               <button
+                v-if="session.status !== 'ended'"
                 class="btn btn-sm btn-outline-custom"
                 @click="copySessionLink(session.id)"
               >
                 <i class="bi bi-link-45deg"></i>
+              </button>
+              <button
+                v-if="session.status === 'ended'"
+                class="btn btn-sm btn-outline-custom"
+                @click="rescheduleSession(session.id)"
+                :disabled="actionLoading === session.id"
+              >
+                <i class="bi bi-arrow-repeat me-1"></i>Reprogrammer
               </button>
               <RouterLink
                 v-if="session.status !== 'ended'"
@@ -150,6 +159,13 @@
                 class="btn btn-sm btn-outline-custom"
               >
                 <i class="bi bi-pencil"></i>
+              </RouterLink>
+              <RouterLink
+                v-if="session.status === 'ended'"
+                :to="`/live-session/${session.id}`"
+                class="btn btn-sm btn-outline-custom"
+              >
+                <i class="bi bi-eye me-1"></i>Détails
               </RouterLink>
               <button
                 class="btn btn-sm btn-outline-danger-custom"
@@ -182,12 +198,45 @@
     <div v-if="toastMessage" class="copy-toast">
       <i class="bi bi-check-circle me-2"></i>{{ toastMessage }}
     </div>
+
+    <!-- Reschedule Modal -->
+    <Teleport to="body">
+      <div v-if="showRescheduleModal" class="modal-overlay" @click.self="closeRescheduleModal">
+        <div class="modal-dialog-custom">
+          <div class="modal-header-custom">
+            <h5 class="modal-title-custom"><i class="bi bi-arrow-repeat me-2"></i>Reprogrammer la session</h5>
+            <button class="modal-close-btn" @click="closeRescheduleModal">&times;</button>
+          </div>
+          <div class="modal-body-custom">
+            <div class="form-group mb-3">
+              <label class="form-label-custom">Nouvelle date <span class="text-danger">*</span></label>
+              <input type="date" class="form-input-custom" v-model="rescheduleForm.date" required>
+            </div>
+            <div class="form-group mb-3">
+              <label class="form-label-custom">Nouvelle heure <span class="text-danger">*</span></label>
+              <input type="time" class="form-input-custom" v-model="rescheduleForm.time" required>
+            </div>
+            <div class="form-group mb-3">
+              <label class="form-label-custom">Durée (minutes) <span class="text-muted fw-normal">(optionnel)</span></label>
+              <input type="number" class="form-input-custom" v-model.number="rescheduleForm.duration_minutes" min="15" max="480" placeholder="60">
+            </div>
+          </div>
+          <div class="modal-footer-custom">
+            <button class="btn btn-outline-custom" @click="closeRescheduleModal">Annuler</button>
+            <button class="btn btn-primary-custom" @click="confirmReschedule" :disabled="!rescheduleForm.date || !rescheduleForm.time || rescheduleLoading">
+              <span v-if="rescheduleLoading" class="spinner-border spinner-border-sm me-2"></span>
+              Reprogrammer
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { getAllLiveSessions, updateLiveSessionStatus, deleteLiveSession as apiDeleteSession } from '../../../services/api/liveSession'
+import { getAllLiveSessions, updateLiveSessionStatus, deleteLiveSession as apiDeleteSession, rescheduleLiveSession } from '../../../services/api/liveSession'
 import type { LiveSession } from '../../../types/api/liveSessionTypes'
 
 const sessions = ref<LiveSession[]>([])
@@ -306,6 +355,51 @@ const copySessionLink = (sessionId: number) => {
     toastMessage.value = 'Lien copié !'
     setTimeout(() => { toastMessage.value = '' }, 2000)
   })
+}
+
+const rescheduleSession = async (sessionId: number) => {
+  rescheduleTargetId.value = sessionId
+  const def = getDefaultDateTime()
+  rescheduleForm.value = { date: def.date, time: def.time, duration_minutes: null }
+  showRescheduleModal.value = true
+}
+
+// Modal state
+const showRescheduleModal = ref(false)
+const rescheduleTargetId = ref<number | null>(null)
+const rescheduleLoading = ref(false)
+const rescheduleForm = ref<{ date: string; time: string; duration_minutes: number | null }>({ date: '', time: '', duration_minutes: null })
+
+const getDefaultDateTime = () => {
+  const d = new Date(Date.now() + 15 * 60 * 1000)
+  const date = d.toISOString().split('T')[0]
+  const time = d.toTimeString().slice(0, 5)
+  return { date, time }
+}
+
+const closeRescheduleModal = () => {
+  showRescheduleModal.value = false
+  rescheduleTargetId.value = null
+}
+
+const confirmReschedule = async () => {
+  if (!rescheduleTargetId.value || !rescheduleForm.value.date || !rescheduleForm.value.time) return
+  rescheduleLoading.value = true
+  try {
+    const scheduled_for = `${rescheduleForm.value.date}T${rescheduleForm.value.time}:00`
+    const payload: any = { scheduled_for }
+    if (rescheduleForm.value.duration_minutes) payload.duration_minutes = rescheduleForm.value.duration_minutes
+    const updated = await rescheduleLiveSession(rescheduleTargetId.value, payload)
+    const idx = sessions.value.findIndex(s => s.id === rescheduleTargetId.value)
+    if (idx !== -1) sessions.value[idx] = updated
+    toastMessage.value = 'Session reprogrammée !'
+    setTimeout(() => { toastMessage.value = '' }, 2000)
+    closeRescheduleModal()
+  } catch (err: any) {
+    alert(err?.response?.data?.detail || 'Erreur lors de la reprogrammation')
+  } finally {
+    rescheduleLoading.value = false
+  }
 }
 
 onMounted(fetchSessions)
@@ -640,5 +734,93 @@ onMounted(fetchSessions)
   .session-card-right { width: 100%; }
   .session-actions { flex-wrap: wrap; }
   .filter-tabs { overflow-x: auto; flex-wrap: nowrap; }
+}
+
+// Reschedule Modal
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-dialog-custom {
+  background: #fff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  animation: slideUp 0.25s ease;
+}
+
+.modal-header-custom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.2rem 1.5rem;
+  border-bottom: 1px solid #e7edf5;
+}
+
+.modal-title-custom {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1a2332;
+  margin: 0;
+}
+
+.modal-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #6b7280;
+  cursor: pointer;
+  line-height: 1;
+  &:hover { color: #1a2332; }
+}
+
+.modal-body-custom {
+  padding: 1.5rem;
+}
+
+.modal-footer-custom {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e7edf5;
+}
+
+.form-label-custom {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.35rem;
+  display: block;
+}
+
+.form-input-custom {
+  width: 100%;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid #e7edf5;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: #1a2332;
+  background: #fafbfd;
+  &:focus { outline: none; border-color: #2453a7; box-shadow: 0 0 0 3px rgba(36,83,167,0.08); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>

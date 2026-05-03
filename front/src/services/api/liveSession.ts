@@ -1,5 +1,12 @@
 import apiClient from './index';
-import { LiveSession, LiveSessionCreatePayload, LiveSessionUpdatePayload, AgoraTokenResponse } from '../../types/api';
+import {
+  JitsiJoinResponse,
+  LiveSession,
+  LiveSessionAttendanceSummary,
+  LiveSessionCreatePayload,
+  LiveSessionReschedulePayload,
+  LiveSessionUpdatePayload,
+} from '../../types/api';
 
 export const createLiveSession = async (data: LiveSessionCreatePayload): Promise<LiveSession> => {
   const response = await apiClient.post<LiveSession>('/live-sessions/', data);
@@ -21,6 +28,11 @@ export const getLiveSessionById = async (sessionId: number): Promise<LiveSession
   return response.data;
 };
 
+export const getLiveSessionAttendance = async (sessionId: number): Promise<LiveSessionAttendanceSummary> => {
+  const response = await apiClient.get<LiveSessionAttendanceSummary>(`/live-sessions/${sessionId}/attendance`);
+  return response.data;
+};
+
 export const updateLiveSession = async (sessionId: number, data: LiveSessionUpdatePayload): Promise<LiveSession> => {
   const response = await apiClient.put<LiveSession>(`/live-sessions/${sessionId}`, data);
   return response.data;
@@ -31,12 +43,21 @@ export const updateLiveSessionStatus = async (sessionId: number, status: string)
   return response.data;
 };
 
+export const rescheduleLiveSession = async (sessionId: number, data: LiveSessionReschedulePayload): Promise<LiveSession> => {
+  const response = await apiClient.post<LiveSession>(`/live-sessions/${sessionId}/reschedule`, data);
+  return response.data;
+};
+
 export const deleteLiveSession = async (sessionId: number): Promise<any> => {
   const response = await apiClient.delete(`/live-sessions/${sessionId}`);
   return response.data;
 };
 
-export const joinLiveSession = async (sessionId: number): Promise<AgoraTokenResponse> => {
-  const response = await apiClient.post<AgoraTokenResponse>(`/live-sessions/${sessionId}/join`);
+export const joinLiveSession = async (sessionId: number): Promise<JitsiJoinResponse> => {
+  const response = await apiClient.post<JitsiJoinResponse>(`/live-sessions/${sessionId}/join`);
   return response.data;
+};
+
+export const leaveLiveSession = async (sessionId: number): Promise<void> => {
+  await apiClient.post(`/live-sessions/${sessionId}/leave`);
 };

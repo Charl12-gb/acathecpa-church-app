@@ -111,6 +111,8 @@ const isActiveGroup = (paths: string[]) => paths.some(p => route.path.startsWith
 </template>
 
 <style scoped lang="scss">
+@use "sass:color";
+
 $sidebar-width: 250px;
 $sidebar-collapsed: 68px;
 $sidebar-bg: #1a2332;
@@ -237,7 +239,7 @@ $transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     background: rgba($sidebar-active, 0.18);
     border-left-color: $sidebar-active;
 
-    i { color: lighten($sidebar-active, 15%); }
+    i { color: color.adjust($sidebar-active, $lightness: 15%); }
   }
 }
 

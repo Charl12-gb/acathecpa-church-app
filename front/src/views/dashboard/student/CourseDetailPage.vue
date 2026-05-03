@@ -652,6 +652,8 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
+@use "sass:color";
+
 // ─── Palette ────────────────────────────────────
 $primary:      #2453a7;
 $primary-dark: #1a3f8a;
@@ -785,7 +787,7 @@ $warning:      #f59e0b;
   &.free {
     background: rgba($success, 0.25);
     border-color: rgba($success, 0.4);
-    color: lighten($success, 30%);
+    color: color.adjust($success, $lightness: 30%);
   }
 }
 
@@ -1106,7 +1108,7 @@ $warning:      #f59e0b;
   align-items: center;
   padding: 0.7rem 1.1rem;
   gap: 0.75rem;
-  border-bottom: 1px solid lighten($border, 3%);
+  border-bottom: 1px solid color.adjust($border, $lightness: 3%);
   transition: background 0.15s;
 
   &:last-child { border-bottom: none; }
@@ -1251,7 +1253,7 @@ $warning:      #f59e0b;
   align-items: center;
   gap: 0.5rem;
   padding: 0.4rem 0;
-  border-bottom: 1px solid lighten($border, 3%);
+  border-bottom: 1px solid color.adjust($border, $lightness: 3%);
   font-size: 0.8rem;
 
   &:last-child { border-bottom: none; }
@@ -1278,7 +1280,7 @@ $warning:      #f59e0b;
   color: $gray;
 
   &.done { background: rgba($success, 0.1); color: $success; }
-  &.wip  { background: rgba($warning, 0.12); color: darken($warning, 10%); }
+  &.wip  { background: rgba($warning, 0.12); color: color.adjust($warning, $lightness: -10%); }
 }
 
 // Actions
@@ -1305,8 +1307,8 @@ $warning:      #f59e0b;
   transition: background 0.2s;
 
   &:hover { background: $primary-dark; }
-  &.success { background: $success; &:hover { background: darken($success, 8%); } }
-  &.enroll { background: #10b981; &:hover { background: darken(#10b981, 8%); } }
+  &.success { background: $success; &:hover { background: color.adjust($success, $lightness: -8%); } }
+  &.enroll { background: #10b981; &:hover { background: color.adjust(#10b981, $lightness: -8%); } }
 }
 
 .enroll-price-hint {
@@ -1334,7 +1336,7 @@ $warning:      #f59e0b;
 
   &:hover:not(:disabled) { border-color: $primary; background: $primary-soft; }
   &:disabled { opacity: 0.5; cursor: not-allowed; }
-  &.earned { background: $success; color: #fff; border-color: $success; &:hover { background: darken($success, 8%); } }
+  &.earned { background: $success; color: #fff; border-color: $success; &:hover { background: color.adjust($success, $lightness: -8%); } }
 }
 
 .cert-error {
@@ -1573,7 +1575,7 @@ $warning:      #f59e0b;
     background: $gray-light;
     color: $gray;
     border: 1px solid $border;
-    &:hover:not(:disabled) { color: $dark; border-color: darken($border, 8%); }
+    &:hover:not(:disabled) { color: $dark; border-color: color.adjust($border, $lightness: -8%); }
   }
 
   &:disabled { opacity: 0.6; cursor: not-allowed; }

@@ -38,6 +38,7 @@ import ProfessorFormPage from '../views/dashboard/admin/ProfessorFormPage.vue'
 import ProfessorDetailPage from '../views/dashboard/admin/ProfessorDetailPage.vue'
 import AdminUsersPage from '../views/dashboard/admin/UsersPage.vue'
 import UserFormPage from '../views/dashboard/admin/UserFormPage.vue'
+import { UserRole } from '../types/api/userTypes'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -90,6 +91,20 @@ const router = createRouter({
       meta: { requiresAuth: true, layout: 'dashboard' }
     },
     
+    // Catalogue public (accessible sans connexion)
+    {
+      path: '/browse-courses',
+      name: 'browse-courses',
+      component: BrowseCoursesPage,
+      meta: { layout: 'dashboard' }
+    },
+    {
+      path: '/course/:id',
+      name: 'course-detail',
+      component: CourseDetailPage,
+      meta: { layout: 'dashboard' }
+    },
+
     // Student routes (accessible par student, professor, admin, super_admin)
     { 
       path: '/my-courses', 
@@ -98,21 +113,9 @@ const router = createRouter({
       meta: { requiresAuth: true, minRole: 'student', layout: 'dashboard' }
     },
     { 
-      path: '/course/:id', 
-      name: 'course-detail', 
-      component: CourseDetailPage,
-      meta: { requiresAuth: true, minRole: 'student', layout: 'dashboard' }
-    },
-    { 
       path: '/certificates', 
       name: 'certificates', 
       component: StudentCertificatesPage,
-      meta: { requiresAuth: true, minRole: 'student', layout: 'dashboard' }
-    },
-    { 
-      path: '/browse-courses', 
-      name: 'browse-courses', 
-      component: BrowseCoursesPage,
       meta: { requiresAuth: true, minRole: 'student', layout: 'dashboard' }
     },
     {
@@ -188,7 +191,7 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore()
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
-  const minRole = to.meta.minRole as string | undefined
+  const minRole = to.meta.minRole as UserRole | undefined
 
   if (requiresAuth && !authStore.isAuthenticated) {
     next('/login')

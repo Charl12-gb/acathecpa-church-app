@@ -1,7 +1,8 @@
 import apiClient from './index';
 
 export interface PaymentCreate {
-  course_id: number;
+  course_id?: number;
+  content_id?: number;
   amount: number;
   currency?: string;
   payment_method?: string;
@@ -10,7 +11,8 @@ export interface PaymentCreate {
 export interface PaymentResponse {
   id: number;
   user_id: number;
-  course_id: number;
+  course_id?: number | null;
+  content_id?: number | null;
   amount: number;
   currency: string;
   status: 'pending' | 'completed' | 'failed' | 'refunded';
@@ -19,6 +21,7 @@ export interface PaymentResponse {
   created_at: string;
   completed_at?: string | null;
   course_title?: string | null;
+  content_title?: string | null;
 }
 
 export const initiatePayment = async (data: PaymentCreate): Promise<PaymentResponse> => {

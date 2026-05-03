@@ -72,8 +72,10 @@ onMounted(async () => {
   }
 
   try {
-    const courses = await getAllCourses({ limit: 3, sortBy: 'created_at', sortOrder: 'desc' })
-    featuredCourses.value = courses
+    const courses = await getAllCourses({ limit: 5, sortBy: 'created_at', sortOrder: 'desc' })
+    featuredCourses.value = [...courses]
+      .sort((a: any, b: any) => (b.created_at || '').localeCompare(a.created_at || ''))
+      .slice(0, 5)
   } catch {
     featuredCourses.value = []
   }
@@ -397,6 +399,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped lang="scss">
+@use "sass:color";
+
 /* ═══════════════════════════════════════════════
    PALETTE (from project CSS variables)
    ═══════════════════════════════════════════════ */
@@ -679,7 +683,7 @@ $shadow-lg:  0 8px 40px rgba(0,0,0,.10);
   &:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 22px rgba($accent, .45);
-    background: darken($accent, 5%);
+    background: color.adjust($accent, $lightness: -5%);
   }
 }
 .btn-hero-outline {
@@ -1207,7 +1211,7 @@ $shadow-lg:  0 8px 40px rgba(0,0,0,.10);
 .cta-bg {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, $secondary 0%, darken($secondary, 12%) 50%, $success 100%);
+  background: linear-gradient(135deg, $secondary 0%, color.adjust($secondary, $lightness: -12%) 50%, $success 100%);
   z-index: 0;
 }
 .cta-inner {
