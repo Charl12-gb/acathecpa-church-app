@@ -73,19 +73,27 @@
                 </div>
               </div>
               <div class="col-md-4">
-                <select v-model="filters.role" class="form-select">
-                  <option value="all">Tous les rôles</option>
-                  <option value="student">Étudiants</option>
-                  <option value="professor">Professeurs</option>
-                  <option value="admin">Administrateurs</option>
-                </select>
+                <SearchableSelect
+                  v-model="filters.role"
+                  :searchable="false"
+                  :options="[
+                    { value: 'all', label: 'Tous les rôles' },
+                    { value: 'student', label: 'Étudiants' },
+                    { value: 'professor', label: 'Professeurs' },
+                    { value: 'admin', label: 'Administrateurs' },
+                  ]"
+                />
               </div>
               <div class="col-md-4">
-                <select v-model="filters.status" class="form-select">
-                  <option value="all">Tous les statuts</option>
-                  <option value="active">Actifs</option>
-                  <option value="inactive">Inactifs</option>
-                </select>
+                <SearchableSelect
+                  v-model="filters.status"
+                  :searchable="false"
+                  :options="[
+                    { value: 'all', label: 'Tous les statuts' },
+                    { value: 'active', label: 'Actifs' },
+                    { value: 'inactive', label: 'Inactifs' },
+                  ]"
+                />
               </div>
             </div>
           </div>
@@ -186,6 +194,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { getUsers, deleteUser as apiDeleteUser, updateUser as apiUpdateUser } from '../../../services/api/user'
+import SearchableSelect from '../../../components/ui/SearchableSelect.vue'
 
 const users = ref<any[]>([])
 const isLoading = ref(false)

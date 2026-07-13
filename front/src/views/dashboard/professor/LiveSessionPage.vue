@@ -96,10 +96,13 @@
                 </div>
                 <div class="form-group mb-3">
                   <label class="form-label-custom">Cours associé <span class="text-muted fw-normal">(optionnel)</span></label>
-                  <select class="form-select-custom" v-model="sessionForm.course_id" :disabled="!isNewSession">
-                    <option :value="null">Aucun cours (meet libre)</option>
-                    <option v-for="course in courses" :key="course.id" :value="course.id">{{ course.title }}</option>
-                  </select>
+                  <SearchableSelect
+                    v-model="sessionForm.course_id"
+                    :options="courseOptions"
+                    :disabled="!isNewSession"
+                    placeholder="Aucun cours (meet libre)"
+                    clearable
+                  />
                 </div>
                 <div class="form-group mb-3">
                   <label class="form-label-custom">Titre <span class="text-danger">*</span></label>
@@ -405,6 +408,7 @@ import {
 import type { LiveSessionAttendanceSummary } from '../../../types/api/liveSessionTypes'
 import { getInstructorCourses } from '../../../services/api/course'
 import type { LiveSession } from '../../../types/api/liveSessionTypes'
+import SearchableSelect from '../../../components/ui/SearchableSelect.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -418,6 +422,7 @@ const meetingEmbedUrl = computed(() => videoStore.activeMeetingUrl)
 // Management state
 const session = ref<LiveSession | null>(null)
 const courses = ref<{ id: number; title: string }[]>([])
+const courseOptions = computed(() => courses.value.map(c => ({ value: c.id, label: c.title })))
 const pageLoading = ref(true)
 const formLoading = ref(false)
 const actionLoading = ref(false)

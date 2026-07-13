@@ -4,6 +4,7 @@ import { getAllCourses, getMyEnrolledCourses, enrollInCourse } from '../../../se
 import { initiatePayment, confirmPayment } from '../../../services/api/payment';
 import type { Course } from '../../../types/api';
 import { CourseStatus } from '../../../types/api';
+import SearchableSelect from '../../../components/ui/SearchableSelect.vue';
 import { useRouter } from 'vue-router';
 
 // Sample categories - these could also come from an API in a real app
@@ -182,25 +183,29 @@ const getCourseCategory = (course: Course) => {
           </button>
         </div>
         <div class="toolbar-selects">
-          <div class="select-wrap">
-            <i class="bi bi-bar-chart-line"></i>
-            <select v-model="filters.level">
-              <option value="all">Tous niveaux</option>
-              <option value="Débutant">Débutant</option>
-              <option value="Intermédiaire">Intermédiaire</option>
-              <option value="Avancé">Avancé</option>
-            </select>
-          </div>
-          <div class="select-wrap">
-            <i class="bi bi-tag"></i>
-            <select v-model="filters.priceRange">
-              <option value="all">Tous prix</option>
-              <option value="free">Gratuit</option>
-              <option value="under-100">&lt; 100 XOF</option>
-              <option value="100-200">100 – 200 XOF</option>
-              <option value="over-200">&gt; 200 XOF</option>
-            </select>
-          </div>
+          <SearchableSelect
+            v-model="filters.level"
+            class="toolbar-select"
+            :searchable="false"
+            :options="[
+              { value: 'all', label: 'Tous niveaux' },
+              { value: 'Débutant', label: 'Débutant' },
+              { value: 'Intermédiaire', label: 'Intermédiaire' },
+              { value: 'Avancé', label: 'Avancé' },
+            ]"
+          />
+          <SearchableSelect
+            v-model="filters.priceRange"
+            class="toolbar-select"
+            :searchable="false"
+            :options="[
+              { value: 'all', label: 'Tous prix' },
+              { value: 'free', label: 'Gratuit' },
+              { value: 'under-100', label: '< 100 XOF' },
+              { value: '100-200', label: '100 – 200 XOF' },
+              { value: 'over-200', label: '> 200 XOF' },
+            ]"
+          />
         </div>
       </div>
 
@@ -469,6 +474,9 @@ $radius:      14px;
 .toolbar-selects {
   display: flex;
   gap: 0.5rem;
+}
+.toolbar-select {
+  min-width: 160px;
 }
 
 .select-wrap {

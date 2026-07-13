@@ -36,17 +36,23 @@
         <div class="toolbar-right">
           <div class="filter-group">
             <label class="filter-label">Tag</label>
-            <select v-model="filters.tag" class="filter-select">
-              <option value="">Tous</option>
-              <option v-for="tag in tags" :key="tag" :value="tag">{{ tag }}</option>
-            </select>
+            <SearchableSelect
+              v-model="filters.tag"
+              style="min-width: 150px"
+              :options="[{ value: '', label: 'Tous' }, ...tags.map(t => ({ value: t, label: t }))]"
+            />
           </div>
           <div class="filter-group">
             <label class="filter-label">Trier par</label>
-            <select v-model="filters.sort" class="filter-select">
-              <option value="recent">Plus récents</option>
-              <option value="popular">Plus populaires</option>
-            </select>
+            <SearchableSelect
+              v-model="filters.sort"
+              style="min-width: 150px"
+              :searchable="false"
+              :options="[
+                { value: 'recent', label: 'Plus récents' },
+                { value: 'popular', label: 'Plus populaires' },
+              ]"
+            />
           </div>
         </div>
       </div>
@@ -123,6 +129,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useContentStore } from '../../stores/content'
 import type { Content } from '../../stores/content'
+import SearchableSelect from '../../components/ui/SearchableSelect.vue'
 
 const contentStore = useContentStore()
 

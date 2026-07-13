@@ -2,13 +2,20 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { RouterLink } from 'vue-router'
 import { getAllCourses } from '../../services/api/course'
+import { getTeamMembers } from '../../services/api/team'
+import { resolveMediaUrl } from '../../services/api/upload'
 import { useAuthStore } from '../../stores/auth'
-import type { Course } from '../../types/api'
+import type { Course, TeamMember } from '../../types/api'
 
 const authStore = useAuthStore()
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 
 const featuredCourses = ref<Course[]>([])
+const teamMembers = ref<TeamMember[]>([])
+
+const teamInitials = (name: string) =>
+  (name || '').split(' ').filter(Boolean).slice(0, 2).map(w => w[0]?.toUpperCase()).join('')
+
 const activeVM = ref<'vision' | 'mission'>('vision')
 let vmInterval: ReturnType<typeof setInterval> | null = null
 
@@ -32,7 +39,98 @@ const testimonials = ref([
     content: 'J\'ai changé de carrière grâce à ACATHECPA. La qualité des cours et le suivi personnalisé m\'ont donné confiance pour me lancer dans ce nouveau domaine.',
     avatar: 'https://placehold.co/100x100?text=TD'
   },
+  {
+    name: 'Pasteur Jean-Pierre K.',
+    position: 'Théologien & Leader Ministériel',
+    content: 'ACATHECPA offre une vision de la théologie ancrée dans nos réalités locales. C\'est une formation indispensable pour toute personne désireuse d\'impacter sa communauté.',
+    avatar: 'https://placehold.co/100x100?text=JP'
+  },
+  {
+    name: 'Aicha B.',
+    position: 'Enseignante du Primaire',
+    content: 'Les modules de formation chrétienne m\'ont donné des outils pédagogiques incroyables pour enseigner les valeurs bibliques aux enfants.',
+    avatar: 'https://placehold.co/100x100?text=AB'
+  },
+  {
+    name: 'Dr. Koffi N.',
+    position: 'Pasteur Principal',
+    content: 'Le programme de missiologie d\'ACATHECPA est d\'une richesse rare. Il allie rigueur théologique et applications pratiques sur le terrain.',
+    avatar: 'https://placehold.co/100x100?text=KN'
+  },
+  {
+    name: 'Marie-Laure Y.',
+    position: 'Étudiante en Théologie',
+    content: 'Grâce à la flexibilité des cours en ligne et au soutien de l\'équipe académique, j\'ai pu concilier mes études théologiques et ma vie de famille.',
+    avatar: 'https://placehold.co/100x100?text=MY'
+  }
 ])
+
+const currentSlide = ref(0)
+const totalSlides = computed(() => Math.ceil(testimonials.value.length / 3))
+
+const nextSlide = () => {
+  currentSlide.value = (currentSlide.value + 1) % totalSlides.value
+}
+
+const prevSlide = () => {
+  currentSlide.value = (currentSlide.value - 1 + totalSlides.value) % totalSlides.value
+}
+
+// State for Hero Background Slideshow
+const heroBackgrounds = ref([
+  '/hero_learning_online_1783463643614.png',
+  '/hero_seminar_room_1783463658339.png',
+  '/hero_academic_journey_1783463682624.png'
+])
+
+const activeHeroBg = ref(0)
+let heroBgInterval: ReturnType<typeof setInterval> | null = null
+
+const startHeroBgInterval = () => {
+  heroBgInterval = setInterval(() => {
+    activeHeroBg.value = (activeHeroBg.value + 1) % heroBackgrounds.value.length
+  }, 7000)
+}
+
+const stopHeroBgInterval = () => {
+  if (heroBgInterval) {
+    clearInterval(heroBgInterval)
+    heroBgInterval = null
+  }
+}
+
+let autoplayInterval: ReturnType<typeof setInterval> | null = null
+
+const startAutoplay = () => {
+  autoplayInterval = setInterval(() => {
+    nextSlide()
+  }, 6000)
+}
+
+const stopAutoplay = () => {
+  if (autoplayInterval) {
+    clearInterval(autoplayInterval)
+    autoplayInterval = null
+  }
+}
+
+const setSlide = (idx: number) => {
+  currentSlide.value = idx
+  stopAutoplay()
+  startAutoplay()
+}
+
+const handleNext = () => {
+  nextSlide()
+  stopAutoplay()
+  startAutoplay()
+}
+
+const handlePrev = () => {
+  prevSlide()
+  stopAutoplay()
+  startAutoplay()
+}
 
 const priorities = ref([
   { icon: 'bi-book-fill', title: 'Excellence Pracadémique', text: 'Offrir des programmes de formation de pointe, pertinents au contexte, en Théologie et Missiologie, qui favorisent la rigueur académique et la pensée innovante.' },
@@ -80,13 +178,24 @@ onMounted(async () => {
     featuredCourses.value = []
   }
 
+  try {
+    teamMembers.value = await getTeamMembers()
+  } catch {
+    teamMembers.value = []
+  }
+
   vmInterval = setInterval(() => {
     activeVM.value = activeVM.value === 'vision' ? 'mission' : 'vision'
   }, 6000)
+
+  startAutoplay()
+  startHeroBgInterval()
 })
 
 onBeforeUnmount(() => {
   if (vmInterval) clearInterval(vmInterval)
+  stopAutoplay()
+  stopHeroBgInterval()
 })
 </script>
 
@@ -95,7 +204,16 @@ onBeforeUnmount(() => {
 
     <!-- ════════ HERO ════════ -->
     <section class="hero">
-      <div class="hero-bg"></div>
+      <!-- Diaporama d'arrière-plan avec transition fluide -->
+      <div class="hero-bg-container">
+        <div 
+          v-for="(bg, idx) in heroBackgrounds" 
+          :key="bg" 
+          class="hero-bg-slide"
+          :class="{ active: activeHeroBg === idx }"
+          :style="{ backgroundImage: `url(${bg})` }"
+        ></div>
+      </div>
       <div class="hero-overlay"></div>
 
       <!-- Animated floating icons & branding -->
@@ -276,6 +394,34 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
+    <!-- ════════ NOTRE ÉQUIPE ════════ -->
+    <section v-if="teamMembers.length" class="section team-section">
+      <div class="container">
+        <div class="text-center mb-header">
+          <span class="section-badge">Équipe</span>
+          <h2 class="section-title">Notre Équipe</h2>
+          <p class="section-subtitle">Les femmes et les hommes engagés au service de votre formation</p>
+        </div>
+        <div class="team-grid">
+          <div v-for="member in teamMembers" :key="member.id" class="team-card">
+            <div class="team-photo">
+              <img v-if="member.photo_url" :src="resolveMediaUrl(member.photo_url)" :alt="member.name" />
+              <span v-else class="team-initials">{{ teamInitials(member.name) }}</span>
+            </div>
+            <h5 class="team-name">{{ member.name }}</h5>
+            <p class="team-role">{{ member.title }}</p>
+            <p v-if="member.bio" class="team-bio">{{ member.bio }}</p>
+            <div v-if="member.social_links" class="team-socials">
+              <a v-if="member.social_links.linkedin" :href="member.social_links.linkedin" target="_blank" rel="noopener" aria-label="LinkedIn"><i class="bi bi-linkedin"></i></a>
+              <a v-if="member.social_links.twitter" :href="member.social_links.twitter" target="_blank" rel="noopener" aria-label="Twitter"><i class="bi bi-twitter-x"></i></a>
+              <a v-if="member.social_links.facebook" :href="member.social_links.facebook" target="_blank" rel="noopener" aria-label="Facebook"><i class="bi bi-facebook"></i></a>
+              <a v-if="member.social_links.email" :href="`mailto:${member.social_links.email}`" aria-label="Email"><i class="bi bi-envelope-fill"></i></a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- ════════ FORMATIONS ════════ -->
     <section class="section">
       <div class="container">
@@ -328,26 +474,83 @@ onBeforeUnmount(() => {
     </section>
 
     <!-- ════════ TÉMOIGNAGES ════════ -->
-    <section class="section section-alt">
-      <div class="container">
+    <section class="section testimonials-section">
+      <div class="container position-relative">
         <div class="text-center mb-header">
           <span class="section-badge">Témoignages</span>
           <h2 class="section-title">Ce que disent nos étudiants</h2>
+          <p class="section-subtitle">Découvrez les retours d'expérience de nos étudiants et diplômés.</p>
         </div>
-        <div class="testimonials-grid">
-          <div v-for="(t, i) in testimonials" :key="i" class="testimonial-card">
-            <div class="testimonial-quote">
-              <i class="bi bi-quote"></i>
-            </div>
-            <p class="testimonial-text">{{ t.content }}</p>
-            <div class="testimonial-author">
-              <img :src="t.avatar" :alt="t.name" class="testimonial-avatar" />
-              <div>
-                <strong class="testimonial-name">{{ t.name }}</strong>
-                <span class="testimonial-role">{{ t.position }}</span>
+
+        <div class="testimonials-slider-wrapper">
+          <!-- Bouton Précédent -->
+          <button @click="handlePrev" class="carousel-nav-btn prev-btn" aria-label="Précédent" v-if="testimonials.length > 3">
+            <i class="bi bi-chevron-left"></i>
+          </button>
+
+          <div class="testimonials-carousel">
+            <div class="testimonials-track" :style="{ transform: `translateX(-${currentSlide * 100}%)` }">
+              <!-- Première Page (3 témoignages) -->
+              <div class="testimonials-page">
+                <div v-for="(t, i) in testimonials.slice(0, 3)" :key="i" class="testimonial-card">
+                  <i class="bi bi-quote quote-bg"></i>
+                  <div class="testimonial-stars">
+                    <i class="bi bi-star-fill"></i>
+                    <i class="bi bi-star-fill"></i>
+                    <i class="bi bi-star-fill"></i>
+                    <i class="bi bi-star-fill"></i>
+                    <i class="bi bi-star-fill"></i>
+                  </div>
+                  <p class="testimonial-text">« {{ t.content }} »</p>
+                  <div class="testimonial-author">
+                    <img :src="t.avatar" :alt="t.name" class="testimonial-avatar" />
+                    <div class="testimonial-info">
+                      <strong class="testimonial-name">{{ t.name }}</strong>
+                      <span class="testimonial-role">{{ t.position }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Deuxième Page (3 témoignages) -->
+              <div class="testimonials-page">
+                <div v-for="(t, i) in testimonials.slice(3, 6)" :key="i" class="testimonial-card">
+                  <i class="bi bi-quote quote-bg"></i>
+                  <div class="testimonial-stars">
+                    <i class="bi bi-star-fill"></i>
+                    <i class="bi bi-star-fill"></i>
+                    <i class="bi bi-star-fill"></i>
+                    <i class="bi bi-star-fill"></i>
+                    <i class="bi bi-star-fill"></i>
+                  </div>
+                  <p class="testimonial-text">« {{ t.content }} »</p>
+                  <div class="testimonial-author">
+                    <img :src="t.avatar" :alt="t.name" class="testimonial-avatar" />
+                    <div class="testimonial-info">
+                      <strong class="testimonial-name">{{ t.name }}</strong>
+                      <span class="testimonial-role">{{ t.position }}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
+
+          <!-- Bouton Suivant -->
+          <button @click="handleNext" class="carousel-nav-btn next-btn" aria-label="Suivant" v-if="testimonials.length > 3">
+            <i class="bi bi-chevron-right"></i>
+          </button>
+        </div>
+
+        <!-- Indicateurs du Carousel (en dessous) -->
+        <div class="carousel-indicators" v-if="testimonials.length > 3">
+          <span 
+            v-for="idx in totalSlides" 
+            :key="idx" 
+            class="indicator"
+            :class="{ active: currentSlide === idx - 1 }"
+            @click="setSlide(idx - 1)"
+          ></span>
         </div>
       </div>
     </section>
@@ -481,12 +684,25 @@ $shadow-lg:  0 8px 40px rgba(0,0,0,.10);
   padding: 100px 24px 60px;
   overflow: hidden;
 }
-.hero-bg {
+.hero-bg-container {
   position: absolute;
   inset: 0;
-  background: url('https://images.unsplash.com/photo-1589739907626-5bfb198dde73?crop=entropy&cs=tinysrgb&fit=crop&h=800&w=1600') no-repeat center center;
-  background-size: cover;
   z-index: 0;
+}
+.hero-bg-slide {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transition: opacity 2s ease-in-out, transform 8s ease-in-out;
+  transform: scale(1.05);
+
+  &.active {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 .hero-overlay {
   position: absolute;
@@ -905,6 +1121,86 @@ $shadow-lg:  0 8px 40px rgba(0,0,0,.10);
   margin: 0;
 }
 
+/* ═══════ TEAM ═══════ */
+.team-section {
+  background: $neutral;
+}
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 24px;
+}
+.team-card {
+  background: #fff;
+  border: 1px solid $border;
+  border-radius: $radius-lg;
+  padding: 32px 24px;
+  text-align: center;
+  box-shadow: $shadow-sm;
+  transition: all .3s;
+  &:hover {
+    box-shadow: $shadow;
+    transform: translateY(-4px);
+    border-color: rgba($secondary, .25);
+  }
+}
+.team-photo {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  margin: 0 auto 16px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: rgba($secondary, .1);
+  border: 3px solid rgba($secondary, .15);
+  img { width: 100%; height: 100%; object-fit: cover; }
+}
+.team-initials {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: $secondary;
+}
+.team-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: $dark;
+  margin: 0 0 4px;
+}
+.team-role {
+  font-size: .85rem;
+  font-weight: 600;
+  color: $primary;
+  margin: 0 0 10px;
+}
+.team-bio {
+  font-size: .82rem;
+  color: $text-light;
+  line-height: 1.55;
+  margin: 0 0 14px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.team-socials {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  a {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: rgba($secondary, .08);
+    color: $secondary;
+    font-size: .95rem;
+    transition: all .2s;
+    &:hover { background: $secondary; color: #fff; transform: translateY(-2px); }
+  }
+}
+
 /* ═══════ VALUES TICKER ═══════ */
 .values-ticker {
   position: relative;
@@ -1087,57 +1383,214 @@ $shadow-lg:  0 8px 40px rgba(0,0,0,.10);
 }
 
 /* ═══════ TESTIMONIALS ═══════ */
-.testimonials-grid {
+.testimonials-section {
+  position: relative;
+  background-color: var(--background-default);
+  padding: 80px 0;
+}
+.testimonials-slider-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+.testimonials-carousel {
+  overflow: hidden;
+  width: 100%;
+}
+.testimonials-track {
+  display: flex;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+}
+.testimonials-page {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 24px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 30px;
+  width: 100%;
+  flex-shrink: 0;
 }
 .testimonial-card {
-  background: #fff;
-  border-radius: $radius-lg;
-  padding: 32px 28px 28px;
-  box-shadow: $shadow-sm;
-  transition: all .3s;
+  background: var(--background-secondary);
+  border: 1px solid rgba(27, 122, 120, 0.12);
+  border-radius: 20px;
+  padding: 35px 30px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.02);
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
   &:hover {
-    box-shadow: $shadow;
-    transform: translateY(-2px);
+    box-shadow: 0 20px 40px rgba(27, 122, 120, 0.08);
+    transform: translateY(-5px);
+    border-color: rgba(27, 122, 120, 0.3);
+
+    &::before {
+      opacity: 1;
+    }
+
+    .quote-bg {
+      transform: scale(1.1) rotate(-5deg);
+      color: rgba(27, 122, 120, 0.12);
+    }
   }
 }
-.testimonial-quote {
-  font-size: 2.6rem;
+.testimonial-stars {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  color: var(--color-accent);
+  font-size: 0.9rem;
+}
+.quote-bg {
+  position: absolute;
+  top: 15px;
+  right: 25px;
+  font-size: 4rem;
   line-height: 1;
-  color: rgba($secondary, .15);
-  margin-bottom: 8px;
+  color: rgba(27, 122, 120, 0.05);
+  pointer-events: none;
+  transition: all 0.35s ease;
 }
 .testimonial-text {
-  font-size: .94rem;
-  color: $text-light;
-  line-height: 1.7;
-  margin: 0 0 20px;
-  font-style: italic;
+  font-size: 0.98rem;
+  color: var(--color-dark);
+  line-height: 1.8;
+  margin: 0 0 25px;
+  position: relative;
+  z-index: 2;
+  font-style: normal;
+  font-weight: 400;
 }
 .testimonial-author {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 15px;
+  margin-top: auto;
+  border-top: 1px solid rgba(108, 117, 125, 0.08);
+  padding-top: 20px;
 }
 .testimonial-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--color-secondary);
+  padding: 2px;
+  background-color: #fff;
+}
+.testimonial-info {
+  display: flex;
+  flex-direction: column;
+}
+.testimonial-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #2c3e50;
+}
+.testimonial-role {
+  font-size: 0.8rem;
+  color: var(--color-primary);
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+/* Controls */
+.carousel-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--background-secondary);
+  border: 1px solid rgba(27, 122, 120, 0.25);
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid $border;
+  color: var(--color-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  z-index: 10;
+
+  &:hover {
+    background: var(--color-secondary);
+    color: #fff;
+    border-color: var(--color-secondary);
+    box-shadow: 0 6px 20px rgba(27, 122, 120, 0.25);
+  }
+  &:active {
+    transform: translateY(-50%) scale(0.95);
+  }
+  &.prev-btn {
+    left: -60px;
+  }
+  &.next-btn {
+    right: -60px;
+  }
 }
-.testimonial-name {
-  display: block;
-  font-size: .9rem;
-  font-weight: 700;
-  color: $dark;
+.carousel-indicators {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 40px;
 }
-.testimonial-role {
-  font-size: .78rem;
-  color: $text-light;
+.indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(27, 122, 120, 0.2);
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &.active {
+    background: var(--color-primary);
+    width: 24px;
+    border-radius: 5px;
+  }
+}
+
+@media (max-width: 1300px) {
+  .carousel-nav-btn {
+    &.prev-btn {
+      left: -20px;
+    }
+    &.next-btn {
+      right: -20px;
+    }
+  }
+}
+
+@media (max-width: 991px) {
+  .testimonials-track {
+    flex-direction: column;
+    gap: 20px;
+    transform: none !important;
+  }
+  .testimonials-page {
+    display: contents;
+  }
+  .carousel-nav-btn,
+  .carousel-indicators {
+    display: none;
+  }
 }
 
 /* ═══════ PARTNERS ═══════ */
@@ -1298,7 +1751,7 @@ $shadow-lg:  0 8px 40px rgba(0,0,0,.10);
   .hero-subtitle { font-size: .98rem; }
   .hero-stats { margin-top: 36px; }
   .stat-number { font-size: 1.3rem; }
-  .priorities-grid, .testimonials-grid { grid-template-columns: 1fr; }
+  .priorities-grid { grid-template-columns: 1fr; }
   .courses-header { flex-direction: column; align-items: flex-start; }
   .course-card { grid-template-columns: 1fr; }
   .course-num { display: none; }

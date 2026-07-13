@@ -37,10 +37,28 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = (
             "id", "email", "name", "phone", "country", "birthdate",
-            "role", "is_active", "created_at", "updated_at",
+            "role", "is_active", "is_visible", "created_at", "updated_at",
             "professor_profile",
         )
         read_only_fields = fields
+
+
+class MeUpdateSerializer(serializers.ModelSerializer):
+    """Self-service profile update (limited, safe fields only)."""
+
+    class Meta:
+        model = User
+        fields = ("name", "phone", "country", "birthdate", "is_visible")
+        extra_kwargs = {f: {"required": False} for f in fields}
+
+    def validate_phone(self, value):
+        if value and (
+            User.objects.filter(phone=value)
+            .exclude(pk=self.instance.pk if self.instance else None)
+            .exists()
+        ):
+            raise serializers.ValidationError("Phone number already registered")
+        return value
 
 
 class RegisterSerializer(serializers.ModelSerializer):

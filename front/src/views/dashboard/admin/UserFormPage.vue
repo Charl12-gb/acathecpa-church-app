@@ -61,12 +61,12 @@
 
                 <div class="col-md-6">
                   <label class="form-label">Pays</label>
-                  <select class="form-select" v-model="userForm.country">
-                    <option value="" disabled>Sélectionner un pays</option>
-                    <option v-for="country in countries" :key="country" :value="country">
-                      {{ country }}
-                    </option>
-                  </select>
+                  <SearchableSelect
+                    v-model="userForm.country"
+                    :options="countries"
+                    placeholder="Sélectionner un pays"
+                    clearable
+                  />
                 </div>
 
                 <div class="col-md-6">
@@ -84,19 +84,27 @@
               <div class="row g-3 mb-4">
                 <div class="col-md-6">
                   <label class="form-label">Rôle</label>
-                  <select class="form-select" v-model="userForm.role" required>
-                    <option value="student">Étudiant</option>
-                    <option value="professor">Professeur</option>
-                    <option value="admin">Administrateur</option>
-                  </select>
+                  <SearchableSelect
+                    v-model="userForm.role"
+                    :options="[
+                      { value: 'student', label: 'Étudiant' },
+                      { value: 'professor', label: 'Professeur' },
+                      { value: 'admin', label: 'Administrateur' },
+                    ]"
+                    :searchable="false"
+                  />
                 </div>
 
                 <div class="col-md-6">
                   <label class="form-label">Statut</label>
-                  <select class="form-select" v-model="userForm.status" required>
-                    <option value="active">Actif</option>
-                    <option value="inactive">Inactif</option>
-                  </select>
+                  <SearchableSelect
+                    v-model="userForm.status"
+                    :options="[
+                      { value: 'active', label: 'Actif' },
+                      { value: 'inactive', label: 'Inactif' },
+                    ]"
+                    :searchable="false"
+                  />
                 </div>
               </div>
 
@@ -188,6 +196,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { getUserById, updateUser } from '../../../services/api/user'
 import { register } from '../../../services/api/auth'
 import { UserRole } from '../../../types/api/userTypes'
+import { countries } from '../../../services/utils'
+import SearchableSelect from '../../../components/ui/SearchableSelect.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -207,11 +217,6 @@ const userForm = ref({
   password: '',
   confirm_password: ''
 })
-
-const countries = [
-  "France", "Belgique", "Suisse", "Canada", "Maroc", "Algérie",
-  "Tunisie", "Sénégal", "Côte d'Ivoire", "Cameroun", "Mali"
-]
 
 onMounted(async () => {
   if (isEditing.value) {

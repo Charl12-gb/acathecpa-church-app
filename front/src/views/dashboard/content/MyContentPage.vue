@@ -73,18 +73,26 @@
                 </div>
               </div>
               <div class="col-md-4">
-                <select v-model="filters.type" class="form-select">
-                  <option value="all">Tous les types</option>
-                  <option value="article">Articles</option>
-                  <option value="podcast">Podcasts</option>
-                </select>
+                <SearchableSelect
+                  v-model="filters.type"
+                  :searchable="false"
+                  :options="[
+                    { value: 'all', label: 'Tous les types' },
+                    { value: 'article', label: 'Articles' },
+                    { value: 'podcast', label: 'Podcasts' },
+                  ]"
+                />
               </div>
               <div class="col-md-4">
-                <select v-model="filters.status" class="form-select">
-                  <option value="all">Tous les statuts</option>
-                  <option value="published">Publiés</option>
-                  <option value="draft">Brouillons</option>
-                </select>
+                <SearchableSelect
+                  v-model="filters.status"
+                  :searchable="false"
+                  :options="[
+                    { value: 'all', label: 'Tous les statuts' },
+                    { value: 'published', label: 'Publiés' },
+                    { value: 'draft', label: 'Brouillons' },
+                  ]"
+                />
               </div>
             </div>
           </div>
@@ -190,6 +198,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useContentStore } from '../../../stores/content'
 import type { Content } from '../../../stores/content'
+import SearchableSelect from '../../../components/ui/SearchableSelect.vue'
 
 const contentStore = useContentStore()
 

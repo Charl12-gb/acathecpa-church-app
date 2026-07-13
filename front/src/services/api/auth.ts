@@ -1,5 +1,5 @@
 import apiClient from './index';
-import { User, UserCreatePayload, TokenResponse, LoginPayload } from '../../types/api'; // Adjust path if necessary
+import { User, UserCreatePayload, TokenResponse, LoginPayload, MeUpdatePayload } from '../../types/api'; // Adjust path if necessary
 
 export const register = async (userData: UserCreatePayload): Promise<User> => {
   const response = await apiClient.post<User>('/auth/register', userData);
@@ -31,6 +31,11 @@ export const refreshToken = async (currentToken: string): Promise<TokenResponse>
 
 export const getMe = async (): Promise<User> => {
   const response = await apiClient.get<User>('/auth/users/me');
+  return response.data;
+};
+
+export const updateMe = async (data: MeUpdatePayload): Promise<User> => {
+  const response = await apiClient.patch<User>('/auth/users/me', data);
   return response.data;
 };
 

@@ -12,6 +12,7 @@ import ArticlesPage from '../views/public/ArticlesPage.vue'
 import PodcastsPage from '../views/public/PodcastsPage.vue'
 import ArticleDetailPage from '../views/public/ArticleDetailPage.vue'
 import PodcastDetailPage from '../views/public/PodcastDetailPage.vue'
+import AlumniPage from '../views/public/AlumniPage.vue'
 
 // Private Pages
 import DashboardPage from '../views/dashboard/DashboardPage.vue'
@@ -38,6 +39,9 @@ import ProfessorFormPage from '../views/dashboard/admin/ProfessorFormPage.vue'
 import ProfessorDetailPage from '../views/dashboard/admin/ProfessorDetailPage.vue'
 import AdminUsersPage from '../views/dashboard/admin/UsersPage.vue'
 import UserFormPage from '../views/dashboard/admin/UserFormPage.vue'
+import TeamMembersPage from '../views/dashboard/admin/TeamMembersPage.vue'
+import TeamMemberFormPage from '../views/dashboard/admin/TeamMemberFormPage.vue'
+import CategoriesPage from '../views/dashboard/admin/CategoriesPage.vue'
 import { UserRole } from '../types/api/userTypes'
 
 const router = createRouter({
@@ -64,6 +68,7 @@ const router = createRouter({
     { path: '/podcasts', name: 'podcasts', component: PodcastsPage },
     { path: '/articles/:id', name: 'article-detail', component: ArticleDetailPage },
     { path: '/podcasts/:id', name: 'podcast-detail', component: PodcastDetailPage },
+    { path: '/alumni', name: 'alumni', component: AlumniPage },
     
     // Protected routes
     { 
@@ -176,13 +181,31 @@ const router = createRouter({
       component: AdminUsersPage,
       meta: { requiresAuth: true, minRole: 'admin', layout: 'dashboard' }
     },
-    { 
-      path: '/user-form/:id?', 
-      name: 'user-form', 
+    {
+      path: '/user-form/:id?',
+      name: 'user-form',
       component: UserFormPage,
       meta: { requiresAuth: true, minRole: 'admin', layout: 'dashboard' }
     },
-    
+    {
+      path: '/manage-team',
+      name: 'manage-team',
+      component: TeamMembersPage,
+      meta: { requiresAuth: true, minRole: 'admin', layout: 'dashboard' }
+    },
+    {
+      path: '/team-form/:id?',
+      name: 'team-form',
+      component: TeamMemberFormPage,
+      meta: { requiresAuth: true, minRole: 'admin', layout: 'dashboard' }
+    },
+    {
+      path: '/manage-categories',
+      name: 'manage-categories',
+      component: CategoriesPage,
+      meta: { requiresAuth: true, minRole: 'admin', layout: 'dashboard' }
+    },
+
     // Catch-all redirect to home
     { path: '/:pathMatch(.*)*', redirect: '/' }
   ]

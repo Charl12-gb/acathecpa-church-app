@@ -47,6 +47,22 @@ def check_permission(user, permission_name: str) -> bool:
     return False
 
 
+class IsAdminRole(BasePermission):
+    """Allow only users whose role is ``admin`` or ``super_admin``.
+
+    Used for admin-managed resources (team members, course categories) where
+    reads are public but writes are restricted to staff, without having to seed
+    dedicated named permissions.
+    """
+
+    def has_permission(self, request, view) -> bool:
+        user = request.user
+        if not user or not user.is_authenticated or not user.is_active:
+            return False
+        role = getattr(user, "role", None)
+        return bool(role and role.name in ("admin", "super_admin"))
+
+
 class HasPermission(BasePermission):
     """
     Usage::

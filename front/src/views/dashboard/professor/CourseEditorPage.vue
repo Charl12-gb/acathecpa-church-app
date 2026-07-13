@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, nextTick, defineAsyncComponent } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { categories } from '../../../services/utils';
 import CourseTestEditor from '../../../components/CourseTestEditor.vue';
+import SearchableSelect from '../../../components/ui/SearchableSelect.vue';
 const FileUploader = defineAsyncComponent(() => import('../../../components/FileUploader.vue'));
 import { resolveMediaUrl } from '../../../services/api/upload';
+import { getCategories, createCategory } from '../../../services/api/category';
 import {
   getCourseById,
   createCourse,
@@ -31,6 +32,31 @@ const showPreview = ref(true);
 const course_data = ref<Course | null>(null);
 const courseSectionId = ref<number | null>(null);
 const showTestModal = ref(false);
+
+// Categories loaded from the API (admin-managed). Supports on-the-fly creation.
+const categories = ref<string[]>([]);
+
+const loadCategories = async () => {
+  try {
+    const list = await getCategories();
+    categories.value = list.map((c) => c.name);
+  } catch {
+    categories.value = [];
+  }
+};
+
+const handleCategoryCreate = async (name: string) => {
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  // Optimistically select it, then persist.
+  if (!categories.value.includes(trimmed)) categories.value.push(trimmed);
+  courseForm.value.category = trimmed;
+  try {
+    await createCategory({ name: trimmed });
+  } catch {
+    // Even if it already exists server-side, keep it selected locally.
+  }
+};
 
 // ── Step wizard ──
 const currentStep = ref(1);
@@ -148,6 +174,7 @@ const totalLessons = computed(() => {
 });
 
 onMounted(async () => {
+  await loadCategories();
   const courseIdParam = route.params.id;
   if (courseIdParam) {
     isLoading.value = true;
@@ -529,19 +556,27 @@ const previewLessons = (section: any) => {
             <div class="field-row">
               <div class="field">
                 <label>Catégorie <span class="req">*</span></label>
-                <select :class="{ invalid: errors.category }" v-model="courseForm.category">
-                  <option value="" disabled>Sélectionner une catégorie</option>
-                  <option v-for="category in categories" :key="category" :value="category">{{ category }}</option>
-                </select>
+                <SearchableSelect
+                  v-model="courseForm.category"
+                  :options="categories"
+                  :invalid="!!errors.category"
+                  placeholder="Sélectionner une catégorie"
+                  creatable
+                  @create="handleCategoryCreate"
+                />
                 <span v-if="errors.category" class="field-error">{{ errors.category }}</span>
               </div>
               <div class="field">
                 <label>Niveau</label>
-                <select v-model="courseForm.level">
-                  <option value="beginner">Débutant</option>
-                  <option value="intermediate">Intermédiaire</option>
-                  <option value="advanced">Avancé</option>
-                </select>
+                <SearchableSelect
+                  v-model="courseForm.level"
+                  :options="[
+                    { value: 'beginner', label: 'Débutant' },
+                    { value: 'intermediate', label: 'Intermédiaire' },
+                    { value: 'advanced', label: 'Avancé' },
+                  ]"
+                  :searchable="false"
+                />
               </div>
             </div>
 
@@ -573,10 +608,14 @@ const previewLessons = (section: any) => {
             <div class="field-row">
               <div class="field">
                 <label>Statut du cours</label>
-                <select v-model="courseForm.status">
-                  <option :value="CourseStatus.DRAFT">Brouillon</option>
-                  <option :value="CourseStatus.PUBLISHED">Publié</option>
-                </select>
+                <SearchableSelect
+                  v-model="courseForm.status"
+                  :options="[
+                    { value: CourseStatus.DRAFT, label: 'Brouillon' },
+                    { value: CourseStatus.PUBLISHED, label: 'Publié' },
+                  ]"
+                  :searchable="false"
+                />
               </div>
               <div class="field" style="flex:2">
                 <!-- spacer -->
@@ -752,10 +791,14 @@ const previewLessons = (section: any) => {
                             <input type="text" v-model="lesson.title" placeholder="Titre de la leçon">
                           </div>
                           <div class="field" style="flex:1">
-                            <select v-model="lesson.type">
-                              <option value="video">Vidéo</option>
-                              <option value="text">Texte</option>
-                            </select>
+                            <SearchableSelect
+                              v-model="lesson.type"
+                              :options="[
+                                { value: 'video', label: 'Vidéo' },
+                                { value: 'text', label: 'Texte' },
+                              ]"
+                              :searchable="false"
+                            />
                           </div>
                           <div class="field" style="flex:1">
                             <input type="text" v-model="lesson.duration" placeholder="10min">

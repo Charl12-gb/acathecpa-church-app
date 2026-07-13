@@ -7,3 +7,6 @@ export * from './professorTypes';
 export * from './admin_dashboard';
 export * from './professor_dashboard';
 export * from './student_dashboard';
+export * from './teamTypes';
+export * from './categoryTypes';
+export * from './alumniTypes';

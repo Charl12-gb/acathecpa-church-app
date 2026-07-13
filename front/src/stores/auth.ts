@@ -4,10 +4,11 @@ import {
   login as apiLogin,
   register as apiRegister,
   getMe as apiGetMe,
+  updateMe as apiUpdateMe,
   requestPasswordReset as apiRequestPasswordReset,
   resetPassword as apiResetPassword
 } from '../services/api/auth'
-import type { User as ApiUser, UserRole } from '../types/api/userTypes'
+import type { User as ApiUser, UserRole, MeUpdatePayload } from '../types/api/userTypes'
 import router from '../router'
 
 export type User = Omit<ApiUser, 'role'> & {
@@ -173,6 +174,22 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  const updateProfile = async (payload: MeUpdatePayload) => {
+    loading.value = true
+    error.value = ''
+    try {
+      const updated = await apiUpdateMe(payload)
+      user.value = updated as User
+      localStorage.setItem('user', JSON.stringify(updated))
+      return { success: true }
+    } catch (err: any) {
+      error.value = err.response?.data?.detail || 'Échec de la mise à jour du profil'
+      return { success: false, error: error.value }
+    } finally {
+      loading.value = false
+    }
+  }
+
   const checkAuth = async () => {
     if (!token.value) return
     
@@ -201,6 +218,7 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     logout,
     checkAuth,
+    updateProfile, // Added
     requestPasswordReset, // Added
     resetPassword // Added
   }

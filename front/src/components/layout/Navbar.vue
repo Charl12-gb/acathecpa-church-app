@@ -49,6 +49,7 @@ export default {
           <li><RouterLink to="/">Accueil</RouterLink></li>
           <li><RouterLink to="/articles">Articles</RouterLink></li>
           <li><RouterLink to="/podcasts">Podcasts</RouterLink></li>
+          <li><RouterLink to="/alumni">Alumni</RouterLink></li>
           <li><RouterLink to="/contact">Contact</RouterLink></li>
         </ul>
 
@@ -85,6 +86,7 @@ export default {
           <li><RouterLink to="/"><i class="bi bi-house"></i> Accueil</RouterLink></li>
           <li><RouterLink to="/articles"><i class="bi bi-journal-richtext"></i> Articles</RouterLink></li>
           <li><RouterLink to="/podcasts"><i class="bi bi-mic-fill"></i> Podcasts</RouterLink></li>
+          <li><RouterLink to="/alumni"><i class="bi bi-mortarboard-fill"></i> Alumni</RouterLink></li>
           <li><RouterLink to="/contact"><i class="bi bi-envelope-fill"></i> Contact</RouterLink></li>
         </ul>
         <div class="mobile-auth">

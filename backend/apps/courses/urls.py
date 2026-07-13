@@ -2,6 +2,7 @@ from django.urls import include, path
 from rest_framework.routers import SimpleRouter
 
 from .views import (
+    CategoryViewSet,
     CourseLessonViewSet,
     CourseSectionViewSet,
     CourseTestViewSet,
@@ -19,6 +20,7 @@ nested_router.register("questions", TestQuestionViewSet, basename="test-question
 
 courses_router = SimpleRouter(trailing_slash="/?")
 courses_router.register("courses", CourseViewSet, basename="course")
+courses_router.register("categories", CategoryViewSet, basename="category")
 
 # IMPORTANT: list nested router FIRST so /courses/sections/... is matched before
 # the CourseViewSet detail route /courses/<pk> would swallow it.

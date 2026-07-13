@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "apps.live_sessions",
     "apps.student_dashboard",
     "apps.professors",
+    "apps.team",
 ]
 
 MIDDLEWARE = [

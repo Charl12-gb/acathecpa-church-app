@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router';
 import { getMyEnrolledCourses, getMyCourseEnrollmentProgress, getMyCertificateForCourse } from '../../../services/api/course';
 import type { Course, CertificateDisplay } from '../../../types/api';
 import { useAuthStore } from '../../../stores/auth';
+import SearchableSelect from '../../../components/ui/SearchableSelect.vue';
 
 // Define an extended type for courses with their specific progress
 type CourseWithProgress = Course & { studentProgressPercentage?: number };
@@ -202,22 +203,26 @@ const filteredCourses = computed(() => {
 
       <div class="toolbar-bottom">
         <div class="toolbar-selects">
-          <div class="select-wrap">
-            <i class="bi bi-funnel"></i>
-            <select v-model="filters.status">
-              <option value="all">Tous les cours</option>
-              <option value="in-progress">En cours</option>
-              <option value="completed">Terminés</option>
-            </select>
-          </div>
-          <div class="select-wrap">
-            <i class="bi bi-sort-down"></i>
-            <select v-model="filters.sort">
-              <option value="recent">Plus récents</option>
-              <option value="progress">Progression</option>
-              <option value="alphabetical">Ordre alphabétique</option>
-            </select>
-          </div>
+          <SearchableSelect
+            v-model="filters.status"
+            class="toolbar-select"
+            :searchable="false"
+            :options="[
+              { value: 'all', label: 'Tous les cours' },
+              { value: 'in-progress', label: 'En cours' },
+              { value: 'completed', label: 'Terminés' },
+            ]"
+          />
+          <SearchableSelect
+            v-model="filters.sort"
+            class="toolbar-select"
+            :searchable="false"
+            :options="[
+              { value: 'recent', label: 'Plus récents' },
+              { value: 'progress', label: 'Progression' },
+              { value: 'alphabetical', label: 'Ordre alphabétique' },
+            ]"
+          />
         </div>
       </div>
     </div>
@@ -479,6 +484,9 @@ $radius:      14px;
 .toolbar-selects {
   display: flex;
   gap: 0.5rem;
+}
+.toolbar-select {
+  min-width: 170px;
 }
 
 .select-wrap {

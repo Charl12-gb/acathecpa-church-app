@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '../../stores/auth'
+import { countries } from '../../services/utils'
+import SearchableSelect from '../../components/ui/SearchableSelect.vue'
 
 const authStore = useAuthStore()
 const currentUser = computed(() => authStore.user)
@@ -11,6 +13,7 @@ const form = ref({
   phone: '',
   country: '',
   birthdate: '',
+  is_visible: true,
   current_password: '',
   new_password: '',
   confirm_password: ''
@@ -29,6 +32,7 @@ onMounted(() => {
     form.value.phone = currentUser.value.phone || ''
     form.value.country = currentUser.value.country || ''
     form.value.birthdate = currentUser.value.birthdate || ''
+    form.value.is_visible = currentUser.value.is_visible ?? true
   }
 })
 
@@ -36,23 +40,22 @@ onMounted(() => {
 const updateProfile = async () => {
   loading.value = true
   error.value = ''
-  
-  try {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Update successful
+  formSubmitted.value = false
+
+  const result = await authStore.updateProfile({
+    name: form.value.name,
+    phone: form.value.phone,
+    country: form.value.country,
+    birthdate: form.value.birthdate,
+    is_visible: form.value.is_visible,
+  })
+
+  if (result.success) {
     formSubmitted.value = true
-    
-    // Reset password fields
-    form.value.current_password = ''
-    form.value.new_password = ''
-    form.value.confirm_password = ''
-  } catch (err: any) {
-    error.value = err.message || 'Une erreur est survenue. Veuillez réessayer.'
-  } finally {
-    loading.value = false
+  } else {
+    error.value = result.error || 'Une erreur est survenue. Veuillez réessayer.'
   }
+  loading.value = false
 }
 
 // Update password
@@ -62,15 +65,9 @@ const updatePassword = async () => {
     error.value = 'Les nouveaux mots de passe ne correspondent pas.'
     return
   }
-  
+
   // Add password update logic here
 }
-
-// Country list (sample)
-const countries = [
-  "France", "Belgique", "Suisse", "Canada", "Maroc", "Algérie", 
-  "Tunisie", "Sénégal", "Côte d'Ivoire", "Cameroun", "Mali"
-]
 </script>
 
 <template>
@@ -192,27 +189,40 @@ const countries = [
                 <!-- Country -->
                 <div class="col-md-6">
                   <label for="country" class="form-label">Pays</label>
-                  <select 
-                    class="form-select" 
-                    id="country" 
+                  <SearchableSelect
+                    id="country"
                     v-model="form.country"
-                  >
-                    <option value="" disabled>Sélectionner votre pays</option>
-                    <option v-for="country in countries" :key="country" :value="country">
-                      {{ country }}
-                    </option>
-                  </select>
+                    :options="countries"
+                    placeholder="Sélectionner votre pays"
+                    clearable
+                  />
                 </div>
 
                 <!-- Birthdate -->
                 <div class="col-md-6">
                   <label for="birthdate" class="form-label">Date de naissance</label>
-                  <input 
-                    type="date" 
-                    class="form-control" 
-                    id="birthdate" 
+                  <input
+                    type="date"
+                    class="form-control"
+                    id="birthdate"
                     v-model="form.birthdate"
                   >
+                </div>
+
+                <!-- Visibility (Alumni directory) -->
+                <div class="col-12">
+                  <div class="visibility-box">
+                    <div class="form-check form-switch mb-0">
+                      <input class="form-check-input" type="checkbox" id="is_visible" v-model="form.is_visible">
+                      <label class="form-check-label fw-semibold" for="is_visible">
+                        Afficher mon profil dans l'annuaire des Alumni
+                      </label>
+                    </div>
+                    <p class="visibility-hint">
+                      <i class="bi bi-info-circle me-1"></i>
+                      Activé par défaut. Une fois certifié, votre profil (nom, pays, formations) apparaît sur la page publique « Alumni ». Désactivez pour rester masqué.
+                    </p>
+                  </div>
                 </div>
 
                 <div class="col-12 mt-4">
@@ -381,5 +391,19 @@ const countries = [
 .form-check-input:checked {
   background-color: var(--bs-primary);
   border-color: var(--bs-primary);
+}
+
+.visibility-box {
+  background: #f8fbff;
+  border: 1px solid #e8eef7;
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+}
+
+.visibility-hint {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin: 0.5rem 0 0;
+  line-height: 1.5;
 }
 </style>

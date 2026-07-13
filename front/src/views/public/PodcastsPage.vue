@@ -35,18 +35,28 @@
         <div class="toolbar-right">
           <div class="filter-group">
             <label class="filter-label">Format</label>
-            <select v-model="filters.format" class="filter-select">
-              <option value="">Tous</option>
-              <option value="audio">Audio</option>
-              <option value="video">Vidéo</option>
-            </select>
+            <SearchableSelect
+              v-model="filters.format"
+              style="min-width: 150px"
+              :searchable="false"
+              :options="[
+                { value: '', label: 'Tous' },
+                { value: 'audio', label: 'Audio' },
+                { value: 'video', label: 'Vidéo' },
+              ]"
+            />
           </div>
           <div class="filter-group">
             <label class="filter-label">Trier par</label>
-            <select v-model="filters.sort" class="filter-select">
-              <option value="recent">Plus récents</option>
-              <option value="popular">Plus populaires</option>
-            </select>
+            <SearchableSelect
+              v-model="filters.sort"
+              style="min-width: 150px"
+              :searchable="false"
+              :options="[
+                { value: 'recent', label: 'Plus récents' },
+                { value: 'popular', label: 'Plus populaires' },
+              ]"
+            />
           </div>
         </div>
       </div>
@@ -128,6 +138,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useContentStore } from '../../stores/content'
 import type { Content } from '../../stores/content'
+import SearchableSelect from '../../components/ui/SearchableSelect.vue'
 
 const contentStore = useContentStore()
 

@@ -33,6 +33,24 @@ class QuestionType(models.TextChoices):
 
 
 # --------------------------------------------------------------------------- #
+# Category (admin-managed list of course categories)
+# --------------------------------------------------------------------------- #
+class Category(models.Model):
+    name = models.CharField(max_length=128, unique=True, db_index=True)
+    description = models.TextField(blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "course_categories"
+        ordering = ["name"]
+        verbose_name_plural = "categories"
+
+    def __str__(self) -> str:  # pragma: no cover
+        return self.name
+
+
+# --------------------------------------------------------------------------- #
 # Course
 # --------------------------------------------------------------------------- #
 class Course(models.Model):

@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.enrollments.views import CertificateDetailView
+from apps.accounts.views_alumni import AlumniListView
 from apps.accounts.views_contact import ContactView
 
 
@@ -47,6 +48,8 @@ api_v1_patterns = [
     path("professors/", include("apps.professors.urls_professors")),
     path("admin/dashboard/", include("apps.professors.urls_admin_dashboard")),
     path("uploads/", include("apps.uploads.urls")),
+    path("team/", include("apps.team.urls")),
+    path("alumni", AlumniListView.as_view(), name="alumni"),
     path("contact", ContactView.as_view(), name="contact"),
 ]
 

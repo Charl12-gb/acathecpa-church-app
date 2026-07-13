@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
+import SearchableSelect from '../../../components/ui/SearchableSelect.vue'
 // Chart.js components are registered but not actively used in the provided course list part.
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Title } from 'chart.js'
 // import { Line } from 'vue-chartjs'
@@ -95,10 +96,8 @@ const totalRevenue = computed(() =>
   courses.value.reduce((sum, course) => sum + getCourseMetric(course, 'revenue'), 0)
 )
 
-const onCourseStatusChange = (courseId: number, event: Event) => {
-  const target = event.target as HTMLSelectElement | null
-  if (!target) return
-  updateCourseStatus(courseId, target.value as CourseStatus)
+const setCourseStatus = (courseId: number, value: string | number | boolean | null) => {
+  updateCourseStatus(courseId, value as CourseStatus)
 }
 
 // Chart data for enrollments
@@ -210,23 +209,27 @@ const deleteCourse = async (courseId: number) => {
 
       <div class="toolbar-bottom">
         <div class="toolbar-selects">
-          <div class="select-wrap">
-            <i class="bi bi-funnel"></i>
-            <select v-model="filters.status">
-              <option value="all">Tous les statuts</option>
-              <option value="published">Publiés</option>
-              <option value="draft">Brouillons</option>
-            </select>
-          </div>
-          <div class="select-wrap">
-            <i class="bi bi-sort-down"></i>
-            <select v-model="filters.sort">
-              <option value="recent">Plus récents</option>
-              <option value="students">Nombre d'étudiants</option>
-              <option value="rating">Note</option>
-              <option value="revenue">Revenus</option>
-            </select>
-          </div>
+          <SearchableSelect
+            v-model="filters.status"
+            class="toolbar-select"
+            :searchable="false"
+            :options="[
+              { value: 'all', label: 'Tous les statuts' },
+              { value: 'published', label: 'Publiés' },
+              { value: 'draft', label: 'Brouillons' },
+            ]"
+          />
+          <SearchableSelect
+            v-model="filters.sort"
+            class="toolbar-select"
+            :searchable="false"
+            :options="[
+              { value: 'recent', label: 'Plus récents' },
+              { value: 'students', label: 'Nombre d\'étudiants' },
+              { value: 'rating', label: 'Note' },
+              { value: 'revenue', label: 'Revenus' },
+            ]"
+          />
         </div>
       </div>
     </div>
@@ -281,17 +284,18 @@ const deleteCourse = async (courseId: number) => {
           </div>
 
           <div class="card-status-row">
-            <label :for="'status-select-' + course.id" class="status-label">Statut :</label>
-            <select
-              :id="'status-select-' + course.id"
+            <label class="status-label">Statut :</label>
+            <SearchableSelect
               class="status-select"
-              :value="course.status"
-              @change="onCourseStatusChange(course.id, $event)"
+              :model-value="course.status"
+              :searchable="false"
               :disabled="isLoading"
-            >
-              <option value="draft">Brouillon</option>
-              <option value="published">Publié</option>
-            </select>
+              :options="[
+                { value: 'draft', label: 'Brouillon' },
+                { value: 'published', label: 'Publié' },
+              ]"
+              @update:modelValue="(v) => setCourseStatus(course.id, v)"
+            />
           </div>
         </div>
 
@@ -431,6 +435,12 @@ $radius:      14px;
 .toolbar-selects {
   display: flex;
   gap: 0.5rem;
+}
+.toolbar-select {
+  min-width: 170px;
+}
+.status-select {
+  min-width: 150px;
 }
 
 .select-wrap {

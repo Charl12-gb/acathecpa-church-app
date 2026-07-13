@@ -182,11 +182,17 @@
               </div>
               <div class="purchase-detail-row">
                 <span><i class="bi bi-credit-card me-2"></i>Méthode</span>
-                <select v-model="paymentMethod" class="form-select form-select-sm w-auto">
-                  <option value="mobile_money">Mobile Money</option>
-                  <option value="card">Carte bancaire</option>
-                  <option value="bank_transfer">Virement</option>
-                </select>
+                <SearchableSelect
+                  v-model="paymentMethod"
+                  size="sm"
+                  style="min-width: 180px"
+                  :searchable="false"
+                  :options="[
+                    { value: 'mobile_money', label: 'Mobile Money' },
+                    { value: 'card', label: 'Carte bancaire' },
+                    { value: 'bank_transfer', label: 'Virement' },
+                  ]"
+                />
               </div>
               <div class="purchase-detail-row highlight">
                 <span><i class="bi bi-tag-fill me-2"></i>Total</span>
@@ -235,6 +241,7 @@ import { useContentStore } from '../../stores/content'
 import { useAuthStore } from '../../stores/auth'
 import { initiatePayment, confirmPayment } from '../../services/api/payment'
 import type { Content } from '../../stores/content'
+import SearchableSelect from '../../components/ui/SearchableSelect.vue'
 
 const route = useRoute()
 const router = useRouter()

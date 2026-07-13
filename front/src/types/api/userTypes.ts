@@ -14,8 +14,17 @@ export interface User {
   country?: string | null;
   birthdate?: string | null;
   is_active: boolean;
+  is_visible?: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface MeUpdatePayload {
+  name?: string;
+  phone?: string | null;
+  country?: string | null;
+  birthdate?: string | null;
+  is_visible?: boolean;
 }
 
 export interface UserCreatePayload {

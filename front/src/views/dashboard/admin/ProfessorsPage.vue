@@ -5,6 +5,7 @@ import { useProfessorStore } from '../../../stores/professor';
 import { storeToRefs } from 'pinia';
 import { Professor } from '../../../types/api/professorTypes';
 import { fetchAdminProfessors } from '../../../services/api/adminDashboardService';
+import SearchableSelect from '../../../components/ui/SearchableSelect.vue';
 import type { ProfessorStat } from '../../../types/api/admin_dashboard';
 
 const professorStore = useProfessorStore();
@@ -180,18 +181,25 @@ const profRows = computed(() => filteredProfessors.value.map((professor) => {
                   </div>
                 </div>
                 <div class="col-md-4">
-                  <select v-model="filters.status" class="form-select">
-                    <option value="all">Tous les statuts</option>
-                    <option value="active">Actifs</option>
-                    <option value="inactive">Inactifs</option>
-                  </select>
+                  <SearchableSelect
+                    v-model="filters.status"
+                    :searchable="false"
+                    :options="[
+                      { value: 'all', label: 'Tous les statuts' },
+                      { value: 'active', label: 'Actifs' },
+                      { value: 'inactive', label: 'Inactifs' },
+                    ]"
+                  />
                 </div>
                 <div class="col-md-4">
-                  <select v-model="filters.sort" class="form-select">
-                    <option value="name">Trier par Nom</option>
-                    <option value="specialization">Trier par Spécialisation</option>
-                    <!-- Add other sort options if data becomes available -->
-                  </select>
+                  <SearchableSelect
+                    v-model="filters.sort"
+                    :searchable="false"
+                    :options="[
+                      { value: 'name', label: 'Trier par Nom' },
+                      { value: 'specialization', label: 'Trier par Spécialisation' },
+                    ]"
+                  />
                 </div>
               </div>
             </div>

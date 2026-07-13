@@ -19,6 +19,7 @@ from .models import User
 from .serializers import (
     ForgotPasswordSerializer,
     FlexibleLoginSerializer,
+    MeUpdateSerializer,
     RefreshTokenSerializer,
     RegisterSerializer,
     ResetPasswordSerializer,
@@ -199,9 +200,20 @@ class ResetPasswordView(APIView):
 
 
 class MeView(APIView):
-    permission_classes = [IsAuthenticated, HasPermission.with_name("view_own_profile")]
+    def get_permissions(self):
+        # GET keeps the existing named-permission check; PATCH only requires
+        # authentication (any user may edit their own profile).
+        if self.request.method == "PATCH":
+            return [IsAuthenticated()]
+        return [IsAuthenticated(), HasPermission.with_name("view_own_profile")()]
 
     def get(self, request):
+        return Response(UserSerializer(request.user).data)
+
+    def patch(self, request):
+        serializer = MeUpdateSerializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         return Response(UserSerializer(request.user).data)
 
 

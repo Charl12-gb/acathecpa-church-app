@@ -2,7 +2,17 @@ from rest_framework import serializers
 
 from apps.accounts.serializers import UserSerializer
 
-from .models import Course, CourseLesson, CourseSection, CourseTest, TestQuestion
+from .models import Category, Course, CourseLesson, CourseSection, CourseTest, TestQuestion
+
+
+# --------------------------------------------------------------------------- #
+# Category
+# --------------------------------------------------------------------------- #
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ("id", "name", "description", "is_active", "created_at")
+        read_only_fields = ("id", "created_at")
 
 
 # --------------------------------------------------------------------------- #

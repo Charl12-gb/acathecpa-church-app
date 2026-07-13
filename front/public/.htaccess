@@ -1,0 +1,35 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Ne jamais réécrire index.html (évite les boucles)
+  RewriteRule ^index\.html$ - [L]
+
+  # Ne pas toucher aux fichiers/dossiers réels
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Exclure les routes backend/API du rewrite SPA
+  RewriteRule ^(api|backend)(/|$) - [L]
+
+  # Toutes les autres routes vont vers l'app SPA
+  RewriteRule . /index.html [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  <FilesMatch "^(index\.html|service-worker\.js)$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </FilesMatch>
+
+  <FilesMatch "\.[a-f0-9]{8}\.(js|css|woff2?|ttf|eot|svg|png|jpg|jpeg|webp|gif|ico)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+
+  # Images / fonts statiques sans hash (logos, bannières, etc.) — cache 7 jours
+  <FilesMatch "\.(png|jpg|jpeg|webp|gif|svg|ico|woff2?|ttf|eot)$">
+    Header setIfEmpty Cache-Control "public, max-age=604800"
+  </FilesMatch>
+</IfModule>

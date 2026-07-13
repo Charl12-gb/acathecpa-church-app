@@ -32,7 +32,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from apps.permissions.permissions import HasPermission
+from apps.permissions.permissions import HasPermission, IsAdminRole
 
 from . import permissions_helpers as perm_helpers
 
@@ -44,6 +44,7 @@ def _require(request, view, permission_name: str) -> None:
 
 
 from .models import (
+    Category,
     Course,
     CourseLesson,
     CourseSection,
@@ -52,6 +53,7 @@ from .models import (
     TestQuestion,
 )
 from .serializers import (
+    CategorySerializer,
     CourseDetailSerializer,
     CourseLessonSerializer,
     CourseListSerializer,
@@ -62,6 +64,31 @@ from .serializers import (
     TestQuestionSerializer,
     TestQuestionWriteSerializer,
 )
+
+
+# --------------------------------------------------------------------------- #
+# Categories (admin-managed; public read)
+# --------------------------------------------------------------------------- #
+class CategoryViewSet(viewsets.ModelViewSet):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    search_fields = ["name"]
+    ordering_fields = ["name", "created_at"]
+
+    def get_permissions(self):
+        if self.action in {"list", "retrieve"}:
+            return [AllowAny()]
+        return [IsAuthenticated(), IsAdminRole()]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        # Public listing only exposes active categories; admins see everything.
+        if self.action == "list":
+            user = self.request.user
+            role = getattr(user, "role", None) if user and user.is_authenticated else None
+            if not (role and role.name in ("admin", "super_admin")):
+                qs = qs.filter(is_active=True)
+        return qs
 
 
 # --------------------------------------------------------------------------- #

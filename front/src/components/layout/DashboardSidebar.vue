@@ -97,6 +97,14 @@ const isActiveGroup = (paths: string[]) => paths.some(p => route.path.startsWith
           <i class="bi bi-person-badge-fill"></i>
           <span v-if="!collapsed">Professeurs</span>
         </RouterLink>
+        <RouterLink to="/manage-team" class="nav-item" :class="{ active: isActiveGroup(['/manage-team', '/team-form']) }">
+          <i class="bi bi-person-vcard-fill"></i>
+          <span v-if="!collapsed">Notre équipe</span>
+        </RouterLink>
+        <RouterLink to="/manage-categories" class="nav-item" :class="{ active: isActive('/manage-categories') }">
+          <i class="bi bi-tags-fill"></i>
+          <span v-if="!collapsed">Catégories</span>
+        </RouterLink>
       </div>
     </nav>
 

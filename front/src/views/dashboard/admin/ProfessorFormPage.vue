@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useProfessorStore } from '../../../stores/professor';
 import { storeToRefs } from 'pinia';
 import { specializations } from '../../../services/utils';
+import SearchableSelect from '../../../components/ui/SearchableSelect.vue';
 import { UserRole } from '../../../types/api/userTypes';
 import {
   Professor,
@@ -297,10 +298,15 @@ const hasSocialLinks = computed(() => {
                 </div>
                  <div class="col-md-6" v-if="isEditMode"> <!-- Status only relevant/editable for existing users via user mgmt -->
                     <label class="form-label">Statut</label>
-                    <select class="form-select" v-model="professorData.is_active" :disabled="true">
-                        <option :value="true">Actif</option>
-                        <option :value="false">Inactif</option>
-                    </select>
+                    <SearchableSelect
+                      v-model="professorData.is_active"
+                      :options="[
+                        { value: true, label: 'Actif' },
+                        { value: false, label: 'Inactif' },
+                      ]"
+                      :searchable="false"
+                      disabled
+                    />
                 </div>
               </div>
                <p v-if="isEditMode" class="mt-3 mb-0 small text-muted">
@@ -317,12 +323,14 @@ const hasSocialLinks = computed(() => {
               <div class="row g-3">
                 <div class="col-md-12">
                   <label class="form-label">Spécialisation <span class="text-danger">*</span></label>
-                  <select class="form-select" v-model="professorData.professor_profile.specialization"
-                          :class="{'is-invalid': getError('specialization')}" @change="clearError('specialization')">
-                    <option value="" disabled>Sélectionner une spécialisation</option>
-                    <option v-for="spec in specializations" :key="spec" :value="spec">{{ spec }}</option>
-                  </select>
-                  <div v-if="getError('specialization')" class="invalid-feedback">{{ getError('specialization') }}</div>
+                  <SearchableSelect
+                    v-model="professorData.professor_profile.specialization"
+                    :options="specializations"
+                    :invalid="!!getError('specialization')"
+                    placeholder="Sélectionner une spécialisation"
+                    @update:modelValue="clearError('specialization')"
+                  />
+                  <div v-if="getError('specialization')" class="text-danger small mt-1">{{ getError('specialization') }}</div>
                 </div>
                 <div class="col-12">
                   <label class="form-label">Biographie</label>
