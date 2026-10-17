@@ -13,6 +13,7 @@ import PodcastsPage from '../views/public/PodcastsPage.vue'
 import ArticleDetailPage from '../views/public/ArticleDetailPage.vue'
 import PodcastDetailPage from '../views/public/PodcastDetailPage.vue'
 import AlumniPage from '../views/public/AlumniPage.vue'
+import CertificateVerifyPage from '../views/public/CertificateVerifyPage.vue'
 
 // Private Pages
 import DashboardPage from '../views/dashboard/DashboardPage.vue'
@@ -26,6 +27,7 @@ import StudentCertificatesPage from '../views/dashboard/student/CertificatesPage
 import BrowseCoursesPage from '../views/dashboard/student/BrowseCoursesPage.vue'
 import CourseDetailPage from '../views/dashboard/student/CourseDetailPage.vue'
 import LessonViewer from '../views/dashboard/student/LessonViewer.vue'
+import StudentLiveSessionsPage from '../views/dashboard/student/LiveSessionsPage.vue'
 
 // Professor Pages
 import ProfessorCoursesPage from '../views/dashboard/professor/CoursesPage.vue'
@@ -69,6 +71,8 @@ const router = createRouter({
     { path: '/articles/:id', name: 'article-detail', component: ArticleDetailPage },
     { path: '/podcasts/:id', name: 'podcast-detail', component: PodcastDetailPage },
     { path: '/alumni', name: 'alumni', component: AlumniPage },
+    // Public: anyone can check a certificate code (link printed on certificates)
+    { path: '/certificates/verify/:code?', name: 'certificate-verify', component: CertificateVerifyPage },
     
     // Protected routes
     { 
@@ -127,6 +131,19 @@ const router = createRouter({
       path: '/lesson/:courseId/:lessonId',
       name: 'lesson-viewer',
       component: LessonViewer,
+      meta: { requiresAuth: true, minRole: 'student', layout: 'dashboard' }
+    },
+    {
+      // A section's own content (intro) or its quiz (part = 'quiz')
+      path: '/lesson/:courseId/section/:sectionId/:part?',
+      name: 'section-viewer',
+      component: LessonViewer,
+      meta: { requiresAuth: true, minRole: 'student', layout: 'dashboard' }
+    },
+    {
+      path: '/my-live-sessions',
+      name: 'student-live-sessions',
+      component: StudentLiveSessionsPage,
       meta: { requiresAuth: true, minRole: 'student', layout: 'dashboard' }
     },
     

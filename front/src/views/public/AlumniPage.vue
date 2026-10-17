@@ -87,6 +87,7 @@ onMounted(async () => {
 </template>
 
 <style scoped lang="scss">
+@use "sass:color";
 $primary: #C14428;
 $secondary: #1B7A78;
 $accent: #F4A300;
@@ -145,7 +146,7 @@ $border: #e7e0d4;
 .alumni-badge {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 5px 14px; border-radius: 20px;
-  background: rgba($accent, .15); color: darken($accent, 20%);
+  background: rgba($accent, .15); color: color.adjust($accent, $lightness: -20%);
   font-size: .8rem; font-weight: 700;
 }
 .alumni-formations {

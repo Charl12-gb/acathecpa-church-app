@@ -29,12 +29,15 @@ from __future__ import annotations
 
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from apps.permissions.permissions import HasPermission, IsAdminRole
 
+from . import access
 from . import permissions_helpers as perm_helpers
+from rest_framework.exceptions import NotFound
 
 
 def _require(request, view, permission_name: str) -> None:
@@ -142,6 +145,15 @@ class CourseViewSet(viewsets.ModelViewSet):
                 qs = qs.filter(status=status_filter)
         return qs
 
+    def retrieve(self, request, *args, **kwargs):
+        course = self.get_object()
+        level = access.content_level(request.user, course)
+        # Drafts only exist for their author and admins.
+        if course.status != CourseStatus.PUBLISHED and level != access.FULL:
+            raise NotFound()
+        data = CourseDetailSerializer(course, context=self.get_serializer_context()).data
+        return Response(access.redact_course(data, level))
+
     # --- Custom create / update / destroy with ownership semantics ---
     def perform_create(self, serializer):
         serializer.save(instructor=self.request.user)
@@ -179,8 +191,10 @@ class CourseViewSet(viewsets.ModelViewSet):
         if request.method == "GET":
             self.action = "list_sections"
             self.check_permissions(request)
+            level = access.assert_can_view_content(request.user, course)
             qs = course.sections.all()
-            return Response(CourseSectionSerializer(qs, many=True).data)
+            data = CourseSectionSerializer(qs, many=True).data
+            return Response([access.redact_section(d, level) for d in data])
 
         # POST -> create section
         self.action = "create_section"
@@ -225,6 +239,11 @@ class CourseSectionViewSet(
             permission_classes.append(HasPermission.with_name(perm_name))
         return [p() for p in permission_classes]
 
+    def retrieve(self, request, *args, **kwargs):
+        section = self.get_object()
+        level = access.assert_can_view_content(request.user, section.course)
+        return Response(access.redact_section(CourseSectionSerializer(section).data, level))
+
     def update(self, request, *args, **kwargs):
         perm_helpers.assert_can_edit_section(request.user, self.get_object())
         return super().update(request, *args, **kwargs)
@@ -239,6 +258,7 @@ class CourseSectionViewSet(
         section = self.get_object()
         if request.method == "GET":
             _require(request, self, "view_course_lessons")
+            access.assert_can_view_content(request.user, section.course)
             qs = section.lessons.all()
             return Response(CourseLessonSerializer(qs, many=True).data)
 
@@ -256,10 +276,11 @@ class CourseSectionViewSet(
         section = self.get_object()
         if request.method == "GET":
             _require(request, self, "view_course_test")
+            level = access.assert_can_view_content(request.user, section.course)
             test_obj = getattr(section, "test", None)
             if not test_obj:
                 return Response({}, status=status.HTTP_200_OK)
-            return Response(CourseTestSerializer(test_obj).data)
+            return Response(access.redact_test(CourseTestSerializer(test_obj).data, level))
 
         _require(request, self, "create_course_test")
         perm_helpers.assert_can_edit_section(request.user, section)
@@ -295,6 +316,11 @@ class CourseLessonViewSet(
             permission_classes.append(HasPermission.with_name(perm_name))
         return [p() for p in permission_classes]
 
+    def retrieve(self, request, *args, **kwargs):
+        lesson = self.get_object()
+        access.assert_can_view_content(request.user, lesson.section.course)
+        return Response(CourseLessonSerializer(lesson).data)
+
     def update(self, request, *args, **kwargs):
         perm_helpers.assert_can_edit_lesson(request.user, self.get_object())
         return super().update(request, *args, **kwargs)
@@ -307,6 +333,15 @@ class CourseLessonViewSet(
 # --------------------------------------------------------------------------- #
 # Tests
 # --------------------------------------------------------------------------- #
+def _test_level(user, test_obj) -> str:
+    """Access level for a test; standalone tests (no section) are admin-only."""
+    if test_obj.section_id is None:
+        if user.is_superuser or access._is_admin(user):
+            return access.FULL
+        raise PermissionDenied("Not authorized to view this test.")
+    return access.assert_can_view_content(user, test_obj.section.course)
+
+
 class CourseTestViewSet(
     mixins.RetrieveModelMixin,
     mixins.UpdateModelMixin,
@@ -330,6 +365,11 @@ class CourseTestViewSet(
             permission_classes.append(HasPermission.with_name(perm_name))
         return [p() for p in permission_classes]
 
+    def retrieve(self, request, *args, **kwargs):
+        test_obj = self.get_object()
+        level = _test_level(request.user, test_obj)
+        return Response(access.redact_test(CourseTestSerializer(test_obj).data, level))
+
     def update(self, request, *args, **kwargs):
         perm_helpers.assert_can_edit_test(request.user, self.get_object())
         return super().update(request, *args, **kwargs)
@@ -343,7 +383,9 @@ class CourseTestViewSet(
         test_obj = self.get_object()
         if request.method == "GET":
             _require(request, self, "view_test_questions")
-            return Response(TestQuestionSerializer(test_obj.questions.all(), many=True).data)
+            level = _test_level(request.user, test_obj)
+            data = TestQuestionSerializer(test_obj.questions.all(), many=True).data
+            return Response([access.redact_question(q, level) for q in data])
 
         _require(request, self, "create_test_question")
         perm_helpers.assert_can_edit_test(request.user, test_obj)
@@ -383,6 +425,11 @@ class TestQuestionViewSet(
         if perm_name:
             permission_classes.append(HasPermission.with_name(perm_name))
         return [p() for p in permission_classes]
+
+    def retrieve(self, request, *args, **kwargs):
+        question = self.get_object()
+        level = _test_level(request.user, question.test)
+        return Response(access.redact_question(TestQuestionSerializer(question).data, level))
 
     def update(self, request, *args, **kwargs):
         perm_helpers.assert_can_edit_question(request.user, self.get_object())

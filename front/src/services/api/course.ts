@@ -8,10 +8,11 @@ import {
     // TestSubmissionPayload, TestResult, // Original types, might be replaced or kept for other uses
     Certificate, CertificateDisplay, // Added Certificate types
     EnrollmentProgress, // Added for new progress endpoints
-    TestSubmissionWithScoreSchema // Added for submitting test with score
+    TestAttemptSubmission,
+    CertificateVerification,
 } from '../../types/api';
 
-// Define EnrollmentProgress and TestSubmissionWithScoreSchema in ../../types/api.ts if not already defined by backend schema generation
+// EnrollmentProgress and TestAttemptSubmission live in ../../types/api/courseTypes.ts
 // For now, assuming they are compatible with backend schemas of the same name.
 
 // === Courses ===
@@ -182,7 +183,7 @@ export const deleteCourseTest = async (testId: number): Promise<CourseTest> => {
     return response.data;
 };
 
-export const submitStudentTestAttempt = async (courseId: number, testId: number, submissionData: TestSubmissionWithScoreSchema): Promise<EnrollmentProgress> => {
+export const submitStudentTestAttempt = async (courseId: number, testId: number, submissionData: TestAttemptSubmission): Promise<EnrollmentProgress> => {
     // Corresponds to POST /api/v1/courses/{course_id}/tests/{test_id}/attempt
     const response = await apiClient.post<EnrollmentProgress>(`/courses/${courseId}/tests/${testId}/attempt`, submissionData);
     return response.data;
@@ -298,5 +299,14 @@ export const issueCertificateForUser = async (courseId: number, userId: number):
   // No request body is defined in the router for this POST, so sending empty object.
   // If backend expects a body (e.g. certificate_url, verification_code), it needs to be added.
   const response = await apiClient.post<Certificate>(`/courses/${courseId}/users/${userId}/certificates/`, {}); // This path is from original.
+  return response.data;
+};
+
+/**
+ * Public check of a certificate by its verification code (no login needed).
+ * Corresponds to GET /api/v1/certificates/verify/{code}.
+ */
+export const verifyCertificate = async (code: string): Promise<CertificateVerification> => {
+  const response = await apiClient.get<CertificateVerification>(`/certificates/verify/${encodeURIComponent(code)}`);
   return response.data;
 };

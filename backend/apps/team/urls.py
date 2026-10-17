@@ -1,8 +1,8 @@
-from rest_framework.routers import SimpleRouter
+from config.routers import OptionalSlashRouter
 
 from .views import TeamMemberViewSet
 
-router = SimpleRouter(trailing_slash="/?")
+router = OptionalSlashRouter()
 router.register("", TeamMemberViewSet, basename="team-member")
 
 urlpatterns = router.urls

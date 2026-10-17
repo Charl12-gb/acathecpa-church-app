@@ -17,6 +17,11 @@ pnpm-debug.log*
 # Coverage
 front/coverage/
 
+# Tests end-to-end (Playwright)
+front/test-results/
+front/playwright-report/
+backend/.e2e/
+
 # ==========================
 # Backend (FastAPI / Python)
 # ==========================

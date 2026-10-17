@@ -35,7 +35,8 @@ class PaymentResponseSerializer(serializers.ModelSerializer):
 class PaymentCreateSerializer(serializers.Serializer):
     course_id = serializers.IntegerField(required=False, allow_null=True)
     content_id = serializers.IntegerField(required=False, allow_null=True)
-    amount = serializers.FloatField(min_value=0)
+    # Ignored: the server always charges the catalogue price.
+    amount = serializers.FloatField(min_value=0, required=False)
     currency = serializers.CharField(max_length=10, default="XOF", required=False)
     payment_method = serializers.ChoiceField(
         choices=PaymentMethod.choices, required=False, allow_null=True

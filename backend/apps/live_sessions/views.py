@@ -21,7 +21,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.courses.access import can_manage_course
 from apps.courses.models import Course
+from apps.enrollments.models import Enrollment
 from apps.permissions.permissions import HasPermission
 
 from . import services
@@ -33,6 +35,19 @@ from .serializers import (
     LiveSessionStatusUpdateSerializer,
     LiveSessionUpdateSerializer,
 )
+
+
+def _can_attend(user, session) -> bool:
+    """Host, admins, and students enrolled in the session's course."""
+    if _is_admin(user) or session.host_id == user.id:
+        return True
+    return bool(session.course_id) and Enrollment.objects.filter(
+        user_id=user.id, course_id=session.course_id
+    ).exists()
+
+
+def _can_manage(user, session) -> bool:
+    return _is_admin(user) or session.host_id == user.id
 
 
 def _is_admin(user) -> bool:
@@ -73,7 +88,8 @@ class LiveSessionListCreateView(APIView):
         if _is_admin(request.user):
             sessions = services.get_all_live_sessions(skip, limit)
         else:
-            sessions = services.get_live_sessions_for_host(request.user.id, skip, limit)
+            # Sessions the user hosts plus those of the courses they follow.
+            sessions = services.get_live_sessions_for_user(request.user.id, skip, limit)
         return Response(LiveSessionSerializer(sessions, many=True).data)
 
     def post(self, request):
@@ -99,11 +115,16 @@ class LiveSessionsForCourseView(APIView):
     ]
 
     def get(self, request, course_id: int):
-        if not Course.objects.filter(pk=course_id).exists():
+        course = Course.objects.filter(pk=course_id).first()
+        if not course:
             return Response(
                 {"detail": "Course not found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
+        if not can_manage_course(request.user, course) and not Enrollment.objects.filter(
+            user_id=request.user.id, course_id=course_id
+        ).exists():
+            self.permission_denied(request, message="Vous n'êtes pas inscrit à ce cours.")
         skip = int(request.query_params.get("skip", 0))
         limit = int(request.query_params.get("limit", 20))
         sessions = services.get_live_sessions_for_course(course_id, skip, limit)
@@ -120,7 +141,7 @@ class LiveSessionDetailView(APIView):
     def get(self, request, session_id: int):
         self._check_perm(request, "view_live_session_detail")
         session = services.get_live_session(session_id)
-        if not session:
+        if not session or not _can_attend(request.user, session):
             return Response(
                 {"detail": "Live session not found."},
                 status=status.HTTP_404_NOT_FOUND,
@@ -209,6 +230,9 @@ class LiveSessionAttendanceView(APIView):
     ]
 
     def get(self, request, session_id: int):
+        session = services.get_live_session(session_id)
+        if session and not _can_manage(request.user, session):
+            self.permission_denied(request)
         summary = services.get_attendance_summary(session_id)
         if summary is None:
             return Response(
@@ -230,6 +254,10 @@ class LiveSessionJoinView(APIView):
             return Response(
                 {"detail": "Live session not found."},
                 status=status.HTTP_404_NOT_FOUND,
+            )
+        if not _can_attend(request.user, session):
+            self.permission_denied(
+                request, message="Inscrivez-vous au cours pour rejoindre cette session."
             )
         if session.status == LiveSessionStatus.ENDED:
             return Response(

@@ -16,12 +16,13 @@ Mirrors the FastAPI endpoints, mounted at:
     /api/v1/courses/{course_id}/users/{user_id}/certificates/  POST  (issue)
     /api/v1/courses/users/{user_id}/certificates/       GET
     /api/v1/courses/certificates/{certificate_id}       GET
+    /api/v1/certificates/verify/{code}                  GET   (public)
 """
 from __future__ import annotations
 
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -33,6 +34,7 @@ from . import services
 from .serializers import (
     CertificateDisplaySerializer,
     CertificateSerializer,
+    CertificateVerificationSerializer,
     EnrollmentProgressSerializer,
     TestAttemptInputSerializer,
 )
@@ -150,6 +152,11 @@ class MarkLessonCompletedView(APIView):
                 {"detail": "Enrollment not found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
+        if enrollment == "LessonNotInCourse":
+            return Response(
+                {"detail": "Cette leçon n'appartient pas à ce cours."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         return Response(EnrollmentProgressSerializer(enrollment).data)
 
 
@@ -165,6 +172,16 @@ class MarkSectionCompletedView(APIView):
                 {"detail": "Enrollment not found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
+        if enrollment == "SectionNotInCourse":
+            return Response(
+                {"detail": "Cette section n'appartient pas à ce cours."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        if enrollment == "SectionNotFinished":
+            return Response(
+                {"detail": "Terminez toutes les leçons et réussissez le quiz de cette section."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         return Response(EnrollmentProgressSerializer(enrollment).data)
 
 
@@ -172,28 +189,25 @@ class SubmitTestAttemptView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, course_id: int, test_id: int):
-        # Must be enrolled
-        if not services.get_enrollment(request.user.id, course_id):
-            raise PermissionDenied("User not enrolled in this course.")
-
         serializer = TestAttemptInputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        enrollment = services.record_test_attempt(
+        answers = {a["question_id"]: a.get("answer") for a in data["answers"]}
+        result = services.record_test_attempt(
             user_id=request.user.id,
             course_id=course_id,
             test_id=test_id,
-            score=data["score"],
-            passed=data["passed"],
-            questions_summary=[dict(q) for q in data.get("questions_summary", [])],
+            answers=answers,
         )
-        if not enrollment:
-            return Response(
-                {"detail": "Failed to record test attempt."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-        return Response(EnrollmentProgressSerializer(enrollment).data)
+        if isinstance(result, str):
+            code, msg = {
+                "NotEnrolled": (status.HTTP_403_FORBIDDEN, "Vous n'êtes pas inscrit à ce cours."),
+                "TestNotInCourse": (status.HTTP_404_NOT_FOUND, "Ce quiz n'appartient pas à ce cours."),
+                "MaxAttemptsReached": (status.HTTP_400_BAD_REQUEST, "Nombre maximum de tentatives atteint."),
+            }[result]
+            return Response({"detail": msg}, status=code)
+        return Response(EnrollmentProgressSerializer(result).data)
 
 
 # --------------------------------------------------------------------------- #
@@ -254,10 +268,7 @@ class CheckAndIssueCertificateView(APIView):
 
 
 class MyCourseCertificateView(APIView):
-    permission_classes = [
-        IsAuthenticated,
-        HasPermission.with_name("view_own_course_certificate"),
-    ]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, course_id: int):
         if not Course.objects.filter(pk=course_id).exists():
@@ -320,16 +331,30 @@ class UserCertificatesView(APIView):
 
 
 class CertificateDetailView(APIView):
-    permission_classes = [
-        IsAuthenticated,
-        HasPermission.with_name("view_certificate_detail"),
-    ]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, certificate_id: int):
         cert = services.get_certificate_by_id(certificate_id)
-        if not cert:
+        # Hide other people's certificates behind a 404 as well.
+        if not cert or (cert.user_id != request.user.id and not _is_admin(request.user)):
             return Response(
                 {"detail": "Certificate not found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
         return Response(CertificateSerializer(cert).data)
+
+
+class CertificateVerifyView(APIView):
+    """Public: lets anyone (an employer, a school) check a certificate code."""
+
+    authentication_classes: list = []
+    permission_classes = [AllowAny]
+
+    def get(self, request, code: str):
+        cert = services.get_certificate_by_code(code)
+        if not cert:
+            return Response(
+                {"detail": "Aucun certificat ne correspond à ce code."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response(CertificateVerificationSerializer(cert).data)

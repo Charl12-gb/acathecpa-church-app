@@ -165,6 +165,21 @@
                       <i class="bi bi-arrow-right"></i>
                     </router-link>
                   </div>
+                  <div v-if="section.test?.id" class="lesson-row" :class="{ completed: isQuizPassed(section.test.id) }">
+                    <div class="lesson-icon">
+                      <i class="bi" :class="isQuizPassed(section.test.id) ? 'bi-check-circle-fill' : 'bi-question-circle'"></i>
+                    </div>
+                    <div class="lesson-info">
+                      <span class="lesson-title">Quiz : {{ section.test.title }}</span>
+                      <span v-if="section.test.question_count ?? section.test.questions?.length" class="lesson-duration">
+                        {{ section.test.question_count ?? section.test.questions?.length }} question(s)
+                      </span>
+                    </div>
+                    <router-link v-if="isEnrolled" :to="`/lesson/${course.id}/section/${section.id}/quiz`" class="lesson-action">
+                      {{ isQuizPassed(section.test.id) ? 'Revoir' : 'Passer le quiz' }}
+                      <i class="bi bi-arrow-right"></i>
+                    </router-link>
+                  </div>
                 </div>
               </div>
             </div>
@@ -340,6 +355,8 @@ const certificateError = ref<string | null>(null);
 
 // Enrollment state
 const isEnrolled = ref(false);
+const isQuizPassed = (testId: number) =>
+  !!currentEnrollmentProgress.value?.test_attempts?.some(a => a.test_id === testId && a.passed);
 const showEnrollModal = ref(false);
 const enrolling = ref(false);
 const enrollError = ref<string | null>(null);

@@ -1,8 +1,8 @@
-from rest_framework.routers import SimpleRouter
+from config.routers import OptionalSlashRouter
 
 from .views_users import UserViewSet
 
-router = SimpleRouter(trailing_slash="/?")
+router = OptionalSlashRouter()
 router.register("", UserViewSet, basename="user")
 
 urlpatterns = router.urls

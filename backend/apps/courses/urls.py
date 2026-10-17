@@ -1,5 +1,5 @@
 from django.urls import include, path
-from rest_framework.routers import SimpleRouter
+from config.routers import OptionalSlashRouter
 
 from .views import (
     CategoryViewSet,
@@ -10,15 +10,15 @@ from .views import (
     TestQuestionViewSet,
 )
 
-# Use SimpleRouter (no API root view) and `trailing_slash="/?"` so both
+# Use OptionalSlashRouter (no API root view, optional trailing slash) so both
 # `/courses/` and `/courses` work — matches what the front-end already sends.
-nested_router = SimpleRouter(trailing_slash="/?")
+nested_router = OptionalSlashRouter()
 nested_router.register("sections", CourseSectionViewSet, basename="course-section")
 nested_router.register("lessons", CourseLessonViewSet, basename="course-lesson")
 nested_router.register("tests", CourseTestViewSet, basename="course-test")
 nested_router.register("questions", TestQuestionViewSet, basename="test-question")
 
-courses_router = SimpleRouter(trailing_slash="/?")
+courses_router = OptionalSlashRouter()
 courses_router.register("courses", CourseViewSet, basename="course")
 courses_router.register("categories", CategoryViewSet, basename="category")
 

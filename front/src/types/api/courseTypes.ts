@@ -52,6 +52,8 @@ export interface CourseTest {
   passing_score?: number | null;
   max_attempts?: number | null;
   questions: TestQuestion[];
+  /** Sent instead of `questions` to visitors who are not enrolled. */
+  question_count?: number;
 }
 
 export interface CourseTestCreatePayload {
@@ -238,18 +240,36 @@ export interface EnrollmentProgress {
   completed_at?: string | null;
   completed_lessons: number[];
   completed_sections: number[];
-  test_attempts: any[];
+  test_attempts: TestAttemptResult[];
   test_scores: any[];
 }
 
-export interface TestQuestionAttemptSummaryInputSchema {
-    question_id: number;
-    is_correct?: boolean | null;
-    points_earned?: number | null;
+/** Only the answers are sent; the server grades the attempt. */
+export interface TestAttemptSubmission {
+    answers: Array<{
+        question_id: number;
+        /** Chosen option text, or its 0-based index. */
+        answer: string | number | null;
+    }>;
 }
 
-export interface TestSubmissionWithScoreSchema {
+/** One entry of EnrollmentProgress.test_attempts, as graded by the server. */
+export interface TestAttemptResult {
+    test_id: number;
+    attempt_number: number;
     score: number;
     passed: boolean;
-    questions_summary?: TestQuestionAttemptSummaryInputSchema[] | null;
+    points_earned: number;
+    points_possible: number;
+    attempted_at: string;
+    questions_summary: Array<{ question_id: number; is_correct: boolean; points_earned: number }>;
+}
+
+/** Public answer of GET /certificates/verify/{code}. */
+export interface CertificateVerification {
+    verification_code: string;
+    holder_name: string;
+    course_title: string;
+    issue_date: string;
+    valid: boolean;
 }

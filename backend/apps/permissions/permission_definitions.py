@@ -165,6 +165,5 @@ ROLES_PERMISSIONS_DATA = {
         {'permission': 'view_live_session_detail', 'title': 'View Live Session Detail (Enrolled/Published)', 'category': 'Live Sessions'},
         {'permission': 'view_test_questions', 'title': 'View Test Questions (Enrolled Test)', 'category': 'Course Assessment'},
         {'permission': 'view_any_course_listing', 'title': 'View Any Course Listing (Published)', 'category': 'Course Management'},
-        {'permission': 'edit_course_lesson', 'title': 'Edit Course Lesson (Own Course)', 'category': 'Course Content'},
     ],
 }

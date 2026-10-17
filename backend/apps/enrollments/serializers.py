@@ -8,20 +8,16 @@ from .models import Certificate, Enrollment
 # --------------------------------------------------------------------------- #
 # Test attempts (nested in Enrollment)
 # --------------------------------------------------------------------------- #
-class TestAttemptQuestionSummarySerializer(serializers.Serializer):
+class TestAnswerSerializer(serializers.Serializer):
     question_id = serializers.IntegerField()
-    is_correct = serializers.BooleanField(required=False, allow_null=True)
-    points_earned = serializers.FloatField(required=False, allow_null=True)
+    # Option text, or option index (0-based).
+    answer = serializers.JSONField(required=False, allow_null=True)
 
 
 class TestAttemptInputSerializer(serializers.Serializer):
-    """Payload sent by the frontend when submitting a test attempt."""
+    """Payload sent by the frontend: only the answers. Grading is server-side."""
 
-    score = serializers.FloatField(min_value=0)
-    passed = serializers.BooleanField()
-    questions_summary = TestAttemptQuestionSummarySerializer(
-        many=True, required=False, default=list
-    )
+    answers = TestAnswerSerializer(many=True)
 
 
 # --------------------------------------------------------------------------- #
@@ -99,3 +95,20 @@ class CertificateDisplaySerializer(serializers.ModelSerializer):
             "verification_code",
         ]
         read_only_fields = fields
+
+
+class CertificateVerificationSerializer(serializers.ModelSerializer):
+    holder_name = serializers.SerializerMethodField()
+    course_title = serializers.CharField(source="course.title", read_only=True)
+    valid = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Certificate
+        fields = ["verification_code", "holder_name", "course_title", "issue_date", "valid"]
+        read_only_fields = fields
+
+    def get_holder_name(self, obj) -> str:
+        return obj.user.name or obj.user.email.split("@")[0]
+
+    def get_valid(self, obj) -> bool:
+        return True

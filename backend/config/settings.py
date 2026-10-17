@@ -226,6 +226,15 @@ JITSI_DOMAIN = os.getenv("JITSI_DOMAIN", "8x8.vc")
 
 
 # --------------------------------------------------------------------------- #
+# Payments
+# --------------------------------------------------------------------------- #
+# "simulation": the student confirms the payment from the checkout modal (no
+# money moves). Any other value disables that endpoint: a real provider must
+# then confirm payments through its own webhook.
+PAYMENT_PROVIDER = os.getenv("PAYMENT_PROVIDER", "simulation")
+
+
+# --------------------------------------------------------------------------- #
 # Internationalization & static
 # --------------------------------------------------------------------------- #
 LANGUAGE_CODE = "fr-fr"

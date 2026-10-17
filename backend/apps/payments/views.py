@@ -4,12 +4,15 @@ Payment endpoints.
 Mounted at `/api/v1/payments/`.
 
     POST   /                       Initiate a payment for a course OR content
-    POST   /{payment_id}/confirm   Mark a pending payment as completed (mock)
+    POST   /{payment_id}/confirm   Simulated checkout: complete (or fail with
+                                   {"simulate": "failure"}) a pending payment.
+                                   Only enabled when PAYMENT_PROVIDER=simulation.
     GET    /me                     Current user's payment history
     GET    /{payment_id}           Detail (own payments only)
 """
 from __future__ import annotations
 
+from django.conf import settings
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -50,21 +53,11 @@ class InitiatePaymentView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            expected = course.price or 0
-            if data["amount"] < expected:
-                return Response(
-                    {
-                        "detail": (
-                            f"Montant insuffisant. Le prix du cours est {expected} {currency}."
-                        )
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
+            # The amount always comes from the catalogue, never from the client.
             payment = services.create_payment(
                 user_id=request.user.id,
                 course_id=course.id,
-                amount=data["amount"],
+                amount=course.price or 0,
                 currency=currency,
                 payment_method=data.get("payment_method"),
             )
@@ -91,21 +84,10 @@ class InitiatePaymentView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        expected = content.price or 0
-        if data["amount"] < expected:
-            return Response(
-                {
-                    "detail": (
-                        f"Montant insuffisant. Le prix du contenu est {expected} {currency}."
-                    )
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
         payment = services.create_payment(
             user_id=request.user.id,
             content_id=content.id,
-            amount=data["amount"],
+            amount=content.price or 0,
             currency=currency,
             payment_method=data.get("payment_method"),
         )
@@ -119,7 +101,18 @@ class ConfirmPaymentView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, payment_id: int):
-        payment = services.confirm_payment(payment_id, request.user.id)
+        # Self-confirmation only exists in simulation mode; a real provider
+        # confirms payments through its webhook instead.
+        if settings.PAYMENT_PROVIDER != "simulation":
+            return Response(
+                {"detail": "La confirmation manuelle des paiements est désactivée."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        outcome = request.data.get("simulate", "success")
+        if outcome == "failure":
+            payment = services.fail_payment(payment_id, request.user.id)
+        else:
+            payment = services.confirm_payment(payment_id, request.user.id)
         if not payment:
             return Response(
                 {"detail": "Paiement introuvable."},

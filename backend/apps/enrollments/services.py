@@ -14,7 +14,13 @@ from typing import Optional, Union
 from django.db import transaction
 from django.utils import timezone
 
-from apps.courses.models import Course, CourseSection, CourseStatus
+from apps.courses.models import (
+    Course,
+    CourseLesson,
+    CourseSection,
+    CourseStatus,
+    CourseTest,
+)
 
 from .models import Certificate, Enrollment
 
@@ -37,6 +43,14 @@ def get_user_enrolled_courses(user_id: int, skip: int = 0, limit: int = 100):
 
 def get_certificate_by_id(certificate_id: int) -> Optional[Certificate]:
     return Certificate.objects.filter(pk=certificate_id).select_related("course").first()
+
+
+def get_certificate_by_code(code: str) -> Optional[Certificate]:
+    return (
+        Certificate.objects.filter(verification_code=code)
+        .select_related("course", "user")
+        .first()
+    )
 
 
 def get_certificate_for_course_by_user(
@@ -101,25 +115,45 @@ def unenroll_student_from_course(course_id: int, user_id: int) -> str:
 # Progression
 # --------------------------------------------------------------------------- #
 def _calculate_progress_percentage(enrollment: Enrollment) -> float:
-    course = (
-        Course.objects.filter(pk=enrollment.course_id)
-        .prefetch_related("sections__lessons")
-        .first()
+    """Share of the course's lessons done and quizzes passed."""
+    lesson_ids = set(
+        CourseLesson.objects.filter(section__course_id=enrollment.course_id).values_list("id", flat=True)
     )
-    if not course:
+    test_ids = set(
+        CourseTest.objects.filter(section__course_id=enrollment.course_id, questions__isnull=False)
+        .values_list("id", flat=True)
+        .distinct()
+    )
+    total = len(lesson_ids) + len(test_ids)
+    if total == 0:
         return 0.0
-    total_lessons = sum(s.lessons.count() for s in course.sections.all())
-    if total_lessons == 0:
-        return 0.0
-    completed = len(enrollment.completed_lessons or [])
-    return min(round((completed / total_lessons) * 100, 1), 100.0)
+    done = len(lesson_ids & set(enrollment.completed_lessons or [])) + len(
+        test_ids & _passed_test_ids(enrollment)
+    )
+    return round(done / total * 100, 1)
+
+
+def _passed_test_ids(enrollment: Enrollment) -> set:
+    return {
+        a.get("test_id") for a in (enrollment.test_attempts or []) if a.get("passed")
+    }
+
+
+def _section_is_complete(section, completed_lesson_ids: set, passed_test_ids: set) -> bool:
+    """A section is done when every lesson is done and its quiz (if any) is passed."""
+    if not {l.id for l in section.lessons.all()}.issubset(completed_lesson_ids):
+        return False
+    test = getattr(section, "test", None)
+    if test is not None and test.questions.exists() and test.id not in passed_test_ids:
+        return False
+    return True
 
 
 def auto_complete_sections(enrollment: Enrollment, course_id: int) -> bool:
-    """Mark sections as completed when all of their lessons are done."""
+    """Mark sections as completed when their lessons are done and quiz passed."""
     course = (
         Course.objects.filter(pk=course_id)
-        .prefetch_related("sections__lessons")
+        .prefetch_related("sections__lessons", "sections__test")
         .first()
     )
     if not course:
@@ -127,13 +161,13 @@ def auto_complete_sections(enrollment: Enrollment, course_id: int) -> bool:
 
     completed_lesson_ids = set(enrollment.completed_lessons or [])
     completed_section_ids = set(enrollment.completed_sections or [])
+    passed_test_ids = _passed_test_ids(enrollment)
     changed = False
 
     for section in course.sections.all():
         if section.id in completed_section_ids:
             continue
-        section_lesson_ids = {l.id for l in section.lessons.all()}
-        if section_lesson_ids and section_lesson_ids.issubset(completed_lesson_ids):
+        if _section_is_complete(section, completed_lesson_ids, passed_test_ids):
             completed_section_ids.add(section.id)
             changed = True
 
@@ -144,10 +178,12 @@ def auto_complete_sections(enrollment: Enrollment, course_id: int) -> bool:
 
 def mark_lesson_completed(
     user_id: int, course_id: int, lesson_id: int
-) -> Optional[Enrollment]:
+) -> Union[Enrollment, str, None]:
     enrollment = get_enrollment(user_id, course_id)
     if not enrollment:
         return None
+    if not CourseLesson.objects.filter(pk=lesson_id, section__course_id=course_id).exists():
+        return "LessonNotInCourse"
 
     if lesson_id in (enrollment.completed_lessons or []):
         return enrollment
@@ -164,56 +200,142 @@ def mark_lesson_completed(
 
 def mark_section_completed(
     user_id: int, course_id: int, section_id: int
-) -> Optional[Enrollment]:
+) -> Union[Enrollment, str, None]:
+    """Complete a section only if its lessons are done and its quiz passed."""
     enrollment = get_enrollment(user_id, course_id)
     if not enrollment:
         return None
 
+    section = (
+        CourseSection.objects.filter(pk=section_id, course_id=course_id)
+        .prefetch_related("lessons")
+        .select_related("test")
+        .first()
+    )
+    if not section:
+        return "SectionNotInCourse"
+
     if section_id in (enrollment.completed_sections or []):
         return enrollment
 
-    new_sections = list(enrollment.completed_sections or [])
-    new_sections.append(section_id)
-    enrollment.completed_sections = new_sections
+    if not _section_is_complete(
+        section, set(enrollment.completed_lessons or []), _passed_test_ids(enrollment)
+    ):
+        return "SectionNotFinished"
+
+    enrollment.completed_sections = list(enrollment.completed_sections or []) + [section_id]
     enrollment.progress_percentage = _calculate_progress_percentage(enrollment)
     enrollment.save()
     return enrollment
+
+
+def get_course_test(course_id: int, test_id: int) -> Optional[CourseTest]:
+    return (
+        CourseTest.objects.filter(pk=test_id, section__course_id=course_id)
+        .prefetch_related("questions")
+        .first()
+    )
+
+
+def _chosen_option(options: list, answer):
+    """Resolve an answer (option text or option index) to the option dict."""
+    if isinstance(answer, bool) or answer is None:
+        return None
+    if isinstance(answer, int):
+        return options[answer] if 0 <= answer < len(options) else None
+    for opt in options:
+        if isinstance(opt, dict) and opt.get("text") == answer:
+            return opt
+    return None
+
+
+def grade_test(test: CourseTest, answers: dict) -> dict:
+    """
+    Grade a submission on the server.
+
+    ``answers`` maps question id -> chosen option (text or index). Questions
+    without any correct option (open questions) cannot be auto-graded and are
+    left out of the score.
+    """
+    earned = 0.0
+    possible = 0.0
+    summary = []
+    for q in test.questions.all():
+        options = [o for o in (q.options or []) if isinstance(o, dict)]
+        if not any(o.get("is_correct") for o in options):
+            continue
+        points = q.points or 0
+        possible += points
+        chosen = _chosen_option(options, answers.get(q.id))
+        correct = bool(chosen and chosen.get("is_correct"))
+        if correct:
+            earned += points
+        summary.append(
+            {"question_id": q.id, "is_correct": correct, "points_earned": points if correct else 0}
+        )
+
+    score = round(earned / possible * 100, 2) if possible else 100.0
+    passing = test.passing_score if test.passing_score is not None else 70
+    return {
+        "score": score,
+        "passed": score >= passing,
+        "points_earned": earned,
+        "points_possible": possible,
+        "questions_summary": summary,
+    }
+
+
+def count_attempts(enrollment: Enrollment, test_id: int) -> int:
+    return sum(1 for a in (enrollment.test_attempts or []) if a.get("test_id") == test_id)
 
 
 def record_test_attempt(
     user_id: int,
     course_id: int,
     test_id: int,
-    score: float,
-    passed: bool,
-    questions_summary: list,
+    answers: dict,
     attempted_at: Optional[datetime] = None,
-) -> Optional[Enrollment]:
+) -> Union[Enrollment, str]:
     enrollment = get_enrollment(user_id, course_id)
     if not enrollment:
-        return None
+        return "NotEnrolled"
 
+    test = get_course_test(course_id, test_id)
+    if not test:
+        return "TestNotInCourse"
+
+    attempt_number = count_attempts(enrollment, test_id) + 1
+    if test.max_attempts and attempt_number > test.max_attempts:
+        return "MaxAttemptsReached"
+
+    result = grade_test(test, answers)
     attempted_at = attempted_at or timezone.now()
     attempt = {
         "test_id": test_id,
-        "score": score,
-        "passed": passed,
+        "attempt_number": attempt_number,
+        "score": result["score"],
+        "passed": result["passed"],
+        "points_earned": result["points_earned"],
+        "points_possible": result["points_possible"],
         "attempted_at": attempted_at.isoformat(),
-        "questions_summary": questions_summary or [],
+        "questions_summary": result["questions_summary"],
     }
     enrollment.test_attempts = list(enrollment.test_attempts or []) + [attempt]
 
-    # Keep latest score per test
+    # Keep the best result per test
     scores = list(enrollment.test_scores or [])
-    score_entry = {"test_id": test_id, "score": score}
+    entry = {"test_id": test_id, "score": result["score"], "points": result["points_earned"]}
     for i, s in enumerate(scores):
         if s.get("test_id") == test_id:
-            scores[i] = score_entry
+            if result["score"] >= s.get("score", 0):
+                scores[i] = entry
             break
     else:
-        scores.append(score_entry)
+        scores.append(entry)
     enrollment.test_scores = scores
 
+    auto_complete_sections(enrollment, course_id)
+    enrollment.progress_percentage = _calculate_progress_percentage(enrollment)
     enrollment.save()
     return enrollment
 
@@ -280,7 +402,7 @@ def check_and_issue_certificate(
     # Points required ?
     required_points = course.points_required_for_certificate
     if required_points and required_points > 0:
-        total_points = sum(s.get("score", 0) for s in (enrollment.test_scores or []))
+        total_points = sum(s.get("points", 0) for s in (enrollment.test_scores or []))
         if total_points < required_points:
             return f"PointsNotMet:{total_points}/{required_points}"
 

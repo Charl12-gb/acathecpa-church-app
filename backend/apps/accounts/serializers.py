@@ -58,7 +58,8 @@ class MeUpdateSerializer(serializers.ModelSerializer):
             .exists()
         ):
             raise serializers.ValidationError("Phone number already registered")
-        return value
+        # Phone is unique: store "no phone" as NULL, never as "".
+        return value or None
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -78,15 +79,18 @@ class RegisterSerializer(serializers.ModelSerializer):
     def validate_phone(self, value):
         if value and User.objects.filter(phone=value).exists():
             raise serializers.ValidationError("Phone number already registered")
-        return value
+        # Phone is unique: store "no phone" as NULL, never as "".
+        return value or None
 
     def create(self, validated_data: dict) -> User:
         password = validated_data.pop("password")
-        role_name = (
-            validated_data.pop("role_name", None)
-            or validated_data.pop("role", None)
-            or UserRoleEnum.STUDENT
-        )
+        requested_role = validated_data.pop("role_name", None) or validated_data.pop("role", None)
+        validated_data.pop("role", None)
+        # Public sign-up always yields a student. Only a caller allowed to
+        # create users (admin back-office) may pick another role.
+        role_name = UserRoleEnum.STUDENT
+        if requested_role and self.context.get("can_assign_role"):
+            role_name = requested_role
         role = Role.objects.filter(name=role_name).first()
 
         user = User(role=role, **validated_data)

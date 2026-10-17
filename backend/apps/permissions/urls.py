@@ -1,4 +1,4 @@
-from rest_framework.routers import SimpleRouter
+from config.routers import OptionalSlashRouter
 
 from .views import (
     PermissionViewSet,
@@ -7,7 +7,7 @@ from .views import (
     UserPermissionViewSet,
 )
 
-router = SimpleRouter(trailing_slash="/?")
+router = OptionalSlashRouter()
 router.register("roles", RoleViewSet, basename="role")
 router.register("permissions", PermissionViewSet, basename="permission")
 router.register("role-permissions", RolePermissionViewSet, basename="role-permission")

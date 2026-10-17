@@ -10,7 +10,7 @@ from drf_spectacular.views import (
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.enrollments.views import CertificateDetailView
+from apps.enrollments.views import CertificateDetailView, CertificateVerifyView
 from apps.accounts.views_alumni import AlumniListView
 from apps.accounts.views_contact import ContactView
 
@@ -35,6 +35,11 @@ api_v1_patterns = [
     path("courses/", include("apps.enrollments.urls")),
     # Top-level alias /api/v1/certificates/<id> -> CertificateDetailView
     # (front [course.ts -> getCertificateDetails] expects this short path).
+    path(
+        "certificates/verify/<str:code>",
+        CertificateVerifyView.as_view(),
+        name="certificate-verify",
+    ),
     path(
         "certificates/<int:certificate_id>",
         CertificateDetailView.as_view(),

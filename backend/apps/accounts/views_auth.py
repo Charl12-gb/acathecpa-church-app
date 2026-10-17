@@ -12,7 +12,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from apps.permissions.permissions import HasPermission
+from apps.permissions.permissions import HasPermission, check_permission
 
 from . import services
 from .models import User
@@ -37,7 +37,10 @@ class RegisterView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        serializer = RegisterSerializer(data=request.data)
+        serializer = RegisterSerializer(
+            data=request.data,
+            context={"can_assign_role": check_permission(request.user, "create_user")},
+        )
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 

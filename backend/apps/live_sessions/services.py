@@ -5,6 +5,7 @@ import uuid
 from datetime import datetime
 from typing import Optional, Union
 
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.courses.models import Course
@@ -89,6 +90,18 @@ def get_all_live_sessions(skip: int = 0, limit: int = 100):
 def get_live_sessions_for_host(host_id: int, skip: int = 0, limit: int = 100):
     return list(
         LiveSession.objects.filter(host_id=host_id)
+        .select_related("host", "course")
+        .order_by("-scheduled_for")[skip : skip + limit]
+    )
+
+
+def get_live_sessions_for_user(user_id: int, skip: int = 0, limit: int = 100):
+    """Sessions hosted by the user or attached to a course they are enrolled in."""
+    return list(
+        LiveSession.objects.filter(
+            Q(host_id=user_id) | Q(course__enrollments__user_id=user_id)
+        )
+        .distinct()
         .select_related("host", "course")
         .order_by("-scheduled_for")[skip : skip + limit]
     )

@@ -15,7 +15,7 @@ from typing import List
 from django.utils import timezone
 from django.db.models import Q
 
-from apps.courses.models import Course, CourseLesson
+from apps.courses.models import Course, CourseLesson, CourseStatus
 from apps.enrollments.models import Certificate, Enrollment
 
 
@@ -135,7 +135,8 @@ def get_recommended_courses(user) -> List[dict]:
         "course_id", flat=True
     )
     courses = (
-        Course.objects.exclude(id__in=list(enrolled_ids))
+        Course.objects.filter(status=CourseStatus.PUBLISHED)
+        .exclude(id__in=list(enrolled_ids))
         .select_related("instructor")[:3]
     )
     return [

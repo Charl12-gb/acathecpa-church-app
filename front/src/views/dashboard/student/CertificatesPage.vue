@@ -107,7 +107,7 @@ body { font-family: 'Lato', sans-serif; background: #f0f0f0; display: flex; just
       <div class="cert-sig-line"></div>
       <div class="cert-sig-label">Directeur Académique</div>
     </div>
-    <div class="cert-code">${cert.verification_code ? 'Vérification : ' + cert.verification_code : ''}</div>
+    <div class="cert-code">${cert.verification_code ? 'Vérification : ' + cert.verification_code + ' · ' + window.location.origin + '/certificates/verify/' + cert.verification_code : ''}</div>
     <div class="cert-seal">✦</div>
   </div>
 </div>
@@ -173,7 +173,7 @@ const handleShareCertificate = (cert: CertificateDisplay) => {
           <h6 class="mb-0 text-truncate fw-semibold">{{ cert.course_title || `Cours ID ${cert.course_id}` }}</h6>
           <div class="d-flex flex-wrap gap-3 mt-1">
             <small class="text-muted"><i class="bi bi-calendar3 me-1"></i>Délivré le {{ formatDate(cert.issue_date) }}</small>
-            <small v-if="cert.verification_code" class="text-success"><i class="bi bi-shield-check me-1"></i>{{ cert.verification_code }}</small>
+            <RouterLink v-if="cert.verification_code" :to="`/certificates/verify/${cert.verification_code}`" class="small text-success" title="Page publique de vérification"><i class="bi bi-shield-check me-1"></i>{{ cert.verification_code }}</RouterLink>
           </div>
         </div>
         <div class="d-flex gap-2 flex-shrink-0">

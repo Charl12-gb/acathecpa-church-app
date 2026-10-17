@@ -49,6 +49,17 @@ def confirm_payment(payment_id: int, user_id: int) -> Optional[Payment]:
     return payment
 
 
+def fail_payment(payment_id: int, user_id: int) -> Optional[Payment]:
+    payment = Payment.objects.filter(pk=payment_id, user_id=user_id).first()
+    if not payment:
+        return None
+    if payment.status != PaymentStatus.PENDING:
+        return payment
+    payment.status = PaymentStatus.FAILED
+    payment.save(update_fields=["status"])
+    return payment
+
+
 def get_payment_by_id(payment_id: int) -> Optional[Payment]:
     return (
         Payment.objects.filter(pk=payment_id)

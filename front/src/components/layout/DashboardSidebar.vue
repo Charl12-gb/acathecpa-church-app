@@ -71,6 +71,10 @@ const isActiveGroup = (paths: string[]) => paths.some(p => route.path.startsWith
           <i class="bi bi-search"></i>
           <span v-if="!collapsed">Explorer les cours</span>
         </RouterLink>
+        <RouterLink v-if="!canAccessProfessor" to="/my-live-sessions" class="nav-item" :class="{ active: isActive('/my-live-sessions') }">
+          <i class="bi bi-broadcast"></i>
+          <span v-if="!collapsed">Sessions en direct</span>
+        </RouterLink>
       </div>
 
       <!-- Professeur -->

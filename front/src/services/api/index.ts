@@ -65,7 +65,11 @@ apiClient.interceptors.response.use(
   async (error: AxiosError & { config: any }) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // A visitor without a session gets a plain 401 on public pages
+    // (catalogue, course page): there is nothing to refresh or expire.
+    const hasSession = !!localStorage.getItem('refreshToken');
+
+    if (error.response?.status === 401 && hasSession && !originalRequest._retry) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({
