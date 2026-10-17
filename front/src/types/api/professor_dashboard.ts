@@ -10,9 +10,11 @@ export interface ProfessorDashboardStats {
   published_courses_count: number;
   /** Total number of students enrolled in all of the professor's courses. */
   total_students_count: number;
-  /** Average rating across all of the professor's courses. */
-  average_rating: number;
-  /** Total number of questions asked by students in the professor's courses. */
+  /** Certificates earned in the professor's courses. */
+  certificates_count: number;
+  /** Completed payments for the professor's courses (XOF). */
+  revenue: number;
+  /** Number of quiz questions written by the professor. */
   total_questions_count: number;
 }
 
@@ -26,8 +28,8 @@ export interface CoursePerformance {
   title: string;
   /** Number of students enrolled in the course. */
   students_count: number;
-  /** Average rating of the course. */
-  rating: number;
+  /** Average progress of the course's students (0-100). */
+  average_progress: number;
   /** Date when the course was last updated (ISO format string). */
   last_updated: string; // Or Date if transformed during/after fetch
 }
@@ -38,8 +40,8 @@ export interface CoursePerformance {
 export interface StudentEngagement {
   /** Name of the course. */
   course_name: string;
-  /** Average hours spent by students in the course. */
-  average_hours_spent: number;
+  /** Average progress of the course's students (0-100). */
+  average_progress: number;
 }
 
 /**
@@ -58,14 +60,14 @@ export interface StudentDistributionInProfessorCourses {
  * Represents a single recent activity item related to a professor's courses or students.
  */
 export interface ProfessorRecentActivityItem {
-  /** Activity log entry unique identifier. */
-  id: number;
+  /** Activity unique identifier, e.g. "enroll-12". */
+  id: string;
   /** Name of the student involved in the activity. */
   student_name: string;
   /** Name of the course related to the activity. */
   course_name: string;
-  /** Type of activity (e.g., "question", "comment"). */
-  activity_type: string;
+  /** "enrollment", "quiz" or "certificate". */
+  activity_type: 'enrollment' | 'quiz' | 'certificate';
   /** Content of the activity (e.g., the question text or comment text). */
   content: string;
   /** Timestamp of when the activity occurred (ISO format string). */

@@ -104,7 +104,8 @@ class MonthlyRegistrationSerializer(serializers.Serializer):
 class ProfessorDashboardStatsSerializer(serializers.Serializer):
     published_courses_count = serializers.IntegerField()
     total_students_count = serializers.IntegerField()
-    average_rating = serializers.FloatField()
+    certificates_count = serializers.IntegerField()
+    revenue = serializers.FloatField()
     total_questions_count = serializers.IntegerField()
 
 
@@ -112,13 +113,13 @@ class CoursePerformanceSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     title = serializers.CharField()
     students_count = serializers.IntegerField()
-    rating = serializers.FloatField()
+    average_progress = serializers.FloatField()
     last_updated = serializers.CharField()
 
 
 class StudentEngagementSerializer(serializers.Serializer):
     course_name = serializers.CharField()
-    average_hours_spent = serializers.FloatField()
+    average_progress = serializers.FloatField()
 
 
 class StudentDistributionInProfessorCoursesSerializer(serializers.Serializer):
@@ -128,7 +129,7 @@ class StudentDistributionInProfessorCoursesSerializer(serializers.Serializer):
 
 
 class ProfessorRecentActivitySerializer(serializers.Serializer):
-    id = serializers.IntegerField()
+    id = serializers.CharField()
     student_name = serializers.CharField()
     course_name = serializers.CharField()
     activity_type = serializers.CharField()

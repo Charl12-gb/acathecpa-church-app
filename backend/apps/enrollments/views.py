@@ -240,6 +240,10 @@ class CheckAndIssueCertificateView(APIView):
                     status.HTTP_400_BAD_REQUEST,
                     "Toutes les sections n'ont pas été complétées.",
                 ),
+                "CourseEmpty": (
+                    status.HTTP_400_BAD_REQUEST,
+                    "Ce cours ne contient encore aucune leçon : pas de certificat possible.",
+                ),
                 "CertificateCreationError": (
                     status.HTTP_500_INTERNAL_SERVER_ERROR,
                     "Erreur interne lors de la création du certificat.",

@@ -3,10 +3,15 @@ Rebuild the SQLite database used by the Playwright end-to-end tests.
 
     cd backend && ../appEnv/bin/python tests/e2e_seed.py
 
-Creates the roles/permissions, a professor and one published paid course:
-    Section 1 "Les bases"  : intro text + 2 text lessons
-    Section 2 "Le bilan"   : 1 video lesson + quiz (2 questions, 1 + 2 points,
-                             pass at 70 %, 2 attempts)
+Creates the roles/permissions, a professor and:
+    - "Comptabilité OHADA - Les fondamentaux" (published, 15 000 XOF), used by the
+      student journey:
+        Section 1 "Les bases" : intro text + 2 text lessons
+        Section 2 "Le bilan"  : 1 lesson + quiz (2 questions, 1 + 2 points,
+                                pass at 70 %, 2 attempts)
+    - "Fiscalité des entreprises" (published, free) with one enrolled student
+      halfway through, used by the professor journey;
+    - "Brouillon vide" (draft, no content).
 """
 import os
 import sys
@@ -24,6 +29,7 @@ from django.conf import settings  # noqa: E402
 from django.core.management import call_command  # noqa: E402
 
 E2E_COURSE_TITLE = "Comptabilité OHADA - Les fondamentaux"
+E2E_PROF_COURSE_TITLE = "Fiscalité des entreprises"
 
 
 def main() -> None:
@@ -35,16 +41,19 @@ def main() -> None:
     call_command("migrate", verbosity=0)
     call_command("seed_permissions", verbosity=0)
 
-    from apps.accounts.models import User
+    from apps.accounts.models import ProfessorProfile, User
     from apps.courses.models import (
-        Course, CourseLesson, CourseSection, CourseStatus, CourseTest, LessonType, TestQuestion,
+        Category, Course, CourseLesson, CourseSection, CourseStatus, CourseTest, LessonType, TestQuestion,
     )
+    from apps.enrollments.models import Enrollment
     from apps.permissions.models import Role
 
     prof = User(email="prof.e2e@acathecpa.test", name="Prof. Aminata Diallo",
                 role=Role.objects.get(name="professor"))
     prof.set_password("Password123!")
     prof.save()
+    ProfessorProfile.objects.create(user=prof, specialization="Comptabilité et fiscalité")
+    Category.objects.create(name="Comptabilité")
 
     course = Course.objects.create(
         title=E2E_COURSE_TITLE,
@@ -55,6 +64,7 @@ def main() -> None:
         is_free=False,
         price=15000,
         level="Débutant",
+        category="Comptabilité",
         points_required_for_certificate=2,
     )
     s1 = CourseSection.objects.create(
@@ -75,6 +85,31 @@ def main() -> None:
     TestQuestion.objects.create(test=test, question_text="Le capital social fait partie de l'actif.", points=2,
                                 options=[{"text": "Vrai", "is_correct": False},
                                          {"text": "Faux", "is_correct": True}])
+
+    fisc = Course.objects.create(
+        title=E2E_PROF_COURSE_TITLE, short_description="TVA, IS et obligations déclaratives.",
+        instructor=prof, status=CourseStatus.PUBLISHED, is_free=True, price=0, category="Comptabilité",
+    )
+    fs1 = CourseSection.objects.create(course=fisc, title="La TVA", order=1, content_type="quiz")
+    tva = CourseLesson.objects.create(section=fs1, title="Principes de la TVA", type=LessonType.TEXT, order=1,
+                                      content_body="<p>La TVA est un impôt sur la consommation.</p>")
+    CourseLesson.objects.create(section=fs1, title="Taux applicables", type=LessonType.TEXT, order=2,
+                                content_body="<p>Taux normal : 18 %.</p>")
+    fq = CourseTest.objects.create(section=fs1, title="Quiz TVA", passing_score=50, max_attempts=3)
+    TestQuestion.objects.create(test=fq, question_text="Taux normal de TVA ?", points=1,
+                                options=[{"text": "18 %", "is_correct": True}, {"text": "5 %", "is_correct": False}])
+    koffi = User(email="koffi.e2e@acathecpa.test", name="Koffi Mensah", role=Role.objects.get(name="student"))
+    koffi.set_password("Password123!")
+    koffi.save()
+    Enrollment.objects.create(
+        user=koffi, course=fisc, completed_lessons=[tva.id], progress_percentage=33.3,
+        test_attempts=[{"test_id": fq.id, "attempt_number": 1, "score": 0.0, "passed": False,
+                        "points_earned": 0, "points_possible": 1, "attempted_at": "2026-10-16T10:00:00+00:00",
+                        "questions_summary": []}],
+    )
+
+    Course.objects.create(title="Brouillon vide", instructor=prof, status=CourseStatus.DRAFT,
+                          is_free=True, price=0, category="Comptabilité")
     print(f"e2e database ready: {db_path}")
 
 

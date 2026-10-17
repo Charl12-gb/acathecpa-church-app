@@ -3,6 +3,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '../../stores/auth'
 import { countries } from '../../services/utils'
 import SearchableSelect from '../../components/ui/SearchableSelect.vue'
+import { getMyProfessorProfile, updateMyProfessorProfile } from '../../services/api/professor'
+import { UserRole } from '../../types/api/userTypes'
 
 const authStore = useAuthStore()
 const currentUser = computed(() => authStore.user)
@@ -24,8 +26,43 @@ const loading = ref(false)
 const error = ref('')
 const activeTab = ref<'personal' | 'security' | 'notifications'>('personal')
 
+// Professor's public profile (specialization, bio, skills)
+const isProfessor = computed(() => authStore.hasRole(UserRole.PROFESSOR))
+const teacher = ref({ specialization: '', bio: '', skills: '' })
+const teacherSaved = ref(false)
+const teacherError = ref('')
+const teacherLoading = ref(false)
+
+const loadTeacherProfile = async () => {
+  try {
+    const p = await getMyProfessorProfile()
+    teacher.value = { specialization: p.specialization || '', bio: p.bio || '', skills: (p.skills || []).join(', ') }
+  } catch {
+    // No profile yet: the form starts empty and saving creates it.
+  }
+}
+
+const saveTeacherProfile = async () => {
+  teacherLoading.value = true
+  teacherSaved.value = false
+  teacherError.value = ''
+  try {
+    await updateMyProfessorProfile({
+      specialization: teacher.value.specialization,
+      bio: teacher.value.bio,
+      skills: teacher.value.skills.split(',').map(s => s.trim()).filter(Boolean),
+    })
+    teacherSaved.value = true
+  } catch (err: any) {
+    teacherError.value = err.response?.data?.detail || 'Le profil formateur n\'a pas pu être enregistré.'
+  } finally {
+    teacherLoading.value = false
+  }
+}
+
 // Fill form with current user data
 onMounted(() => {
+  if (isProfessor.value) loadTeacherProfile()
   if (currentUser.value) {
     form.value.name = currentUser.value.name || ''
     form.value.email = currentUser.value.email || ''
@@ -242,6 +279,35 @@ const updatePassword = async () => {
         </div>
 
         <!-- Security Settings -->
+        <div v-if="activeTab === 'personal' && isProfessor" class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white py-3">
+            <h5 class="mb-0">Profil formateur</h5>
+            <small class="text-muted">Affiché aux étudiants sur la page de vos cours.</small>
+          </div>
+          <div class="card-body">
+            <div v-if="teacherSaved" class="alert alert-success">Profil formateur enregistré.</div>
+            <div v-if="teacherError" class="alert alert-danger">{{ teacherError }}</div>
+            <form @submit.prevent="saveTeacherProfile">
+              <div class="mb-3">
+                <label for="teacher-specialization" class="form-label fw-semibold">Spécialité</label>
+                <input id="teacher-specialization" v-model="teacher.specialization" class="form-control" placeholder="Ex : Fiscalité des entreprises">
+              </div>
+              <div class="mb-3">
+                <label for="teacher-bio" class="form-label fw-semibold">Biographie</label>
+                <textarea id="teacher-bio" v-model="teacher.bio" class="form-control" rows="4" placeholder="Votre parcours, votre expérience…"></textarea>
+              </div>
+              <div class="mb-3">
+                <label for="teacher-skills" class="form-label fw-semibold">Compétences</label>
+                <input id="teacher-skills" v-model="teacher.skills" class="form-control" placeholder="Séparées par des virgules : OHADA, Audit, TVA">
+              </div>
+              <button type="submit" class="btn btn-primary" :disabled="teacherLoading">
+                <span v-if="teacherLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                Enregistrer le profil formateur
+              </button>
+            </form>
+          </div>
+        </div>
+
         <div v-if="activeTab === 'security'" class="card border-0 shadow-sm mb-4">
           <div class="card-header bg-white py-3">
             <h5 class="mb-0">Sécurité</h5>

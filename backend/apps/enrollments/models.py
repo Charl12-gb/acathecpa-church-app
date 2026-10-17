@@ -74,7 +74,7 @@ class Certificate(models.Model):
     )
     course = models.ForeignKey(
         "courses.Course",
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="certificates",
         db_column="course_id",
     )

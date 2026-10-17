@@ -248,13 +248,15 @@
             <div v-if="certificateError" class="cert-error">{{ certificateError }}</div>
           </div>
 
-          <!-- Notes Card -->
-          <div class="sidebar-card">
-            <h4><i class="bi bi-journal-text"></i> Mes notes</h4>
-            <textarea v-model="notes" rows="5" placeholder="Prenez des notes pendant le cours…"></textarea>
-            <button class="btn-save-notes" @click="saveNotes">
-              <i class="bi bi-floppy"></i> Enregistrer
-            </button>
+          <!-- Instructor Card -->
+          <div v-if="course.instructor" class="sidebar-card instructor-card">
+            <h4><i class="bi bi-person-badge"></i> Votre formateur</h4>
+            <p class="instructor-name">{{ course.instructor.name }}</p>
+            <p v-if="instructorProfile?.specialization" class="instructor-spec">{{ instructorProfile.specialization }}</p>
+            <p v-if="instructorProfile?.bio" class="instructor-bio">{{ instructorProfile.bio }}</p>
+            <div v-if="instructorProfile?.skills?.length" class="instructor-skills">
+              <span v-for="skill in instructorProfile.skills" :key="skill">{{ skill }}</span>
+            </div>
           </div>
         </aside>
       </div>
@@ -346,7 +348,10 @@ const course = ref<Course | null>(null)
 const loading = ref(true)
 const error = ref('')
 const activeSection = ref(0)
-const notes = ref('')
+// Public part of the instructor's profile, sent with the course.
+const instructorProfile = computed(() =>
+  (course.value?.instructor as any)?.professor_profile as
+    { specialization?: string; bio?: string | null; skills?: string[] } | null | undefined)
 const certificate = ref<CertificateDisplay | null>(null);
 const isCertificateLoading = ref(false);
 const currentEnrollmentProgress = ref<EnrollmentProgress | null>(null);
@@ -617,10 +622,7 @@ const isCertificateButtonDisabled = computed(() => {
   return false;
 });
 
-const saveNotes = () => {
-    // TODO: Implement notes saving
-    console.log('Saving notes:', notes.value)
-}
+
 
 // ── Enrollment actions ──────────────────────────
 const openEnrollModal = () => {
@@ -1381,6 +1383,14 @@ $warning:      #f59e0b;
   margin-bottom: 0.6rem;
 
   &:focus { border-color: $primary; background: #fff; }
+}
+
+.instructor-card {
+  .instructor-name { font-weight: 600; margin: 0 0 2px; }
+  .instructor-spec { color: $primary; font-size: .9rem; margin: 0 0 8px; }
+  .instructor-bio { font-size: .9rem; color: #4b5563; margin: 0 0 8px; white-space: pre-line; }
+  .instructor-skills { display: flex; flex-wrap: wrap; gap: 6px;
+    span { font-size: .75rem; background: $primary-soft; color: $primary; padding: 2px 8px; border-radius: 999px; } }
 }
 
 .btn-save-notes {

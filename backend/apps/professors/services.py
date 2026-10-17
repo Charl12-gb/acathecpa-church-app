@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from typing import List, Optional, Union
 
 from django.db import transaction
-from django.db.models import Count, Max, Q
+from django.db.models import Avg, Count, Max, Q, Sum
 from django.utils import timezone
 
 from apps.accounts.models import ProfessorProfile, User
@@ -34,6 +34,13 @@ def _get_role(name: str) -> Optional[Role]:
 # --------------------------------------------------------------------------- #
 def get_profile_by_user_id(user_id: int) -> Optional[ProfessorProfile]:
     return ProfessorProfile.objects.filter(user_id=user_id).first()
+
+
+def get_or_create_profile(user: User) -> ProfessorProfile:
+    profile, _ = ProfessorProfile.objects.get_or_create(
+        user=user, defaults={"specialization": ""}
+    )
+    return profile
 
 
 def add_profile_to_existing_user(
@@ -243,78 +250,103 @@ def get_admin_monthly_registrations() -> List[dict]:
 # --------------------------------------------------------------------------- #
 # Professor dashboard
 # --------------------------------------------------------------------------- #
-def get_professor_dashboard_stats(user) -> dict:
-    qs = Course.objects.filter(instructor_id=user.id)
-    published = qs.filter(status=CourseStatus.PUBLISHED)
+def _instructor_enrollments(user):
+    return Enrollment.objects.filter(course__instructor_id=user.id)
 
-    total_students = (
-        Enrollment.objects.filter(course__instructor_id=user.id)
-        .values("user_id")
-        .distinct()
-        .count()
+
+def get_professor_dashboard_stats(user) -> dict:
+    from apps.enrollments.models import Certificate
+    from apps.payments.models import Payment, PaymentStatus
+
+    published = Course.objects.filter(instructor_id=user.id, status=CourseStatus.PUBLISHED)
+    revenue = (
+        Payment.objects.filter(course__instructor_id=user.id, status=PaymentStatus.COMPLETED)
+        .aggregate(total=Sum("amount"))["total"]
     )
-    total_questions = TestQuestion.objects.filter(
-        test__section__course__instructor_id=user.id
-    ).count()
     return {
         "published_courses_count": published.count(),
-        "total_students_count": total_students,
-        "average_rating": 0.0,
-        "total_questions_count": total_questions,
+        "total_students_count": _instructor_enrollments(user).values("user_id").distinct().count(),
+        "certificates_count": Certificate.objects.filter(course__instructor_id=user.id).count(),
+        "revenue": float(revenue or 0),
+        "total_questions_count": TestQuestion.objects.filter(
+            test__section__course__instructor_id=user.id
+        ).count(),
     }
 
 
 def get_professor_published_courses(user) -> List[dict]:
-    out: List[dict] = []
-    courses = Course.objects.filter(
-        instructor_id=user.id, status=CourseStatus.PUBLISHED
+    courses = (
+        Course.objects.filter(instructor_id=user.id, status=CourseStatus.PUBLISHED)
+        .annotate(
+            students=Count("enrollments", distinct=True),
+            avg_progress=Avg("enrollments__progress_percentage"),
+        )
     )
-    for course in courses:
-        students_count = (
-            Enrollment.objects.filter(course_id=course.id)
-            .values("user_id")
-            .distinct()
-            .count()
-        )
-        last_updated = (
-            course.updated_at.isoformat() + "Z"
-            if course.updated_at
-            else timezone.now().isoformat() + "Z"
-        )
-        out.append({
+    return [
+        {
             "id": course.id,
             "title": course.title,
-            "students_count": students_count,
-            "rating": 0.0,
-            "last_updated": last_updated,
-        })
-    return out
+            "students_count": course.students,
+            "average_progress": round(course.avg_progress or 0, 1),
+            "last_updated": (course.updated_at or timezone.now()).isoformat(),
+        }
+        for course in courses
+    ]
 
 
 def get_professor_student_engagement(user) -> List[dict]:
-    titles = Course.objects.filter(
-        instructor_id=user.id, status=CourseStatus.PUBLISHED
-    ).values_list("title", flat=True)
+    """Average progress of the students of each published course."""
+    courses = (
+        Course.objects.filter(instructor_id=user.id, status=CourseStatus.PUBLISHED)
+        .annotate(avg_progress=Avg("enrollments__progress_percentage"))
+    )
     return [
-        {"course_name": title, "average_hours_spent": 0.0}
-        for title in titles
+        {"course_name": c.title, "average_progress": round(c.avg_progress or 0, 1)}
+        for c in courses
     ]
 
 
 def get_professor_student_distribution(user) -> dict:
-    active_students_count = (
-        Enrollment.objects.filter(course__instructor_id=user.id)
-        .values("user_id")
-        .distinct()
-        .count()
-    )
+    """
+    Per enrollment: completed (certificate stage reached), active (started),
+    inactive (enrolled but nothing done yet).
+    """
+    qs = _instructor_enrollments(user)
+    completed = qs.filter(completed_at__isnull=False).count()
+    inactive = qs.filter(completed_at__isnull=True, progress_percentage=0).count()
     return {
-        "active_students_count": active_students_count,
-        "inactive_students_count": 0,
-        "completed_students_count": 0,
+        "active_students_count": qs.count() - completed - inactive,
+        "inactive_students_count": inactive,
+        "completed_students_count": completed,
     }
 
 
-def get_professor_recent_activities(user) -> List[dict]:
-    """No activity log model exists yet — returns empty list (parity with FastAPI)."""
-    return []
+def get_professor_recent_activities(user, limit: int = 8) -> List[dict]:
+    """Latest enrollments, quiz attempts and certificates on the professor's courses."""
+    from apps.enrollments.models import Certificate
+
+    def _name(u):
+        return u.name or u.email.split("@")[0]
+
+    events: List[dict] = []
+    for e in _instructor_enrollments(user).select_related("user", "course").order_by("-enrolled_at")[:limit]:
+        events.append({
+            "id": f"enroll-{e.id}", "student_name": _name(e.user), "course_name": e.course.title,
+            "activity_type": "enrollment", "content": "S'est inscrit au cours",
+            "timestamp": e.enrolled_at.isoformat(),
+        })
+        for i, a in enumerate(e.test_attempts or []):
+            events.append({
+                "id": f"quiz-{e.id}-{i}", "student_name": _name(e.user), "course_name": e.course.title,
+                "activity_type": "quiz",
+                "content": f"Quiz {'réussi' if a.get('passed') else 'échoué'} ({a.get('score', 0)} %)",
+                "timestamp": a.get("attempted_at") or e.enrolled_at.isoformat(),
+            })
+    for c in Certificate.objects.filter(course__instructor_id=user.id).select_related("user", "course").order_by("-issue_date")[:limit]:
+        events.append({
+            "id": f"cert-{c.id}", "student_name": _name(c.user), "course_name": c.course.title,
+            "activity_type": "certificate", "content": "A obtenu son certificat",
+            "timestamp": c.issue_date.isoformat(),
+        })
+    events.sort(key=lambda x: x["timestamp"], reverse=True)
+    return events[:limit]

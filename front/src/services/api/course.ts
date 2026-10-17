@@ -10,6 +10,7 @@ import {
     EnrollmentProgress, // Added for new progress endpoints
     TestAttemptSubmission,
     CertificateVerification,
+    CourseStudentRow,
 } from '../../types/api';
 
 // EnrollmentProgress and TestAttemptSubmission live in ../../types/api/courseTypes.ts
@@ -308,5 +309,11 @@ export const issueCertificateForUser = async (courseId: number, userId: number):
  */
 export const verifyCertificate = async (code: string): Promise<CertificateVerification> => {
   const response = await apiClient.get<CertificateVerification>(`/certificates/verify/${encodeURIComponent(code)}`);
+  return response.data;
+};
+
+/** Instructor view of a course's students: progress, quiz results, certificate. */
+export const getCourseStudents = async (courseId: number): Promise<CourseStudentRow[]> => {
+  const response = await apiClient.get<CourseStudentRow[]>(`/courses/${courseId}/students`);
   return response.data;
 };

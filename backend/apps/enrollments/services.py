@@ -385,6 +385,12 @@ def check_and_issue_certificate(
     if get_certificate_for_course_by_user(user_id, course_id):
         return "CertificateAlreadyIssued"
 
+    from apps.courses.services import has_learning_content
+
+    # Nothing to complete means nothing to certify.
+    if not has_learning_content(course_id):
+        return "CourseEmpty"
+
     # All lessons completed?
     all_lesson_ids = {l.id for s in course.sections.all() for l in s.lessons.all()}
     completed_lessons = set(enrollment.completed_lessons or [])

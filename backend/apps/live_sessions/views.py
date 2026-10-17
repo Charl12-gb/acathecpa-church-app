@@ -26,7 +26,7 @@ from apps.courses.models import Course
 from apps.enrollments.models import Enrollment
 from apps.permissions.permissions import HasPermission
 
-from . import services
+from . import jitsi, services
 from .models import LiveSessionStatus
 from .serializers import (
     LiveSessionCreateSerializer,
@@ -103,6 +103,7 @@ class LiveSessionListCreateView(APIView):
         result = services.create_live_session(serializer.validated_data, request.user.id)
         if isinstance(result, str):
             return _string_to_response(result)
+        services.notify_enrolled_students(result, rescheduled=False)
         return Response(
             LiveSessionSerializer(result).data, status=status.HTTP_201_CREATED
         )
@@ -218,6 +219,7 @@ class LiveSessionRescheduleView(APIView):
             )
         if isinstance(result, str):
             return _string_to_response(result)
+        services.notify_enrolled_students(result, rescheduled=True)
         return Response(
             LiveSessionSerializer(result).data, status=status.HTTP_201_CREATED
         )
@@ -284,7 +286,7 @@ class LiveSessionJoinView(APIView):
                 "domain": domain,
                 "room": room,
                 "url": f"https://{domain}/{dj_settings.JITSI_APP_ID}/{room}",
-                "jwt": dj_settings.JITSI_JWT or None,
+                "jwt": jitsi.token_for(request.user, room, moderator=_can_manage(request.user, session)),
                 "uid": request.user.id,
             }
         )

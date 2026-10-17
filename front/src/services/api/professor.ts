@@ -52,3 +52,20 @@ export async function getProfessors(params: { skip?: number; limit?: number; [ke
   const users = await getAllUsers('professor', skip, limit, rest);
   return users as Professor[];
 }
+
+/** The logged-in professor's own public profile (shown to students on course pages). */
+export interface MyProfessorProfile {
+  specialization: string;
+  bio: string | null;
+  skills: string[];
+}
+
+export const getMyProfessorProfile = async (): Promise<MyProfessorProfile> => {
+  const response = await apiClient.get<MyProfessorProfile>('/professors/me/profile');
+  return response.data;
+};
+
+export const updateMyProfessorProfile = async (data: Partial<MyProfessorProfile>): Promise<MyProfessorProfile> => {
+  const response = await apiClient.put<MyProfessorProfile>('/professors/me/profile', data);
+  return response.data;
+};

@@ -38,7 +38,7 @@ test('a student signs up, pays, follows the course, passes the quiz and gets a v
   await expect(page).toHaveURL(/\/dashboard$/)
 
   // 3. Catalogue -> course page
-  await page.getByRole('link', { name: 'Explorer les cours' }).click()
+  await page.locator('.nav-item', { hasText: 'Explorer les cours' }).click()
   await page.getByRole('link', { name: COURSE }).first().click()
   await expect(page).toHaveURL(/\/course\/\d+$/)
   // Not enrolled yet: lessons are listed, no content is reachable.

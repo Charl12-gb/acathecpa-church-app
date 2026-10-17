@@ -49,6 +49,7 @@ const engagementChartOptions = {
   scales: {
     y: {
       beginAtZero: true,
+      max: 100,
     },
   },
 };
@@ -82,13 +83,19 @@ const computedEngagementChartData = computed(() => {
     labels: studentEngagement.value.map(item => item.course_name),
     datasets: [
       {
-        label: 'Heures moyennes par étudiant',
+        label: 'Progression moyenne des étudiants (%)',
         backgroundColor: ['#3498db', '#2ecc71', '#9b59b6', '#f1c40f', '#e74c3c'], // Add more colors if more courses
-        data: studentEngagement.value.map(item => item.average_hours_spent),
+        data: studentEngagement.value.map(item => item.average_progress),
       },
     ],
   };
 });
+
+const activityStyle = (type: string) => ({
+  enrollment: { label: 'Inscription', icon: 'bi-person-plus text-primary', bg: 'bg-primary', badge: 'bg-primary-subtle' },
+  quiz: { label: 'Quiz', icon: 'bi-ui-checks text-warning', bg: 'bg-warning', badge: 'bg-warning-subtle' },
+  certificate: { label: 'Certificat', icon: 'bi-patch-check text-success', bg: 'bg-success', badge: 'bg-success-subtle' },
+}[type] ?? { label: type, icon: 'bi-dot text-secondary', bg: 'bg-secondary', badge: 'bg-light' });
 
 const getCourseImage = (course: unknown) => {
   if (course && typeof course === 'object' && 'image_url' in course) {
@@ -151,11 +158,12 @@ export default {
           <div class="card-body">
             <div class="d-flex align-items-center">
               <div class="rounded-circle bg-warning bg-opacity-10 p-3 me-3">
-                <i class="bi bi-star text-warning fs-4"></i>
+                <i class="bi bi-patch-check text-warning fs-4"></i>
               </div>
               <div>
-                <h6 class="mb-0 text-muted">Note moyenne</h6>
-                <h3 class="mb-0">{{ stats.average_rating?.toFixed(1) ?? 'N/A' }}</h3>
+                <h6 class="mb-0 text-muted">Certificats délivrés</h6>
+                <h3 class="mb-0">{{ stats.certificates_count ?? 'N/A' }}</h3>
+                <small class="text-muted">{{ (stats.revenue ?? 0).toLocaleString('fr-FR') }} XOF encaissés</small>
               </div>
             </div>
           </div>
@@ -166,10 +174,10 @@ export default {
           <div class="card-body">
             <div class="d-flex align-items-center">
               <div class="rounded-circle bg-info bg-opacity-10 p-3 me-3">
-                <i class="bi bi-chat-dots text-info fs-4"></i>
+                <i class="bi bi-ui-checks text-info fs-4"></i>
               </div>
               <div>
-                <h6 class="mb-0 text-muted">Questions</h6>
+                <h6 class="mb-0 text-muted">Questions de quiz</h6>
                 <h3 class="mb-0">{{ stats.total_questions_count ?? 'N/A' }}</h3>
               </div>
             </div>
@@ -212,9 +220,9 @@ export default {
                   <div class="flex-grow-1">
                     <div class="d-flex justify-content-between align-items-start">
                       <h6 class="mb-1">{{ course.title }}</h6>
-                      <span class="badge bg-success d-flex align-items-center">
-                        <i class="bi bi-star-fill me-1"></i>
-                        {{ course.rating.toFixed(1) }}
+                      <span class="badge bg-success d-flex align-items-center" title="Progression moyenne des étudiants">
+                        <i class="bi bi-graph-up me-1"></i>
+                        {{ Math.round(course.average_progress) }} %
                       </span>
                     </div>
                     <div class="d-flex flex-wrap mb-2">
@@ -253,18 +261,14 @@ export default {
               <div v-for="activity in recentActivities" :key="activity.id" class="list-group-item px-0 py-3">
                 <div class="d-flex">
                   <div class="flex-shrink-0 me-3">
-                    <div v-if="activity.activity_type === 'question'" class="rounded-circle bg-warning bg-opacity-10 p-3">
-                      <i class="bi bi-question-circle text-warning"></i>
-                    </div>
-                    <div v-else class="rounded-circle bg-info bg-opacity-10 p-3">
-                      <i class="bi bi-chat-dots text-info"></i>
+                    <div class="rounded-circle bg-opacity-10 p-3" :class="activityStyle(activity.activity_type).bg">
+                      <i class="bi" :class="activityStyle(activity.activity_type).icon"></i>
                     </div>
                   </div>
                   <div>
                     <h6 class="mb-1">{{ activity.student_name }}</h6>
                     <p class="mb-1">
-                      <span v-if="activity.activity_type === 'question'" class="badge bg-warning text-dark me-2">Question</span>
-                      <span v-else class="badge bg-info text-dark me-2">Commentaire</span>
+                      <span class="badge text-dark me-2" :class="activityStyle(activity.activity_type).badge">{{ activityStyle(activity.activity_type).label }}</span>
                       {{ activity.content }}
                     </p>
                     <div class="d-flex align-items-center text-muted small">

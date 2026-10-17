@@ -4,6 +4,7 @@ from django.urls import path
 from .views import (
     AddProfileView,
     CreateProfessorView,
+    MyProfessorProfileView,
     ProfessorDetailView,
     ProfessorProfilePermissionView,
     ProfDashboardStatsView,
@@ -42,6 +43,8 @@ urlpatterns = [
         name="prof-dashboard-recent-activities",
     ),
 
+    # The logged-in professor's own profile
+    path("me/profile", MyProfessorProfileView.as_view(), name="prof-my-profile"),
     # Per-user profile routes
     path("<int:user_id>/profile", AddProfileView.as_view(), name="prof-profile-add"),
     path(

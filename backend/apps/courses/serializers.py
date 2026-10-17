@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
-from apps.accounts.serializers import UserSerializer
+from apps.accounts.models import User
+from apps.accounts.serializers import ProfessorProfileSerializer
 
 from .models import Category, Course, CourseLesson, CourseSection, CourseTest, TestQuestion
 
@@ -146,26 +147,35 @@ class CourseSectionWriteSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
         instance.save()
 
-        if test_data is not serializers.empty:
-            if test_data is None:
-                CourseTest.objects.filter(section=instance).delete()
-            else:
-                questions = test_data.pop("questions", None)
-                test, _ = CourseTest.objects.update_or_create(
-                    section=instance, defaults=test_data
-                )
-                if questions is not None:
-                    test.questions.all().delete()
-                    for q in questions:
-                        TestQuestion.objects.create(test=test, **q)
+        # `test: null` means "no change": quizzes are edited and deleted through
+        # their own endpoints (/tests/<id>), so a stale course form can't wipe one.
+        if test_data not in (serializers.empty, None):
+            questions = test_data.pop("questions", None)
+            test, _ = CourseTest.objects.update_or_create(
+                section=instance, defaults=test_data
+            )
+            if questions is not None:
+                test.questions.all().delete()
+                for q in questions:
+                    TestQuestion.objects.create(test=test, **q)
         return instance
 
 
 # --------------------------------------------------------------------------- #
 # Course
 # --------------------------------------------------------------------------- #
+class InstructorPublicSerializer(serializers.ModelSerializer):
+    """What students and visitors may see of a course's instructor (no email, phone, birthdate)."""
+    professor_profile = ProfessorProfileSerializer(read_only=True)
+
+    class Meta:
+        model = User
+        fields = ("id", "name", "professor_profile")
+        read_only_fields = fields
+
+
 class CourseListSerializer(serializers.ModelSerializer):
-    instructor = UserSerializer(read_only=True)
+    instructor = InstructorPublicSerializer(read_only=True)
     instructor_id = serializers.IntegerField(read_only=True)
     progress = serializers.SerializerMethodField()
 
@@ -190,6 +200,15 @@ class CourseListSerializer(serializers.ModelSerializer):
         from apps.enrollments.models import Enrollment
         enrollment = Enrollment.objects.filter(user=user, course=obj).only("progress_percentage").first()
         return enrollment.progress_percentage if enrollment else None
+
+
+class InstructorCourseSerializer(CourseListSerializer):
+    """Instructor's own list: adds students and revenue (annotated by the view)."""
+    students_count = serializers.IntegerField(read_only=True)
+    revenue = serializers.FloatField(read_only=True)
+
+    class Meta(CourseListSerializer.Meta):
+        fields = CourseListSerializer.Meta.fields + ("students_count", "revenue")
 
 
 class CourseDetailSerializer(CourseListSerializer):

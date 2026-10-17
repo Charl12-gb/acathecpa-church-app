@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import SearchableSelect from '../../../components/ui/SearchableSelect.vue'
 // Chart.js components are registered but not actively used in the provided course list part.
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Title } from 'chart.js'
@@ -21,11 +21,15 @@ ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointE
 const courses = ref<Course[]>([])
 const isLoading = ref(false)
 const error = ref<string | null>(null)
+// Action feedback (refused publication or deletion), shown above the list.
+const route = useRoute()
+const notice = ref<string | null>((route.query.notice as string) || null)
+const apiMessage = (err: any, fallback: string) => err.response?.data?.detail || fallback
 
 // Filters
 const filters = ref({
   status: 'all', // all, published, draft
-  sort: 'recent' // recent, students, rating, revenue (Note: students, rating, revenue might not be available on Course type)
+  sort: 'recent' // recent, students, revenue
 })
 
 const fetchCourses = async () => {
@@ -61,13 +65,10 @@ const filteredCourses = computed(() => {
   // Sorting - Adjust based on available fields in Course type
   switch (filters.value.sort) {
     case 'students':
-      filtered.sort((a, b) => ((b as any).students || 0) - ((a as any).students || 0))
-      break
-    case 'rating':
-      filtered.sort((a, b) => ((b as any).rating || 0) - ((a as any).rating || 0))
+      filtered.sort((a, b) => (b.students_count || 0) - (a.students_count || 0))
       break
     case 'revenue':
-      filtered.sort((a, b) => ((b as any).revenue || 0) - ((a as any).revenue || 0))
+      filtered.sort((a, b) => (b.revenue || 0) - (a.revenue || 0))
       break
     default: // recent (using updated_at or created_at)
       filtered.sort((a, b) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime())
@@ -76,24 +77,13 @@ const filteredCourses = computed(() => {
   return filtered
 })
 
-const getCourseMetric = (course: Course, key: 'students' | 'rating' | 'revenue') => {
-  const raw = course as unknown as { students?: number; rating?: number; revenue?: number };
-  return raw[key] || 0;
-}
-
+// students_count and revenue come from GET /courses/instructor/me.
 const totalStudents = computed(() =>
-  courses.value.reduce((sum, course) => sum + getCourseMetric(course, 'students'), 0)
+  courses.value.reduce((sum, course) => sum + (course.students_count || 0), 0)
 )
 
-const averageRating = computed(() => {
-  const ratings = courses.value.map((course) => getCourseMetric(course, 'rating')).filter((value) => value > 0)
-  if (ratings.length === 0) return '0.0'
-  const avg = ratings.reduce((sum, value) => sum + value, 0) / ratings.length
-  return avg.toFixed(1)
-})
-
 const totalRevenue = computed(() =>
-  courses.value.reduce((sum, course) => sum + getCourseMetric(course, 'revenue'), 0)
+  courses.value.reduce((sum, course) => sum + (course.revenue || 0), 0).toLocaleString('fr-FR')
 )
 
 const setCourseStatus = (courseId: number, value: string | number | boolean | null) => {
@@ -149,7 +139,7 @@ const updateCourseStatus = async (courseId: number, newStatus: CourseStatus) => 
     // Or re-fetch: await fetchCourses();
   } catch (err: any) {
     console.error('Failed to update course status:', err);
-    error.value = `Erreur lors de la mise à jour du statut: ${err.message || ' inconnue'}`;
+    notice.value = apiMessage(err, 'Le statut du cours n\'a pas pu être modifié.');
     // Optionally, revert local change or show specific error to user
   } finally {
     isLoading.value = false;
@@ -164,8 +154,7 @@ const deleteCourse = async (courseId: number) => {
       // Optionally, show a success notification
     } catch (err: any) {
       console.error('Failed to delete course:', err)
-      // Optionally, show an error notification
-      alert(err.message || 'Erreur lors de la suppression du cours.')
+      notice.value = apiMessage(err, 'Erreur lors de la suppression du cours.')
     }
   }
 }
@@ -198,11 +187,7 @@ const deleteCourse = async (courseId: number) => {
           <span><strong>{{ totalStudents }}</strong> étudiants</span>
         </div>
         <div class="stat-chip">
-          <i class="bi bi-star" style="color: #b45309;"></i>
-          <span><strong>{{ averageRating }}</strong> note</span>
-        </div>
-        <div class="stat-chip">
-          <i class="bi bi-currency-euro" style="color: #6b7280;"></i>
+          <i class="bi bi-cash-coin" style="color: #6b7280;"></i>
           <span><strong>{{ totalRevenue }}</strong> XOF</span>
         </div>
       </div>
@@ -226,7 +211,6 @@ const deleteCourse = async (courseId: number) => {
             :options="[
               { value: 'recent', label: 'Plus récents' },
               { value: 'students', label: 'Nombre d\'étudiants' },
-              { value: 'rating', label: 'Note' },
               { value: 'revenue', label: 'Revenus' },
             ]"
           />
@@ -247,8 +231,14 @@ const deleteCourse = async (courseId: number) => {
       <button @click="fetchCourses">Réessayer</button>
     </div>
 
+    <div v-if="notice" class="notice-banner" role="status">
+      <i class="bi bi-info-circle-fill"></i>
+      <span>{{ notice }}</span>
+      <button type="button" @click="notice = null" aria-label="Fermer"><i class="bi bi-x-lg"></i></button>
+    </div>
+
     <!-- Course List -->
-    <div v-else-if="filteredCourses.length > 0" class="course-list">
+    <div v-if="!isLoading && !error && filteredCourses.length > 0" class="course-list">
       <article v-for="course in filteredCourses" :key="course.id" class="course-card">
         <!-- Thumbnail -->
         <div class="card-thumb">
@@ -281,6 +271,8 @@ const deleteCourse = async (courseId: number) => {
             <span v-if="course.category" class="info-tag">
               <i class="bi bi-tag"></i> {{ course.category }}
             </span>
+            <span class="info-tag"><i class="bi bi-people"></i> {{ course.students_count || 0 }} étudiant(s)</span>
+            <span v-if="!course.is_free" class="info-tag"><i class="bi bi-cash-coin"></i> {{ (course.revenue || 0).toLocaleString('fr-FR') }} XOF</span>
           </div>
 
           <div class="card-status-row">
@@ -303,6 +295,9 @@ const deleteCourse = async (courseId: number) => {
         <div class="card-side">
           <RouterLink :to="`/course-editor/${course.id}`" class="btn-action primary">
             <i class="bi bi-pencil"></i> Modifier
+          </RouterLink>
+          <RouterLink :to="`/manage-courses/${course.id}/students`" class="btn-action">
+            <i class="bi bi-people"></i> Étudiants
           </RouterLink>
           <button
             class="btn-action danger"
@@ -690,6 +685,20 @@ $radius:      14px;
   gap: 0.55rem;
   border-left: 1px solid $border;
   background: $gray-light;
+}
+
+.notice-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: #fff7e6;
+  border: 1px solid #f5d48a;
+  color: #7a4b00;
+  span { flex: 1; }
+  button { background: none; border: 0; color: inherit; cursor: pointer; }
 }
 
 .btn-action {

@@ -223,6 +223,10 @@ PASSWORD_RESET_TOKEN_LIFETIME_MINUTES = int(
 JITSI_APP_ID = os.getenv("JITSI_APP_ID", "")
 JITSI_JWT = os.getenv("JITSI_JWT", "")
 JITSI_DOMAIN = os.getenv("JITSI_DOMAIN", "8x8.vc")
+# Per-user tokens (recommended): API key id "vpaas-magic-cookie-…/xxxxxx" and its
+# RSA private key (PEM text with \n, or a path to the .pk file).
+JITSI_KID = os.getenv("JITSI_KID", "")
+JITSI_PRIVATE_KEY = os.getenv("JITSI_PRIVATE_KEY", "")
 
 
 # --------------------------------------------------------------------------- #

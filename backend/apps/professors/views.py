@@ -168,6 +168,30 @@ class ProfessorDetailView(APIView):
         return Response(UserSerializer(user).data)
 
 
+class MyProfessorProfileView(APIView):
+    """The logged-in professor reads and edits their own public profile."""
+
+    permission_classes = [IsAuthenticated, IsProfessor]
+
+    def get(self, request):
+        profile = services.get_profile_by_user_id(request.user.id)
+        if not profile:
+            return Response(
+                {"detail": "Profil professeur introuvable."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response(ProfessorProfileSerializer(profile).data)
+
+    def put(self, request):
+        serializer = ProfessorProfileUpdateSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        profile = services.get_or_create_profile(request.user)
+        for field, value in serializer.validated_data.items():
+            setattr(profile, field, value)
+        profile.save()
+        return Response(ProfessorProfileSerializer(profile).data)
+
+
 class ProfessorProfilePermissionView(APIView):
     """
     Same as the previous ones but gated by explicit permissions

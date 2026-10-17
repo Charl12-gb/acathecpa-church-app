@@ -220,6 +220,9 @@ const props = withDefaults(defineProps<Props>(), {
   modalId: 'testEditorModal'
 });
 
+// Lets the course editor refresh its summary of this section's quiz.
+const emit = defineEmits<{ (e: 'saved', test: CourseTest): void }>();
+
 // Reactive state
 const isLoading = ref(false);
 const error = ref<string | null>(null);
@@ -494,11 +497,15 @@ const saveTest = async () => {
       }
     }
 
+    emit('saved', { ...savedTest, questions: test.value.questions as any });
     (window as any).$('#testEditorModal').modal('toggle');
 
   } catch (err: any) {
     console.error('Error saving test:', err);
-    error.value = err.message || "Erreur lors de l'enregistrement du test.";
+    const data = err.response?.data;
+    error.value = data?.detail
+      || (data && typeof data === 'object' ? Object.values(data).flat().join(' ') : null)
+      || err.message || "Erreur lors de l'enregistrement du test.";
   } finally {
     isLoading.value = false;
   }

@@ -34,6 +34,7 @@ import ProfessorCoursesPage from '../views/dashboard/professor/CoursesPage.vue'
 import CourseEditorPage from '../views/dashboard/professor/CourseEditorPage.vue'
 import LiveSessionPage from '../views/dashboard/professor/LiveSessionPage.vue'
 import LiveListe from '../views/dashboard/professor/LiveListe.vue'
+import CourseStudentsPage from '../views/dashboard/professor/CourseStudentsPage.vue'
 
 // Admin Pages
 import AdminProfessorsPage from '../views/dashboard/admin/ProfessorsPage.vue'
@@ -152,6 +153,12 @@ const router = createRouter({
       path: '/manage-courses', 
       name: 'professor-courses', 
       component: ProfessorCoursesPage,
+      meta: { requiresAuth: true, minRole: 'professor', layout: 'dashboard' }
+    },
+    {
+      path: '/manage-courses/:id/students',
+      name: 'course-students',
+      component: CourseStudentsPage,
       meta: { requiresAuth: true, minRole: 'professor', layout: 'dashboard' }
     },
     { 

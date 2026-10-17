@@ -30,6 +30,8 @@ class LessonType(models.TextChoices):
 
 class QuestionType(models.TextChoices):
     MULTIPLE_CHOICE = "multiple_choice", "Multiple choice"
+    # Open answer: not auto-graded, left out of the quiz score.
+    ESSAY = "essay", "Essay"
 
 
 # --------------------------------------------------------------------------- #

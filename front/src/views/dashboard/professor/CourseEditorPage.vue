@@ -15,8 +15,11 @@ import {
   createCourseLesson,
   updateCourseSection,
   deleteCourseLesson,
-  updateCourseLesson
+  updateCourseLesson,
+  publishCourse,
 } from '../../../services/api/course';
+import { useAuthStore } from '../../../stores/auth';
+import { UserRole } from '../../../types/api/userTypes';
 import type {
   Course,
   CourseSectionCreatePayload,
@@ -33,8 +36,10 @@ const course_data = ref<Course | null>(null);
 const courseSectionId = ref<number | null>(null);
 const showTestModal = ref(false);
 
-// Categories loaded from the API (admin-managed). Supports on-the-fly creation.
+// Categories loaded from the API. Only admins may create new ones.
 const categories = ref<string[]>([]);
+const authStore = useAuthStore();
+const canCreateCategory = computed(() => authStore.hasMinRole(UserRole.ADMIN));
 
 const loadCategories = async () => {
   try {
@@ -129,6 +134,7 @@ const courseForm = ref<{
   objectives: string[]; 
   prerequisites: string[]; 
   status: CourseStatus;
+  points_required_for_certificate: number | null;
   sections: any[];
 }>({
   title: '',
@@ -142,6 +148,7 @@ const courseForm = ref<{
   objectives: [''],
   prerequisites: [''],
   status: CourseStatus.DRAFT,
+  points_required_for_certificate: null,
   sections: [
     {
       title: '',
@@ -194,6 +201,7 @@ onMounted(async () => {
         objectives: fetchedCourse.objectives && fetchedCourse.objectives?.length > 0 ? fetchedCourse.objectives : [''],
         prerequisites: fetchedCourse.prerequisites && fetchedCourse.prerequisites?.length > 0 ? fetchedCourse.prerequisites : [''],
         status: fetchedCourse.status || CourseStatus.DRAFT,
+        points_required_for_certificate: fetchedCourse.points_required_for_certificate ?? null,
         category: fetchedCourse.category || '',
         level: fetchedCourse.level || 'beginner',
         sections: (fetchedCourse.sections || []).map((s: any) => ({
@@ -209,7 +217,8 @@ onMounted(async () => {
             title: l.title,
             type: l.type,
             duration: l.duration || '',
-            content: l.content_body || '',
+            // Video lessons keep their URL in video_url (older ones in content_body).
+            content: l.type === 'video' ? (l.video_url || l.content_body || '') : (l.content_body || ''),
             order: l.order,
             is_completed: l.is_completed,
           })),
@@ -302,6 +311,11 @@ const removeLesson = (sectionIndex: number, lessonIndex: number, lessonId: numbe
   }
 };
 
+const onQuizSaved = (savedTest: any) => {
+  const section = courseForm.value.sections.find((sec: any) => sec.id === courseSectionId.value);
+  if (section) section.test = savedTest;
+};
+
 const openCreateTestModal = (incomingSectionId: number) => {
   console.log('Opening modal with section ID:', incomingSectionId);
   courseSectionId.value = incomingSectionId;
@@ -346,9 +360,34 @@ const saveCourse = async () => {
       image_url: courseForm.value.image_url,
       objectives: courseForm.value.objectives.filter(o => o.trim() !== ''),
       prerequisites: courseForm.value.prerequisites.filter(p => p.trim() !== ''),
-      status: courseForm.value.status,
       category: courseForm.value.category,
       level: courseForm.value.level,
+      points_required_for_certificate: courseForm.value.points_required_for_certificate || null,
+    };
+    // Publishing is checked by the server (the course needs content), so it is
+    // done after the sections and lessons are saved.
+    const wantsPublished = courseForm.value.status === CourseStatus.PUBLISHED;
+    const hasLesson = courseForm.value.sections.some((sec: any) =>
+      (sec.lessons || []).some((l: any) => l.title?.trim()) || sec.test?.questions?.length);
+    if (wantsPublished && !hasLesson) {
+      error.value = 'Ajoutez au moins une leçon avant de publier, ou enregistrez le cours en brouillon.';
+      currentStep.value = totalSteps;
+      isLoading.value = false;
+      return;
+    }
+    if (!wantsPublished) payload.status = CourseStatus.DRAFT;
+
+    const lessonPayloadOf = (lesson: any, lessonIndex: number, sectionId: number) => {
+      const isVideo = lesson.type === 'video';
+      return {
+        title: lesson.title,
+        type: lesson.type,
+        duration: lesson.duration,
+        content_body: isVideo ? null : lesson.content,
+        video_url: isVideo ? lesson.content : null,
+        order: lessonIndex,
+        section_id: sectionId,
+      };
     };
 
     if (courseForm.value.id) {
@@ -364,7 +403,6 @@ const saveCourse = async () => {
           content_type: section.content_type,
           video_url: section.content_type === 'video' ? section.video_url : undefined,
           text_content: section.content_type === 'text' ? section.text_content : undefined,
-          test: section.content_type === 'quiz' ? section.test : undefined,
         };
 
         let sectionId: number;
@@ -379,15 +417,7 @@ const saveCourse = async () => {
 
         // Créer ou mettre à jour les leçons
         for (const [lessonIndex, lesson] of (section.lessons || []).entries()) {
-          const lessonPayload: any = {
-            title: (lesson as any).title,
-            type: (lesson as any).type,
-            duration: (lesson as any).duration,
-            content_body: (lesson as any).content,
-            order: lessonIndex,
-            section_id: sectionId,
-            is_completed: (lesson as any).is_completed ?? false,
-          };
+          const lessonPayload: any = lessonPayloadOf(lesson, lessonIndex, sectionId);
 
           if ((lesson as any).id) {
             await updateCourseLesson((lesson as any).id, lessonPayload);
@@ -397,7 +427,9 @@ const saveCourse = async () => {
         }
       }
 
-      alert('Cours et ses sections/leçons mis à jour avec succès.');
+      if (wantsPublished && course_data.value?.status !== CourseStatus.PUBLISHED) {
+        await publishCourse(courseId);
+      }
     } else {
       // === CRÉATION D'UN NOUVEAU COURS ===
       const newCourse = await createCourse(payload);
@@ -412,7 +444,6 @@ const saveCourse = async () => {
           content_type: section.content_type,
           video_url: section.content_type === 'video' ? section.video_url : undefined,
           text_content: section.content_type === 'text' ? section.text_content : undefined,
-          test: section.content_type === 'quiz' ? section.test : undefined,
         };
 
         const newSection = await createCourseSection(newCourseId, sectionPayload);
@@ -421,20 +452,21 @@ const saveCourse = async () => {
         for (const [lessonIndex, lesson] of (section.lessons || []).entries()) {
           if (!(lesson as any).title.trim()) continue;
 
-          const lessonPayload: any = {
-            title: (lesson as any).title,
-            type: (lesson as any).type,
-            duration: (lesson as any).duration,
-            content_body: (lesson as any).content,
-            order: lessonIndex,
-            section_id: sectionId,
-            is_completed: false,
-          };
+          const lessonPayload: any = lessonPayloadOf(lesson, lessonIndex, sectionId);
           await createCourseLesson(sectionId, lessonPayload);
         }
       }
 
-      alert('Cours créé avec succès.');
+      if (wantsPublished) {
+        try {
+          await publishCourse(newCourseId);
+        } catch (publishErr: any) {
+          // Saved as a draft: tell the course list why it is not live.
+          const reason = publishErr.response?.data?.detail || 'publication refusée';
+          router.push({ path: '/manage-courses', query: { notice: `« ${payload.title} » est enregistré en brouillon : ${reason}` } });
+          return;
+        }
+      }
     }
 
     router.push('/manage-courses');
@@ -543,8 +575,8 @@ const previewLessons = (section: any) => {
           </div>
           <div class="card-inner">
             <div class="field">
-              <label>Titre du cours <span class="req">*</span></label>
-              <input type="text" :class="{ invalid: errors.title }" v-model="courseForm.title" placeholder="Ex : Développement Web Avancé">
+              <label for="course-title">Titre du cours <span class="req">*</span></label>
+              <input id="course-title" type="text" :class="{ invalid: errors.title }" v-model="courseForm.title" placeholder="Ex : Développement Web Avancé">
               <span v-if="errors.title" class="field-error">{{ errors.title }}</span>
             </div>
 
@@ -561,9 +593,10 @@ const previewLessons = (section: any) => {
                   :options="categories"
                   :invalid="!!errors.category"
                   placeholder="Sélectionner une catégorie"
-                  creatable
+                  :creatable="canCreateCategory"
                   @create="handleCategoryCreate"
                 />
+                <small v-if="!canCreateCategory" class="field-hint">Catégorie absente ? Demandez-la à l'administration.</small>
                 <span v-if="errors.category" class="field-error">{{ errors.category }}</span>
               </div>
               <div class="field">
@@ -618,7 +651,10 @@ const previewLessons = (section: any) => {
                 />
               </div>
               <div class="field" style="flex:2">
-                <!-- spacer -->
+                <label for="points-required">Points requis pour le certificat</label>
+                <input id="points-required" type="number" min="0" step="1"
+                  v-model.number="courseForm.points_required_for_certificate" placeholder="Aucun minimum">
+                <small class="field-hint">Total des points des quiz réussis. Laissez vide pour n'exiger que la fin du cours.</small>
               </div>
             </div>
 
@@ -740,27 +776,18 @@ const previewLessons = (section: any) => {
                 <!-- Quiz content -->
                 <div v-else-if="section.content_type === 'quiz'" class="quiz-config">
                   <div class="quiz-config-head">
-                    <h3>Configuration du Quiz</h3>
-                    <button class="btn-outline-sm"><i class="bi bi-pencil-square"></i> Éditeur Avancé</button>
+                    <h3>Quiz de la section</h3>
+                    <button v-if="section.id" type="button" class="btn-outline-sm" @click="openCreateTestModal(section.id)">
+                      <i class="bi bi-pencil-square"></i> {{ section.test?.id ? 'Modifier le quiz' : 'Créer le quiz' }}
+                    </button>
                   </div>
-                  <div class="field-row">
-                    <div class="field">
-                      <label>Nombre de questions</label>
-                      <input type="number" min="1" placeholder="Ex : 5">
-                    </div>
-                    <div class="field">
-                      <label>Durée limite (min)</label>
-                      <input type="number" min="1" placeholder="Ex : 15">
-                    </div>
-                  </div>
-                  <label class="cb-label small">
-                    <input type="checkbox" id="randomQuestions">
-                    <span class="cb-box"><i class="bi bi-check"></i></span>
-                    Ordre aléatoire des questions
-                  </label>
-                  <div class="quiz-hint">
-                    <i class="bi bi-lightbulb"></i> La création détaillée des questions se fait dans l'éditeur avancé.
-                  </div>
+                  <p v-if="section.test?.id" class="quiz-hint">
+                    <i class="bi bi-patch-check"></i>
+                    « {{ section.test.title }} » : {{ section.test.questions?.length || 0 }} question(s),
+                    score requis {{ section.test.passing_score ?? 70 }} %, {{ section.test.max_attempts || 'illimité' }} tentative(s).
+                  </p>
+                  <p v-else-if="section.id" class="quiz-hint"><i class="bi bi-lightbulb"></i> Aucun quiz pour l'instant.</p>
+                  <p v-else class="quiz-hint"><i class="bi bi-lightbulb"></i> Enregistrez le cours une première fois pour pouvoir créer le quiz de cette section.</p>
                 </div>
 
                 <!-- Lessons -->
@@ -932,6 +959,7 @@ const previewLessons = (section: any) => {
       ref="testEditorModal"
       :section-id="courseSectionId"
       modal-id="testEditorModal"
+      @saved="onQuizSaved"
     />
   </div>
 </template>

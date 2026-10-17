@@ -32,7 +32,7 @@ class Payment(models.Model):
     )
     course = models.ForeignKey(
         "courses.Course",
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="payments",
         db_column="course_id",
         null=True,

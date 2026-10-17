@@ -43,7 +43,8 @@ class LiveSessionSerializer(serializers.ModelSerializer):
 
 
 class LiveSessionCreateSerializer(serializers.Serializer):
-    course_id = serializers.IntegerField(required=False, allow_null=True)
+    # Required: without a course no student can see or join the session.
+    course_id = serializers.IntegerField()
     title = serializers.CharField(max_length=255)
     description = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     scheduled_for = serializers.DateTimeField()

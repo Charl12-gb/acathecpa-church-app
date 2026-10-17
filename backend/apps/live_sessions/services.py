@@ -1,6 +1,8 @@
 """Service layer for live sessions + attendance tracking."""
 from __future__ import annotations
 
+import logging
+
 import uuid
 from datetime import datetime
 from typing import Optional, Union
@@ -11,6 +13,8 @@ from django.utils import timezone
 from apps.courses.models import Course
 
 from .models import LiveSession, LiveSessionAttendance, LiveSessionStatus
+
+logger = logging.getLogger(__name__)
 
 
 # --------------------------------------------------------------------------- #
@@ -292,3 +296,48 @@ def get_attendance_summary(session_id: int) -> Optional[dict]:
         "attendance_rate": rate,
         "attendees": attendees,
     }
+
+
+# --------------------------------------------------------------------------- #
+# Notifications
+# --------------------------------------------------------------------------- #
+def notify_enrolled_students(session: LiveSession, rescheduled: bool) -> int:
+    """Email the students of the session's course. Returns the number of recipients."""
+    if not session.course_id:
+        return 0
+    from django.conf import settings
+    from django.core.mail import EmailMessage
+
+    from apps.enrollments.models import Enrollment
+
+    emails = list(
+        Enrollment.objects.filter(course_id=session.course_id, user__is_active=True)
+        .exclude(user__email="")
+        .values_list("user__email", flat=True)
+    )
+    if not emails:
+        return 0
+    when = timezone.localtime(session.scheduled_for).strftime("%d/%m/%Y à %H:%M")
+    verb = "a été reprogrammée" if rescheduled else "est programmée"
+    body = (
+        "Bonjour,\n\n"
+        f"La session en direct « {session.title} » du cours « {session.course.title} » {verb} "
+        f"le {when}"
+        + (f" ({session.duration_minutes} min)" if session.duration_minutes else "")
+        + ".\n\n"
+        f"Rejoignez-la depuis votre espace : {settings.FRONTEND_URL}/my-live-sessions\n\n"
+        f"L'équipe {settings.PROJECT_NAME}"
+    )
+    try:
+        # Bcc so students don't see each other's addresses.
+        EmailMessage(
+            subject=f"Session en direct : {session.title}",
+            body=body,
+            from_email=f"{settings.EMAIL_FROM_NAME} <{settings.DEFAULT_FROM_EMAIL}>",
+            to=[settings.DEFAULT_FROM_EMAIL],
+            bcc=emails,
+        ).send(fail_silently=False)
+    except Exception as exc:  # noqa: BLE001 - email must never block the session
+        logger.error("Live session notification failed for session %s: %s", session.id, exc)
+        return 0
+    return len(emails)

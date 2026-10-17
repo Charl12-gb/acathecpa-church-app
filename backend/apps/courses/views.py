@@ -36,6 +36,7 @@ from rest_framework.response import Response
 from apps.permissions.permissions import HasPermission, IsAdminRole
 
 from . import access
+from . import services as course_services
 from . import permissions_helpers as perm_helpers
 from rest_framework.exceptions import NotFound
 
@@ -64,6 +65,7 @@ from .serializers import (
     CourseSectionWriteSerializer,
     CourseTestSerializer,
     CourseWriteSerializer,
+    InstructorCourseSerializer,
     TestQuestionSerializer,
     TestQuestionWriteSerializer,
 )
@@ -109,6 +111,7 @@ class CourseViewSet(viewsets.ModelViewSet):
         "destroy": "delete_own_course",
         "publish": "publish_course",
         "instructor_me": "view_own_instructed_courses",
+        "students": "view_own_instructed_courses",
         "my_enrolled": "view_own_enrolled_courses",
         "list_sections": "view_course_sections",
         "create_section": "create_course_section",
@@ -148,8 +151,9 @@ class CourseViewSet(viewsets.ModelViewSet):
     def retrieve(self, request, *args, **kwargs):
         course = self.get_object()
         level = access.content_level(request.user, course)
-        # Drafts only exist for their author and admins.
-        if course.status != CourseStatus.PUBLISHED and level != access.FULL:
+        # Drafts are hidden from the public, but students already enrolled
+        # keep their access when the instructor unpublishes the course.
+        if course.status != CourseStatus.PUBLISHED and level == access.OUTLINE:
             raise NotFound()
         data = CourseDetailSerializer(course, context=self.get_serializer_context()).data
         return Response(access.redact_course(data, level))
@@ -161,11 +165,18 @@ class CourseViewSet(viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs):
         course = self.get_object()
         perm_helpers.assert_can_edit_course(request.user, course)
+        if request.data.get("status") == CourseStatus.PUBLISHED and course.status != CourseStatus.PUBLISHED:
+            error = course_services.publish_error(course)
+            if error:
+                return Response({"detail": error}, status=status.HTTP_400_BAD_REQUEST)
         return super().update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
         course = self.get_object()
         perm_helpers.assert_can_edit_course(request.user, course)
+        error = course_services.delete_error(course)
+        if error:
+            return Response({"detail": error}, status=status.HTTP_409_CONFLICT)
         return super().destroy(request, *args, **kwargs)
 
     # --- Custom actions ---
@@ -173,16 +184,27 @@ class CourseViewSet(viewsets.ModelViewSet):
     def publish(self, request, pk=None):
         course = self.get_object()
         perm_helpers.assert_can_edit_course(request.user, course)
+        error = course_services.publish_error(course)
+        if error:
+            return Response({"detail": error}, status=status.HTTP_400_BAD_REQUEST)
         course.status = CourseStatus.PUBLISHED
         course.save(update_fields=["status", "updated_at"])
         return Response(CourseDetailSerializer(course).data)
 
     @action(detail=False, methods=["get"], url_path="instructor/me")
     def instructor_me(self, request):
-        qs = self.get_queryset().filter(instructor=request.user)
+        qs = course_services.with_instructor_metrics(self.get_queryset().filter(instructor=request.user))
         page = self.paginate_queryset(qs)
-        serializer = CourseListSerializer(page or qs, many=True)
+        serializer = InstructorCourseSerializer(page or qs, many=True, context=self.get_serializer_context())
         return self.get_paginated_response(serializer.data) if page is not None else Response(serializer.data)
+
+    @action(detail=True, methods=["get"], url_path="students")
+    def students(self, request, pk=None):
+        """Instructor view: enrolled students with progress and quiz results."""
+        course = self.get_object()
+        if not access.can_manage_course(request.user, course):
+            raise PermissionDenied("Seul le formateur du cours peut voir ses étudiants.")
+        return Response(course_services.course_students(course))
 
     # --- Nested: sections of a course ---
     @action(detail=True, methods=["get", "post"], url_path="sections")

@@ -95,14 +95,14 @@
                   </div>
                 </div>
                 <div class="form-group mb-3">
-                  <label class="form-label-custom">Cours associé <span class="text-muted fw-normal">(optionnel)</span></label>
+                  <label class="form-label-custom">Cours associé <span class="text-danger">*</span></label>
                   <SearchableSelect
                     v-model="sessionForm.course_id"
                     :options="courseOptions"
                     :disabled="!isNewSession"
-                    placeholder="Aucun cours (meet libre)"
-                    clearable
+                    placeholder="Choisir le cours concerné"
                   />
+                  <small class="text-muted">Les étudiants inscrits à ce cours sont prévenus par email et peuvent rejoindre la session.</small>
                 </div>
                 <div class="form-group mb-3">
                   <label class="form-label-custom">Titre <span class="text-danger">*</span></label>
@@ -596,6 +596,10 @@ const setInstantMeet = () => {
 
 const createSession = async () => {
   if (!sessionForm.value.title.trim()) return
+  if (!sessionForm.value.course_id) {
+    alert('Choisissez le cours concerné par cette session.')
+    return
+  }
   formLoading.value = true
   try {
     let scheduled_for: string

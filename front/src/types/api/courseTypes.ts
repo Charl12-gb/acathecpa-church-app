@@ -162,6 +162,10 @@ export interface Course {
   objectives: string[];
   prerequisites: string[];
   progress?: number;
+  points_required_for_certificate?: number | null;
+  /** Instructor list only (GET /courses/instructor/me). */
+  students_count?: number;
+  revenue?: number;
 }
 
 export interface CourseCreatePayload {
@@ -272,4 +276,18 @@ export interface CertificateVerification {
     course_title: string;
     issue_date: string;
     valid: boolean;
+}
+
+/** One row of GET /courses/{id}/students (instructor only). */
+export interface CourseStudentRow {
+  user_id: number;
+  name: string;
+  email: string;
+  enrolled_at: string;
+  progress_percentage: number;
+  completed_lessons: number;
+  completed_at: string | null;
+  last_activity: string;
+  quizzes: Array<{ test_id: number; title: string; attempts: number; best_score: number | null; passed: boolean }>;
+  certificate_code: string | null;
 }

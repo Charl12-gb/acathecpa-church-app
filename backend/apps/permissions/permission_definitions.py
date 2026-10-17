@@ -109,6 +109,7 @@ ROLES_PERMISSIONS_DATA = {
     ],
     'professor': [
         {'permission': 'view_own_profile', 'title': 'View Own Profile', 'category': 'User Management'},
+        {'permission': 'create_content', 'title': 'Create Content', 'category': 'Content Management'},
         {'permission': 'edit_own_profile', 'title': 'Edit Own Profile', 'category': 'User Management'},
         {'permission': 'create_course', 'title': 'Create Course', 'category': 'Course Management'},
         {'permission': 'manage_course_content', 'title': 'Manage Course Content (Lessons, Sections)', 'category': 'Course Structure'},
