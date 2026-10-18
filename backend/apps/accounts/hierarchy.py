@@ -23,6 +23,15 @@ def is_super_admin(user) -> bool:
     return bool(user and (getattr(user, "is_superuser", False) or role_name(user) == SUPER_ADMIN))
 
 
+def is_last_active_super_admin(user) -> bool:
+    """True if `user` is the only active super admin left."""
+    from .models import User
+
+    if role_name(user) != SUPER_ADMIN or not user.is_active:
+        return False
+    return not User.objects.filter(role__name=SUPER_ADMIN, is_active=True).exclude(pk=user.pk).exists()
+
+
 def can_manage_user(actor, target) -> bool:
     """Edit, (de)activate or delete `target`."""
     if is_super_admin(actor):

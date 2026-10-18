@@ -5,6 +5,7 @@ import { countries } from '../../services/utils'
 import SearchableSelect from '../../components/ui/SearchableSelect.vue'
 import { getMyProfessorProfile, updateMyProfessorProfile } from '../../services/api/professor'
 import { UserRole } from '../../types/api/userTypes'
+import { changePassword } from '../../services/api/auth'
 
 const authStore = useAuthStore()
 const currentUser = computed(() => authStore.user)
@@ -96,14 +97,27 @@ const updateProfile = async () => {
 }
 
 // Update password
+const passwordSaved = ref(false)
 const updatePassword = async () => {
-  // Validate passwords match
+  error.value = ''
+  passwordSaved.value = false
   if (form.value.new_password !== form.value.confirm_password) {
     error.value = 'Les nouveaux mots de passe ne correspondent pas.'
     return
   }
-
-  // Add password update logic here
+  loading.value = true
+  try {
+    await changePassword(form.value.current_password, form.value.new_password)
+    passwordSaved.value = true
+    form.value.current_password = ''
+    form.value.new_password = ''
+    form.value.confirm_password = ''
+  } catch (err: any) {
+    const data = err.response?.data
+    error.value = data?.detail || data?.new_password?.join(' ') || 'Le mot de passe n\'a pas pu être modifié.'
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
@@ -313,6 +327,7 @@ const updatePassword = async () => {
             <h5 class="mb-0">Sécurité</h5>
           </div>
           <div class="card-body">
+            <div v-if="passwordSaved" class="alert alert-success">Mot de passe modifié. Un email de confirmation vous a été envoyé.</div>
             <form @submit.prevent="updatePassword">
               <div class="row g-3">
                 <!-- Current Password -->

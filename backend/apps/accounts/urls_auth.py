@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views_auth import (
+    ChangePasswordView,
     ForgotPasswordView,
     LoginView,
     MeView,
@@ -17,6 +18,7 @@ urlpatterns = [
     path("token/refresh", RefreshTokenView.as_view(), name="auth-token-refresh"),
     path("forgot-password", ForgotPasswordView.as_view(), name="auth-forgot-password"),
     path("reset-password", ResetPasswordView.as_view(), name="auth-reset-password"),
+    path("change-password", ChangePasswordView.as_view(), name="auth-change-password"),
     path("users/me", MeView.as_view(), name="auth-me"),
     path("validate-username/<str:username>", ValidateUsernameView.as_view(), name="auth-validate-username"),
 ]

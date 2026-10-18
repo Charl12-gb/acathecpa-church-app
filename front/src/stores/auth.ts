@@ -44,7 +44,9 @@ export const useAuthStore = defineStore('auth', () => {
     'student': 1,
   }
 
-  const getRoleName = (role: User['role']): RoleName => {
+  // A user may have no role (deleted role, createsuperuser account): treat it as none.
+  const getRoleName = (role: User['role'] | null | undefined): RoleName => {
+    if (!role) return '' as RoleName
     return typeof role === 'string' ? role : role.name
   }
 

@@ -54,6 +54,7 @@ api_v1_patterns = [
     path("admin/dashboard/", include("apps.professors.urls_admin_dashboard")),
     path("uploads/", include("apps.uploads.urls")),
     path("team/", include("apps.team.urls")),
+    path("audit-logs", include("apps.audit.urls")),
     path("alumni", AlumniListView.as_view(), name="alumni"),
     path("contact", ContactView.as_view(), name="contact"),
 ]

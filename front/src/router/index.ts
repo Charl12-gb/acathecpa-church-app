@@ -45,6 +45,8 @@ import UserFormPage from '../views/dashboard/admin/UserFormPage.vue'
 import TeamMembersPage from '../views/dashboard/admin/TeamMembersPage.vue'
 import TeamMemberFormPage from '../views/dashboard/admin/TeamMemberFormPage.vue'
 import CategoriesPage from '../views/dashboard/admin/CategoriesPage.vue'
+import RolesPermissionsPage from '../views/dashboard/admin/RolesPermissionsPage.vue'
+import AuditLogPage from '../views/dashboard/admin/AuditLogPage.vue'
 import { UserRole } from '../types/api/userTypes'
 
 const router = createRouter({
@@ -228,6 +230,20 @@ const router = createRouter({
       name: 'manage-categories',
       component: CategoriesPage,
       meta: { requiresAuth: true, minRole: 'admin', layout: 'dashboard' }
+    },
+
+    // Super admin routes
+    {
+      path: '/roles-permissions',
+      name: 'roles-permissions',
+      component: RolesPermissionsPage,
+      meta: { requiresAuth: true, minRole: 'super_admin', layout: 'dashboard' }
+    },
+    {
+      path: '/audit-log',
+      name: 'audit-log',
+      component: AuditLogPage,
+      meta: { requiresAuth: true, minRole: 'super_admin', layout: 'dashboard' }
     },
 
     // Catch-all redirect to home

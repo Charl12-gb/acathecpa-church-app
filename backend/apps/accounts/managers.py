@@ -28,6 +28,11 @@ class UserManager(BaseUserManager):
             raise ValueError("Superuser must have is_staff=True.")
         if extra_fields.get("is_superuser") is not True:
             raise ValueError("Superuser must have is_superuser=True.")
+        if "role" not in extra_fields and "role_id" not in extra_fields:
+            # The front decides menus from the application role: give one.
+            from apps.permissions.models import Role
+
+            extra_fields["role"] = Role.objects.filter(name="super_admin").first()
         return self._create_user(email=email, password=password, **extra_fields)
 
     def get_by_natural_key(self, username):

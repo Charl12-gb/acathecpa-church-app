@@ -51,3 +51,12 @@ export const resetPassword = async (token: string, newPassword: string): Promise
   });
   return response.data; // Backend returns a message like {"message": "..."}
 };
+
+/** The logged-in user changes their own password. */
+export const changePassword = async (currentPassword: string, newPassword: string): Promise<{ message: string }> => {
+  const response = await apiClient.post<{ message: string }>('/auth/change-password', {
+    current_password: currentPassword,
+    new_password: newPassword,
+  });
+  return response.data;
+};

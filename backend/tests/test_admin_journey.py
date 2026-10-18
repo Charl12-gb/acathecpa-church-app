@@ -17,7 +17,7 @@ from apps.accounts.models import ContactMessage, User
 from apps.courses.models import Category, Course, CourseStatus
 from apps.enrollments.models import Certificate, Enrollment
 from apps.payments.models import Payment, PaymentStatus
-from apps.permissions.models import Role
+from apps.permissions.models import Permission, Role
 
 API = "/api/v1"
 
@@ -103,11 +103,14 @@ def test_admin_cannot_hand_out_the_super_admin_role(people, roles):
                                            "role": "admin"}, format="json").status_code == 201
 
 
-def test_roles_are_managed_by_super_admins_only(people):
+def test_roles_are_managed_by_super_admins_only(people, roles):
     admin_c, super_c = _client(people["admin"]), _client(people["super"])
     assert admin_c.get(f"{API}/permissions/roles/").status_code == 200
     assert admin_c.post(f"{API}/permissions/roles/", {"name": "moderateur"}, format="json").status_code == 403
-    assert super_c.post(f"{API}/permissions/roles/", {"name": "moderateur"}, format="json").status_code == 201
+    perm = Permission.objects.get(permission="create_content")
+    link = {"role_id": roles["student"].id, "permission_id": perm.id}
+    assert admin_c.post(f"{API}/permissions/role-permissions/", link, format="json").status_code == 403
+    assert super_c.post(f"{API}/permissions/role-permissions/", link, format="json").status_code == 201
     assert super_c.patch(f"{API}/users/{people['student'].id}", {"role": "super_admin"}, format="json").status_code == 200
 
 

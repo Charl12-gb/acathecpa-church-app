@@ -10,6 +10,9 @@ from rest_framework.response import Response
 from apps.permissions.models import Role
 from apps.permissions.permissions import HasPermission
 
+from apps.audit.models import AuditAction
+from apps.audit.services import record
+
 from . import hierarchy
 from .models import User
 from .serializers import UserSerializer, UserUpdateSerializer
@@ -70,9 +73,33 @@ class UserViewSet(viewsets.ModelViewSet):
         target = self.get_object()
         if not hierarchy.can_manage_user(request.user, target):
             raise PermissionDenied("Seul un super administrateur peut modifier ce compte.")
-        if not hierarchy.can_assign_role(request.user, self._requested_role_name(request)):
+        new_role = self._requested_role_name(request)
+        if not hierarchy.can_assign_role(request.user, new_role):
             raise PermissionDenied("Seul un super administrateur peut attribuer ce rôle.")
-        return super().update(request, *args, **kwargs)
+        leaves_super_admins = (new_role and new_role != hierarchy.SUPER_ADMIN) or request.data.get("is_active") is False
+        if leaves_super_admins and hierarchy.is_last_active_super_admin(target):
+            return Response(
+                {"detail": "C'est le dernier super administrateur actif : nommez-en un autre avant de changer ce compte."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        before = (hierarchy.role_name(target), target.is_active)
+        response = super().update(request, *args, **kwargs)
+        target.refresh_from_db()
+        self._audit_changes(request, target, before)
+        return response
+
+    def _audit_changes(self, request, target, before):
+        old_role, was_active = before
+        label = target.email
+        if hierarchy.role_name(target) != old_role:
+            record(request.user, AuditAction.USER_ROLE_CHANGED, target_type="user", target_id=target.id,
+                   target_label=label, old=old_role, new=hierarchy.role_name(target))
+        if target.is_active != was_active:
+            record(request.user, AuditAction.USER_REACTIVATED if target.is_active else AuditAction.USER_DEACTIVATED,
+                   target_type="user", target_id=target.id, target_label=label)
+        if request.data.get("password"):
+            record(request.user, AuditAction.USER_PASSWORD_RESET, target_type="user", target_id=target.id,
+                   target_label=label)
 
     @action(detail=True, methods=["get"], url_path="deletion-impact")
     def deletion_impact(self, request, pk=None):
@@ -97,11 +124,14 @@ class UserViewSet(viewsets.ModelViewSet):
         if not hierarchy.can_manage_user(request.user, instance):
             raise PermissionDenied("Seul un super administrateur peut supprimer ce compte.")
         data = UserSerializer(instance).data
+        history = hierarchy.account_history(instance)
         if hierarchy.is_super_admin(request.user):
             # Super admin: permanent deletion, data included.
+            record(request.user, AuditAction.USER_DELETED_WITH_DATA, target_type="user", target_id=instance.id,
+                   target_label=instance.email, role=hierarchy.role_name(instance), history=history)
             hierarchy.delete_account_with_data(instance)
             return Response(data)
-        if any(hierarchy.account_history(instance).values()):
+        if any(history.values()):
             return Response(
                 {"detail": (
                     "Ce compte a un historique (inscriptions, paiements, certificats, cours ou contenus) : "
@@ -109,5 +139,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 )},
                 status=status.HTTP_409_CONFLICT,
             )
+        record(request.user, AuditAction.USER_DELETED, target_type="user", target_id=instance.id,
+               target_label=instance.email, role=hierarchy.role_name(instance))
         instance.delete()
         return Response(data)

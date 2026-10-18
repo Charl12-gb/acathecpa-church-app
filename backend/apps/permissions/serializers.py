@@ -32,8 +32,16 @@ class RolePermissionSerializer(serializers.ModelSerializer):
 class UserPermissionSerializer(serializers.ModelSerializer):
     permission = PermissionSerializer(read_only=True)
     permission_id = serializers.CharField(write_only=True)
+    user_email = serializers.CharField(source="user.email", read_only=True)
+    user_name = serializers.CharField(source="user.name", read_only=True)
 
     class Meta:
         model = UserPermission
-        fields = ("id", "user", "permission", "permission_id", "type", "created_at")
+        fields = ("id", "user", "user_email", "user_name", "permission", "permission_id", "type", "created_at")
         read_only_fields = ("id", "created_at")
+        # Duplicates are checked in the view with a clear message.
+        validators: list = []
+
+    def create(self, validated_data):
+        validated_data.pop("permission_id", None)
+        return super().create(validated_data)

@@ -11,6 +11,7 @@ const authStore = useAuthStore()
 const canAccessStudent = computed(() => authStore.hasMinRole(UserRole.STUDENT))
 const canAccessProfessor = computed(() => authStore.hasMinRole(UserRole.PROFESSOR))
 const canAccessAdmin = computed(() => authStore.hasMinRole(UserRole.ADMIN))
+const canAccessSuperAdmin = computed(() => authStore.hasRole(UserRole.SUPER_ADMIN))
 
 const collapsed = ref(false)
 const mobileMenuOpen = inject<Ref<boolean>>('mobileMenuOpen', ref(false))
@@ -110,6 +111,19 @@ const isActiveGroup = (paths: string[]) => paths.some(p => route.path.startsWith
           <span v-if="!collapsed">Catégories</span>
         </RouterLink>
       </div>
+
+      <!-- Super admin -->
+      <div v-if="canAccessSuperAdmin" class="nav-section">
+        <span v-if="!collapsed" class="nav-section-title">Super admin</span>
+        <RouterLink to="/roles-permissions" class="nav-item" :class="{ active: isActive('/roles-permissions') }">
+          <i class="bi bi-shield-lock-fill"></i>
+          <span v-if="!collapsed">Rôles et permissions</span>
+        </RouterLink>
+        <RouterLink to="/audit-log" class="nav-item" :class="{ active: isActive('/audit-log') }">
+          <i class="bi bi-journal-check"></i>
+          <span v-if="!collapsed">Journal d'audit</span>
+        </RouterLink>
+      </div>
     </nav>
 
     <!-- Footer -->
@@ -136,7 +150,9 @@ $transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 
 .dashboard-sidebar {
   width: $sidebar-width;
-  min-height: 100vh;
+  // A fixed height (not min-height) lets the menu scroll when it is taller than the screen.
+  height: 100vh;
+  height: 100dvh;
   background: $sidebar-bg;
   display: flex;
   flex-direction: column;
@@ -192,6 +208,7 @@ $transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 
 .sidebar-nav {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 0.5rem 0;
 

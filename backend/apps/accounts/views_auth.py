@@ -18,6 +18,7 @@ from . import services
 from .hierarchy import can_assign_role
 from .models import User
 from .serializers import (
+    ChangePasswordSerializer,
     ForgotPasswordSerializer,
     FlexibleLoginSerializer,
     MeUpdateSerializer,
@@ -243,3 +244,33 @@ class ValidateUsernameView(APIView):
         return Response(
             {"username": username, "type": "email" if is_email else "phone", "valid": True}
         )
+
+
+class ChangePasswordView(APIView):
+    """POST /auth/change-password — the logged-in user changes their own password."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = request.user
+        if not user.check_password(serializer.validated_data["current_password"]):
+            return Response(
+                {"detail": "Le mot de passe actuel est incorrect."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        user.set_password(serializer.validated_data["new_password"])
+        user.save(update_fields=["password", "updated_at"])
+        services.send_email(
+            subject=f"Votre mot de passe {settings.PROJECT_NAME} a été modifié",
+            recipient=user.email,
+            body=(
+                f"Bonjour {user.name or ''},\n\n"
+                "Le mot de passe de votre compte vient d'être modifié depuis votre profil.\n"
+                "Si vous n'êtes pas à l'origine de ce changement, utilisez « Mot de passe oublié » "
+                "et prévenez l'équipe.\n\n"
+                f"L'équipe {settings.PROJECT_NAME}"
+            ),
+        )
+        return Response({"message": "Mot de passe modifié."})
