@@ -75,8 +75,12 @@ export const useAuthStore = defineStore('auth', () => {
     return getRoleLevel(userRoleName) >= getRoleLevel(minRole)
   }
 
+  // Only follow redirects inside the app (no "//other-site.com").
+  const safeRedirect = (target?: unknown) =>
+    typeof target === 'string' && target.startsWith('/') && !target.startsWith('//') ? target : '/dashboard'
+
   // Actions
-  const login = async (identifier: string, password: string) => {
+  const login = async (identifier: string, password: string, redirect?: unknown) => {
     loading.value = true
     error.value = ''
     
@@ -94,9 +98,12 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem('user', JSON.stringify(userDetails))
       
       // The API client interceptor handles setting the Authorization header
-      router.push('/dashboard')
+      router.push(safeRedirect(redirect))
     } catch (err: any) {
-      error.value = "Mot de passe ou identifiant incorrect"
+      // 429: too many attempts, the server explains when to retry.
+      error.value = err.response?.status === 429
+        ? err.response.data.detail
+        : "Mot de passe ou identifiant incorrect"
     } finally {
       loading.value = false
     }
@@ -109,7 +116,7 @@ export const useAuthStore = defineStore('auth', () => {
     country: string
     birthdate: string
     password: string
-  }) => {
+  }, redirect?: unknown) => {
     loading.value = true
     error.value = '' // Ensure error is cleared at the start
     
@@ -117,8 +124,8 @@ export const useAuthStore = defineStore('auth', () => {
       // Call apiRegister - Note: apiRegister in services returns User
       await apiRegister(userData as any)
       
-      // Registration successful, redirect to login page
-      router.push('/login')
+      // Registration successful, redirect to login page (keeping where the visitor was going)
+      router.push(redirect ? { path: '/login', query: { redirect: String(redirect) } } : '/login')
       // Optionally, set a success message here for the login page to display
       // e.g., someStore.setSuccessMessage('Registration successful! Please log in.')
 
@@ -176,6 +183,14 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // Reload the current user (e.g. after confirming the email address).
+  const refreshMe = async () => {
+    if (!token.value) return
+    const fresh = await apiGetMe()
+    user.value = fresh
+    localStorage.setItem('user', JSON.stringify(fresh))
+  }
+
   const updateProfile = async (payload: MeUpdatePayload) => {
     loading.value = true
     error.value = ''
@@ -215,6 +230,7 @@ export const useAuthStore = defineStore('auth', () => {
     error,
     isAuthenticated,
     hasRole,
+    refreshMe,
     hasMinRole,
     login,
     register,

@@ -5,6 +5,8 @@ export interface ContactPayload {
   email: string;
   subject: string;
   message: string;
+  /** Honeypot: always empty for real visitors. */
+  website?: string;
 }
 
 export const sendContactMessage = async (

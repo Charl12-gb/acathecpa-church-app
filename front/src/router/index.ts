@@ -14,6 +14,10 @@ import ArticleDetailPage from '../views/public/ArticleDetailPage.vue'
 import PodcastDetailPage from '../views/public/PodcastDetailPage.vue'
 import AlumniPage from '../views/public/AlumniPage.vue'
 import CertificateVerifyPage from '../views/public/CertificateVerifyPage.vue'
+import TermsPage from '../views/public/TermsPage.vue'
+import PrivacyPage from '../views/public/PrivacyPage.vue'
+import NotFoundPage from '../views/public/NotFoundPage.vue'
+import VerifyEmailPage from '../views/auth/VerifyEmailPage.vue'
 
 // Private Pages
 import DashboardPage from '../views/dashboard/DashboardPage.vue'
@@ -76,6 +80,10 @@ const router = createRouter({
     { path: '/alumni', name: 'alumni', component: AlumniPage },
     // Public: anyone can check a certificate code (link printed on certificates)
     { path: '/certificates/verify/:code?', name: 'certificate-verify', component: CertificateVerifyPage },
+    { path: '/conditions-utilisation', name: 'terms', component: TermsPage },
+    { path: '/confidentialite', name: 'privacy', component: PrivacyPage },
+    // Link from the sign-up email (works signed in or not)
+    { path: '/verify-email', name: 'verify-email', component: VerifyEmailPage },
     
     // Protected routes
     { 
@@ -246,8 +254,8 @@ const router = createRouter({
       meta: { requiresAuth: true, minRole: 'super_admin', layout: 'dashboard' }
     },
 
-    // Catch-all redirect to home
-    { path: '/:pathMatch(.*)*', redirect: '/' }
+    // Unknown address: explain instead of silently going home
+    { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundPage }
   ]
 })
 

@@ -6,7 +6,8 @@ const contactForm = ref({
   name: '',
   email: '',
   subject: '',
-  message: ''
+  message: '',
+  website: '', // honeypot: hidden from people, filled by robots
 })
 
 const formSubmitted = ref(false)
@@ -18,7 +19,7 @@ const submitForm = async () => {
   error.value = ''
   try {
     await sendContactMessage({ ...contactForm.value })
-    contactForm.value = { name: '', email: '', subject: '', message: '' }
+    contactForm.value = { name: '', email: '', subject: '', message: '', website: '' }
     formSubmitted.value = true
   } catch (err: any) {
     error.value =
@@ -100,6 +101,11 @@ const submitForm = async () => {
 
           <!-- Form fields -->
           <form v-if="!formSubmitted" @submit.prevent="submitForm" class="contact-form">
+            <!-- Honeypot: invisible to visitors and screen readers -->
+            <div class="hp-field" aria-hidden="true">
+              <label for="website">Site web</label>
+              <input id="website" v-model="contactForm.website" type="text" name="website" tabindex="-1" autocomplete="off">
+            </div>
             <div class="form-row">
               <div class="form-group">
                 <label for="name">Nom complet</label>
@@ -182,6 +188,8 @@ const submitForm = async () => {
 
 <style scoped lang="scss">
 @use "sass:color";
+
+.hp-field { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 
 $primary:    #C14428;
 $secondary:  #1B7A78;

@@ -15,6 +15,8 @@ export interface User {
   birthdate?: string | null;
   is_active: boolean;
   is_visible?: boolean;
+  /** False until the link sent at sign-up is opened. */
+  email_verified?: boolean;
   created_at: string;
   updated_at: string;
 }

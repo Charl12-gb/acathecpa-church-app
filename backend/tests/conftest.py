@@ -16,6 +16,16 @@ from apps.enrollments.models import Enrollment
 from apps.permissions.models import Role
 
 
+@pytest.fixture(autouse=True)
+def _clear_cache():
+    """Login / contact counters live in the cache: start every test clean."""
+    from django.core.cache import cache
+
+    cache.clear()
+    yield
+    cache.clear()
+
+
 # --------------------------------------------------------------------------- #
 # Roles
 # --------------------------------------------------------------------------- #

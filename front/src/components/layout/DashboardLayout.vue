@@ -4,9 +4,24 @@ import { RouterView, RouterLink, useRoute } from 'vue-router'
 // @ts-ignore Vetur false positive on Vue SFC default export
 import DashboardSidebar from './DashboardSidebar.vue'
 import { useAuthStore } from '../../stores/auth'
+import { resendVerification } from '../../services/api/auth'
 import Swal from 'sweetalert2'
 
 const authStore = useAuthStore()
+
+// Email confirmation reminder (login is allowed meanwhile).
+const resending = ref(false)
+const resendMessage = ref('')
+const resend = async () => {
+  resending.value = true
+  try {
+    resendMessage.value = (await resendVerification()).message
+  } catch {
+    resendMessage.value = "L'envoi a échoué, réessayez dans un instant."
+  } finally {
+    resending.value = false
+  }
+}
 const currentUser = computed(() => authStore.user)
 const route = useRoute()
 
@@ -220,6 +235,16 @@ export default {
 
       <!-- Page Content -->
       <div class="dashboard-content">
+        <div v-if="authStore.user && authStore.user.email_verified === false" class="verify-banner" role="status">
+          <i class="bi bi-envelope-exclamation"></i>
+          <span>
+            Confirmez votre adresse email : un lien a été envoyé à <strong>{{ authStore.user.email }}</strong>.
+            <template v-if="resendMessage"> {{ resendMessage }}</template>
+          </span>
+          <button type="button" class="btn btn-sm btn-outline-dark" :disabled="resending" @click="resend">
+            Renvoyer le lien
+          </button>
+        </div>
         <RouterView />
       </div>
     </div>
@@ -227,6 +252,20 @@ export default {
 </template>
 
 <style scoped lang="scss">
+.verify-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fff7e6;
+  border: 1px solid #f5d48a;
+  color: #5c3c00;
+}
+.verify-banner span { flex: 1; min-width: 220px; }
+
 $sidebar-width: 250px;
 
 .dashboard-wrapper {

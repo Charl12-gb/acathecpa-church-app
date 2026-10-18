@@ -60,3 +60,11 @@ export const changePassword = async (currentPassword: string, newPassword: strin
   });
   return response.data;
 };
+
+/** Confirms the email address from the link sent at sign-up. */
+export const verifyEmail = async (token: string): Promise<{ message: string }> =>
+  (await apiClient.post<{ message: string }>('/auth/verify-email', { token })).data;
+
+/** Sends the confirmation link again to the logged-in user. */
+export const resendVerification = async (): Promise<{ message: string }> =>
+  (await apiClient.post<{ message: string }>('/auth/resend-verification')).data;

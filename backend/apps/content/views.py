@@ -79,6 +79,28 @@ class ContentViewSet(viewsets.ModelViewSet):
             qs = qs.filter(status=ContentStatus.PUBLISHED)
         return qs
 
+    def list(self, request, *args, **kwargs):
+        """Public listing: a premium item keeps its body and media for its author and buyers only."""
+        response = super().list(request, *args, **kwargs)
+        rows = response.data["results"] if isinstance(response.data, dict) else response.data
+        user = request.user
+        paid_ids: set = set()
+        if user.is_authenticated:
+            from apps.payments.models import Payment, PaymentStatus
+
+            paid_ids = set(
+                Payment.objects.filter(user=user, status=PaymentStatus.COMPLETED, content__isnull=False)
+                .values_list("content_id", flat=True)
+            )
+        for row in rows:
+            locked = row.get("is_premium") and row.get("author_id") != getattr(user, "id", None) \
+                and row["id"] not in paid_ids
+            if locked:
+                row["content_body"] = None
+                row["media_url"] = None
+            row["requires_payment"] = bool(locked)
+        return response
+
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 

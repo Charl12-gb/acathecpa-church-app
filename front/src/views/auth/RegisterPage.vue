@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import { APP_NAME } from '../../config'
 import { countries } from '../../services/utils'
 import SearchableSelect from '../../components/ui/SearchableSelect.vue'
 
 const authStore = useAuthStore()
+const route = useRoute()
 const loading = computed(() => authStore.loading)
 const error = computed(() => authStore.error)
 
@@ -47,7 +48,7 @@ const register = async () => {
     country: form.value.country,
     birthdate: form.value.birthdate,
     password: form.value.password
-  })
+  }, route.query.redirect)
 }
 
 </script>
@@ -221,7 +222,7 @@ const register = async () => {
                     required
                   >
                   <label class="form-check-label text-muted small" for="terms">
-                    J'accepte les <a href="#" class="terms-link text-decoration-none">conditions d'utilisation</a> et la <a href="#" class="terms-link text-decoration-none">politique de confidentialité</a>
+                    J'accepte les <RouterLink to="/conditions-utilisation" target="_blank" class="terms-link text-decoration-none">conditions d'utilisation</RouterLink> et la <RouterLink to="/confidentialite" target="_blank" class="terms-link text-decoration-none">politique de confidentialité</RouterLink>
                   </label>
                 </div>
               </div>

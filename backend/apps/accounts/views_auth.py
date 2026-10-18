@@ -14,7 +14,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.permissions.permissions import HasPermission, check_permission
 
-from . import services
+from . import services, throttle
 from .hierarchy import can_assign_role
 from .models import User
 from .serializers import (
@@ -55,19 +55,8 @@ class RegisterView(APIView):
         user = serializer.save()
 
         if user.email:
-            try:
-                user_name = user.name or user.email.split("@")[0]
-                services.send_email(
-                    subject=f"Welcome to {settings.PROJECT_NAME}!",
-                    recipient=user.email,
-                    body=(
-                        f"Hi {user_name},\n\n"
-                        f"Welcome to {settings.PROJECT_NAME}! We're glad to have you.\n\n"
-                        f"Thanks,\nThe {settings.PROJECT_NAME} Team"
-                    ),
-                )
-            except Exception as exc:  # noqa: BLE001
-                logger.error("Welcome email failed for %s: %s", user.email, exc)
+            # Welcome email with the confirmation link (login works meanwhile).
+            services.send_verification_email(user)
 
         return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
 
@@ -79,16 +68,25 @@ class LoginView(APIView):
     def post(self, request):
         serializer = FlexibleLoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        username = serializer.validated_data["username"]
 
+        if throttle.login_blocked(request, username):
+            return Response(
+                {"detail": "Trop de tentatives de connexion. Réessayez dans 15 minutes "
+                           "ou utilisez « Mot de passe oublié »."},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
         user = services.authenticate_user_flexible(
-            username=serializer.validated_data["username"],
+            username=username,
             password=serializer.validated_data["password"],
         )
         if not user:
+            throttle.login_failed(request, username)
             return Response(
                 {"detail": "Incorrect email/phone or password"},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
+        throttle.login_succeeded(request, username)
         if not user.is_active:
             return Response(
                 {"detail": "Inactive user"},
@@ -189,7 +187,9 @@ class ResetPasswordView(APIView):
             )
 
         user.set_password(serializer.validated_data["new_password"])
-        user.save(update_fields=["password", "updated_at"])
+        # Opening a link sent to the inbox also proves the address.
+        user.email_verified = True
+        user.save(update_fields=["password", "email_verified", "updated_at"])
 
         try:
             user_name = user.name or user.email.split("@")[0]
@@ -274,3 +274,35 @@ class ChangePasswordView(APIView):
             ),
         )
         return Response({"message": "Mot de passe modifié."})
+
+
+class VerifyEmailView(APIView):
+    """POST /auth/verify-email {token} — link from the sign-up email."""
+
+    permission_classes = [AllowAny]
+    authentication_classes: list = []
+
+    def post(self, request):
+        email = services.verify_email_token(request.data.get("token", ""))
+        user = services.get_user_by_email(email) if email else None
+        if not user:
+            return Response(
+                {"detail": "Ce lien de confirmation est invalide ou expiré. Demandez-en un nouveau depuis votre espace."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not user.email_verified:
+            user.email_verified = True
+            user.save(update_fields=["email_verified", "updated_at"])
+        return Response({"message": "Adresse email confirmée."})
+
+
+class ResendVerificationView(APIView):
+    """POST /auth/resend-verification — send the confirmation link again."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if request.user.email_verified:
+            return Response({"message": "Votre adresse est déjà confirmée."})
+        services.send_verification_email(request.user)
+        return Response({"message": f"Un nouveau lien a été envoyé à {request.user.email}."})

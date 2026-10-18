@@ -102,7 +102,7 @@ test('a visitor can browse the catalogue but not open lessons', async ({ page })
   await expect(page).toHaveURL(/\/course\/\d+$/)
   // The outline is public...
   await expect(page.getByText('Le plan comptable').first()).toBeVisible()
-  await expect(page.getByRole('button', { name: "Payer et s'inscrire" })).toBeVisible()
+  await expect(page.getByRole('button', { name: "Se connecter pour s'inscrire" })).toBeVisible()
   // ...the lesson viewer is not.
   const courseId = page.url().split('/').pop()
   await page.goto(`/lesson/${courseId}/1`)

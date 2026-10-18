@@ -9,7 +9,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from . import services
+from . import services, throttle
 from .models import ContactMessage
 
 logger = logging.getLogger(__name__)
@@ -28,6 +28,17 @@ class ContactView(APIView):
     authentication_classes: list = []
 
     def post(self, request):
+        # Honeypot: humans never see this field; robots fill every input.
+        if request.data.get("website"):
+            return Response(
+                {"message": "Votre message a bien été reçu. Nous vous répondrons rapidement."},
+                status=status.HTTP_201_CREATED,
+            )
+        if not throttle.contact_allowed(request):
+            return Response(
+                {"detail": "Vous avez envoyé plusieurs messages récemment. Réessayez dans une heure."},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
         serializer = ContactMessageSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data

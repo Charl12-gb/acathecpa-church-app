@@ -47,6 +47,7 @@ export default {
         <!-- Public links (desktop) -->
         <ul class="nav-links">
           <li><RouterLink to="/">Accueil</RouterLink></li>
+          <li><RouterLink to="/browse-courses">Formations</RouterLink></li>
           <li><RouterLink to="/articles">Articles</RouterLink></li>
           <li><RouterLink to="/podcasts">Podcasts</RouterLink></li>
           <li><RouterLink to="/alumni">Alumni</RouterLink></li>
@@ -84,6 +85,7 @@ export default {
       <div v-if="mobileOpen" class="mobile-menu">
         <ul class="mobile-links">
           <li><RouterLink to="/"><i class="bi bi-house"></i> Accueil</RouterLink></li>
+          <li><RouterLink to="/browse-courses"><i class="bi bi-mortarboard"></i> Formations</RouterLink></li>
           <li><RouterLink to="/articles"><i class="bi bi-journal-richtext"></i> Articles</RouterLink></li>
           <li><RouterLink to="/podcasts"><i class="bi bi-mic-fill"></i> Podcasts</RouterLink></li>
           <li><RouterLink to="/alumni"><i class="bi bi-mortarboard-fill"></i> Alumni</RouterLink></li>

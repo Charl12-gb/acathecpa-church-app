@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { APP_NAME } from '../../config'
+import { APP_NAME, ORGANISATION } from '../../config'
 </script>
 
 <script lang="ts">
@@ -23,20 +23,21 @@ export default {
             <li><RouterLink class="text-decoration-none text-muted" to="/contact">Nous Contacter</RouterLink></li>
             <li><RouterLink class="text-decoration-none text-muted" to="/login">Connexion</RouterLink></li>
             <li><RouterLink class="text-decoration-none text-muted" to="/register">Inscription</RouterLink></li>
+            <li><RouterLink class="text-decoration-none text-muted" to="/browse-courses">Formations</RouterLink></li>
+            <li><RouterLink class="text-decoration-none text-muted" to="/conditions-utilisation">Conditions d'utilisation</RouterLink></li>
+            <li><RouterLink class="text-decoration-none text-muted" to="/confidentialite">Confidentialité</RouterLink></li>
           </ul>
         </div>
         <div class="col-md-4">
           <h5 class="mb-3">Contact</h5>
           <ul class="list-unstyled text-muted">
-            <li><i class="bi bi-geo-alt me-2"></i> 123 Rue Principale, Ville</li>
-            <li><i class="bi bi-telephone me-2"></i> +123 456 789</li>
-            <li><i class="bi bi-envelope me-2"></i> info@acathecpa.com</li>
+            <li v-if="ORGANISATION.address"><i class="bi bi-geo-alt me-2"></i> {{ ORGANISATION.address }}</li>
+            <li v-if="ORGANISATION.phone"><i class="bi bi-telephone me-2"></i> {{ ORGANISATION.phone }}</li>
+            <li v-if="ORGANISATION.email"><i class="bi bi-envelope me-2"></i> {{ ORGANISATION.email }}</li>
           </ul>
-          <div class="social-icons mt-2">
-            <a href="#" class="text-muted me-2"><i class="bi bi-facebook"></i></a>
-            <a href="#" class="text-muted me-2"><i class="bi bi-twitter"></i></a>
-            <a href="#" class="text-muted me-2"><i class="bi bi-instagram"></i></a>
-            <a href="#" class="text-muted"><i class="bi bi-linkedin"></i></a>
+          <div v-if="ORGANISATION.socialLinks.length" class="social-icons mt-2">
+            <a v-for="link in ORGANISATION.socialLinks" :key="link.url" :href="link.url" target="_blank" rel="noopener"
+              class="text-muted me-2" :aria-label="link.label"><i class="bi" :class="link.icon"></i></a>
           </div>
         </div>
       </div>

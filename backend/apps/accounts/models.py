@@ -30,6 +30,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     # Whether the user opts in to appearing in the public Alumni directory.
     # Enabled by default; students can disable it from their profile.
     is_visible = models.BooleanField(default=True)
+    # Confirmed through the link sent at sign-up (or a password reset link).
+    email_verified = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -218,7 +218,8 @@
               <template v-if="!isEnrolled">
                 <button class="btn-continue enroll" @click="openEnrollModal">
                   <i class="bi bi-box-arrow-in-right"></i>
-                  {{ course.is_free || !course.price ? "S'inscrire à la formation" : 'Payer et s\'inscrire' }}
+                  <template v-if="!authStore.isAuthenticated">Se connecter pour s'inscrire</template>
+                  <template v-else>{{ course.is_free || !course.price ? "S'inscrire à la formation" : 'Payer et s\'inscrire' }}</template>
                 </button>
                 <div v-if="course.price && !course.is_free" class="enroll-price-hint">
                   <i class="bi bi-tag-fill"></i> {{ course.price }} XOF
@@ -334,6 +335,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '../../../stores/auth'
 import { getCourseById, getMyCertificateForCourse, getMyCourseEnrollmentProgress, triggerStudentCertificateCheck, enrollInCourse } from '../../../services/api/course';
 import { initiatePayment, confirmPayment } from '../../../services/api/payment';
 import type { Course, CourseSection, EnrollmentProgress } from '../../../types/api';
@@ -341,6 +343,7 @@ import type { CertificateDisplay } from '../../../types/api';
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 // const courseStore = useCourseStore() // Remove if not used
 
 // State
@@ -626,6 +629,11 @@ const isCertificateButtonDisabled = computed(() => {
 
 // ── Enrollment actions ──────────────────────────
 const openEnrollModal = () => {
+  // A visitor signs in first, then comes back to this course.
+  if (!authStore.isAuthenticated) {
+    router.push({ name: 'login', query: { redirect: route.fullPath } });
+    return;
+  }
   enrollError.value = null;
   enrollSuccess.value = false;
   showEnrollModal.value = true;

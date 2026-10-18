@@ -1,6 +1,7 @@
 """Service helpers for authentication & password reset."""
 from __future__ import annotations
 
+import hashlib
 import logging
 from datetime import timedelta
 from typing import Optional
@@ -33,25 +34,67 @@ def authenticate_user_flexible(username: str, password: str) -> Optional[User]:
     return user
 
 
-def generate_password_reset_token(email: str, lifetime_minutes: Optional[int] = None) -> str:
-    lifetime = lifetime_minutes or settings.PASSWORD_RESET_TOKEN_LIFETIME_MINUTES
-    expire = timezone.now() + timedelta(minutes=lifetime)
-    payload = {"sub": email, "exp": expire, "type": PASSWORD_RESET_TOKEN_TYPE}
+EMAIL_VERIFY_TOKEN_TYPE = "email_verify"
+EMAIL_VERIFY_LIFETIME_MINUTES = 7 * 24 * 60
+
+
+def _password_fingerprint(user: Optional[User]) -> str:
+    """Changes whenever the password changes: makes reset links single-use."""
+    return hashlib.sha256((user.password if user else "").encode()).hexdigest()[:16]
+
+
+def _encode(payload: dict, lifetime_minutes: int) -> str:
+    payload = {**payload, "exp": timezone.now() + timedelta(minutes=lifetime_minutes)}
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.SIMPLE_JWT["ALGORITHM"])
 
 
-def verify_password_reset_token(token: str) -> Optional[str]:
+def _decode(token: str, token_type: str) -> Optional[dict]:
     try:
-        payload = jwt.decode(
-            token,
-            settings.SECRET_KEY,
-            algorithms=[settings.SIMPLE_JWT["ALGORITHM"]],
-        )
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.SIMPLE_JWT["ALGORITHM"]])
     except jwt.PyJWTError:
         return None
-    if payload.get("type") != PASSWORD_RESET_TOKEN_TYPE:
+    return payload if payload.get("type") == token_type else None
+
+
+def generate_password_reset_token(email: str, lifetime_minutes: Optional[int] = None) -> str:
+    return _encode(
+        {"sub": email, "type": PASSWORD_RESET_TOKEN_TYPE, "pwd": _password_fingerprint(get_user_by_email(email))},
+        lifetime_minutes or settings.PASSWORD_RESET_TOKEN_LIFETIME_MINUTES,
+    )
+
+
+def verify_password_reset_token(token: str) -> Optional[str]:
+    payload = _decode(token, PASSWORD_RESET_TOKEN_TYPE)
+    if not payload:
+        return None
+    # Once the password has been changed, the link no longer works.
+    if payload.get("pwd") != _password_fingerprint(get_user_by_email(payload.get("sub", ""))):
         return None
     return payload.get("sub")
+
+
+def generate_email_verification_token(user: User) -> str:
+    return _encode({"sub": user.email, "type": EMAIL_VERIFY_TOKEN_TYPE}, EMAIL_VERIFY_LIFETIME_MINUTES)
+
+
+def verify_email_token(token: str) -> Optional[str]:
+    payload = _decode(token, EMAIL_VERIFY_TOKEN_TYPE)
+    return payload.get("sub") if payload else None
+
+
+def send_verification_email(user: User) -> bool:
+    token = generate_email_verification_token(user)
+    return send_email(
+        subject=f"Confirmez votre adresse email - {settings.PROJECT_NAME}",
+        recipient=user.email,
+        body=(
+            f"Bonjour {user.name or ''},\n\n"
+            f"Bienvenue sur {settings.PROJECT_NAME} ! Pour confirmer votre adresse email, ouvrez ce lien "
+            "(valable 7 jours) :\n"
+            f"{settings.FRONTEND_URL}/verify-email?token={token}\n\n"
+            f"L'équipe {settings.PROJECT_NAME}"
+        ),
+    )
 
 
 def send_email(

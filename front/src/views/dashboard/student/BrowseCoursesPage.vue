@@ -6,6 +6,7 @@ import type { Course } from '../../../types/api';
 import { CourseStatus } from '../../../types/api';
 import SearchableSelect from '../../../components/ui/SearchableSelect.vue';
 import { useRouter } from 'vue-router';
+import { useAuthStore } from '../../../stores/auth';
 
 // Sample categories - these could also come from an API in a real app
 const categories = [
@@ -19,6 +20,7 @@ const categories = [
 ];
 
 const router = useRouter();
+const authStore = useAuthStore();
 
 const courses = ref<Course[]>([]);
 const enrolledCourseIds = ref<Set<number>>(new Set());
@@ -121,6 +123,11 @@ const enrollSuccess = ref(false);
 const enrollError = ref<string | null>(null);
 
 const openEnrollModal = (course: Course) => {
+  // A visitor signs in first, then comes back to the course page.
+  if (!authStore.isAuthenticated) {
+    router.push({ name: 'login', query: { redirect: `/course/${course.id}` } });
+    return;
+  }
   selectedCourse.value = course;
   enrollError.value = null;
   enrollSuccess.value = false;
@@ -293,7 +300,7 @@ const getCourseCategory = (course: Course) => {
             <span v-if="enrollingCourseId === course.id" class="spinner-border spinner-border-sm" role="status"></span>
             <template v-else>
               <i class="bi bi-plus-circle"></i>
-              {{ course.is_free || !course.price ? "S'inscrire" : 'Payer' }}
+              {{ !authStore.isAuthenticated ? 'Se connecter' : course.is_free || !course.price ? "S'inscrire" : 'Payer' }}
             </template>
           </button>
           <RouterLink :to="`/course/${course.id}`" class="btn-view">

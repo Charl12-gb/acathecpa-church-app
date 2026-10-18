@@ -25,6 +25,16 @@ class ProfessorProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "user_id", "created_at", "updated_at")
 
 
+class PublicUserSerializer(serializers.ModelSerializer):
+    """What visitors may see of an author or instructor (no email, phone, birthdate)."""
+    professor_profile = ProfessorProfileSerializer(read_only=True)
+
+    class Meta:
+        model = User
+        fields = ("id", "name", "professor_profile")
+        read_only_fields = fields
+
+
 # --------------------------------------------------------------------------- #
 # User read / write
 # --------------------------------------------------------------------------- #
@@ -37,7 +47,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = (
             "id", "email", "name", "phone", "country", "birthdate",
-            "role", "is_active", "is_visible", "created_at", "updated_at",
+            "role", "is_active", "is_visible", "email_verified", "created_at", "updated_at",
             "professor_profile",
         )
         read_only_fields = fields

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from apps.accounts.serializers import UserSerializer
+from apps.accounts.serializers import PublicUserSerializer
 
 from .models import Content
 
@@ -10,7 +10,7 @@ from .models import Content
 class ContentSerializer(serializers.ModelSerializer):
     author_id = serializers.IntegerField(read_only=True)
     author_name = serializers.CharField(source="author.name", read_only=True)
-    author = UserSerializer(read_only=True)
+    author = PublicUserSerializer(read_only=True)
 
     class Meta:
         model = Content

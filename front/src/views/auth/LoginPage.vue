@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import { APP_NAME } from '../../config'
 
 onMounted(() => {
+  // Demo accounts of `seed_demo_data`: never print them outside local development.
+  if (!import.meta.env.DEV) return
   console.log(
     '%c📋 Identifiants de test par profil',
     'font-weight:bold; font-size:14px; color:#2453a7;'
@@ -19,6 +21,7 @@ onMounted(() => {
 })
 
 const authStore = useAuthStore()
+const route = useRoute()
 const loading = computed(() => authStore.loading)
 const error = computed(() => authStore.error)
 
@@ -29,7 +32,7 @@ const form = ref({
 })
 
 const loginWithIdentifier = async () => {
-  await authStore.login(form.value.identifier, form.value.password)
+  await authStore.login(form.value.identifier, form.value.password, route.query.redirect)
 }
 </script>
 
@@ -145,7 +148,7 @@ const loginWithIdentifier = async () => {
           <div class="text-center">
             <p class="text-muted mb-0">
               Nouveau sur la plateforme ? 
-              <RouterLink to="/register" class="signup-link fw-bold text-decoration-none">Créer un compte</RouterLink>
+              <RouterLink :to="{ path: '/register', query: route.query.redirect ? { redirect: route.query.redirect } : {} }" class="signup-link fw-bold text-decoration-none">Créer un compte</RouterLink>
             </p>
           </div>
 

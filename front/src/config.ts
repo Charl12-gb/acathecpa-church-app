@@ -15,3 +15,18 @@ export const COLORS = {
   error: '#c0392b',      // Dark red
   neutral: '#ecf0f1'     // Light gray
 }
+
+// Organisation details shown in the footer and the legal pages.
+// Fill in the empty fields: an empty value is simply not displayed.
+export const ORGANISATION = {
+  name: 'ACATHECPA',
+  legalName: '',          // raison sociale complète, ex. « Association ACATHECPA »
+  registration: '',       // numéro d'immatriculation (RCCM, IFU…)
+  address: '',            // adresse postale
+  phone: '',              // ex. « +229 01 00 00 00 00 »
+  email: 'info@acathecpa.com',
+  privacyEmail: 'info@acathecpa.com', // adresse pour les demandes sur les données personnelles
+  host: '',               // hébergeur du site : nom et adresse
+  socialLinks: [] as Array<{ label: string; icon: string; url: string }>, // ex. { label: 'Facebook', icon: 'bi-facebook', url: 'https://…' }
+  legalUpdatedAt: '18 octobre 2026',
+}
