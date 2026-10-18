@@ -11,7 +11,8 @@ Creates the roles/permissions, a professor and:
                                 pass at 70 %, 2 attempts)
     - "Fiscalité des entreprises" (published, free) with one enrolled student
       halfway through, used by the professor journey;
-    - "Brouillon vide" (draft, no content).
+    - "Brouillon vide" (draft, no content);
+    - an admin, a super admin and a student without any history.
 """
 import os
 import sys
@@ -110,6 +111,26 @@ def main() -> None:
 
     Course.objects.create(title="Brouillon vide", instructor=prof, status=CourseStatus.DRAFT,
                           is_free=True, price=0, category="Comptabilité")
+
+    # A paying student of the OHADA course, deleted for good by the super admin.
+    from apps.payments.models import Payment, PaymentStatus
+
+    yao = User(email="yao.e2e@acathecpa.test", name="Yao Adjo", role=Role.objects.get(name="student"))
+    yao.set_password("Password123!")
+    yao.save()
+    Payment.objects.create(user=yao, course=course, amount=15000, status=PaymentStatus.COMPLETED,
+                           transaction_ref="TXN-E2E-YAO")
+    Enrollment.objects.create(user=yao, course=course)
+
+    # Back-office accounts and a student with no history (admin journey).
+    for email, name, role in [
+        ("admin.e2e@acathecpa.test", "Admin Plateforme", "admin"),
+        ("super.e2e@acathecpa.test", "Super Admin", "super_admin"),
+        ("nouveau.e2e@acathecpa.test", "Nouvel Inscrit", "student"),
+    ]:
+        u = User(email=email, name=name, role=Role.objects.get(name=role))
+        u.set_password("Password123!")
+        u.save()
     print(f"e2e database ready: {db_path}")
 
 

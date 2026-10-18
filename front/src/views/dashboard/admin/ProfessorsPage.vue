@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { getUserDeletionImpact } from '../../../services/api/user';
 import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useProfessorStore } from '../../../stores/professor';
@@ -77,21 +78,33 @@ const filteredProfessors = computed(() => {
   return filtered;
 });
 
-// Delete professor action
+// Delete professor action: an account with history is deactivated, except by
+// a super admin, who deletes it permanently with its courses.
 const handleDeleteProfessor = async (userId: number) => {
-  if (confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur professeur ? Cette action est irréversible.')) {
-    try {
-      await storeDeleteProfessor(userId);
-      delete professorInsights.value[userId];
-      alert('Professeur supprimé avec succès.');
-      // The store action already removes the professor from the list,
-      // so no need to manually filter professorList.value here.
-    } catch (err: any) {
-      // Error is already set in store's errorList/errorItem, can use that in template
-      // Or display a local alert/notification
-      console.error('Error deleting professor from component:', err);
-      alert(err.message || 'Erreur lors de la suppression du professeur.');
-    }
+  let impact
+  try {
+    impact = await getUserDeletionImpact(userId);
+  } catch (err: any) {
+    alert(err.response?.data?.detail || 'Impossible de vérifier ce compte.');
+    return;
+  }
+  const h = impact.history;
+  if (!impact.can_delete) {
+    alert(`Ce professeur a un historique (${h.courses} cours, ${h.course_enrollments} inscription(s) d'étudiants). `
+      + 'Désactivez-le plutôt ; seul un super administrateur peut le supprimer définitivement.');
+    return;
+  }
+  const message = impact.has_history
+    ? `Suppression DÉFINITIVE : ${h.courses} cours, ${h.course_enrollments} inscription(s) d'étudiants, `
+      + `${h.contents} contenu(s) et ${h.live_sessions} session(s) seront effacés, avec les paiements et certificats liés. Continuer ?`
+    : 'Supprimer ce professeur ? Il n\'a aucun historique.';
+  if (!confirm(message)) return;
+  try {
+    await storeDeleteProfessor(userId);
+    delete professorInsights.value[userId];
+  } catch (err: any) {
+    console.error('Error deleting professor from component:', err);
+    alert(err.response?.data?.detail || 'Erreur lors de la suppression du professeur.');
   }
 };
 
@@ -108,7 +121,7 @@ const handleToggleStatus = async (professor: Professor) => {
       // Store action updates the professor in the list.
     } catch (err: any) {
       console.error('Error toggling professor status from component:', err);
-      alert(err.message || 'Erreur lors du changement de statut.');
+      alert(err.response?.data?.detail || 'Erreur lors du changement de statut.');
     }
   }
 };

@@ -95,6 +95,24 @@ class CategoryViewSet(viewsets.ModelViewSet):
                 qs = qs.filter(is_active=True)
         return qs
 
+    def perform_update(self, serializer):
+        # Courses store their category by name: carry a rename over to them.
+        old_name = serializer.instance.name
+        category = serializer.save()
+        if category.name != old_name:
+            Course.objects.filter(category=old_name).update(category=category.name)
+
+    def destroy(self, request, *args, **kwargs):
+        category = self.get_object()
+        used = Course.objects.filter(category=category.name).count()
+        if used:
+            return Response(
+                {"detail": f"Cette catégorie est utilisée par {used} cours : changez leur catégorie "
+                           "ou désactivez-la plutôt que de la supprimer."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        return super().destroy(request, *args, **kwargs)
+
 
 # --------------------------------------------------------------------------- #
 # Courses

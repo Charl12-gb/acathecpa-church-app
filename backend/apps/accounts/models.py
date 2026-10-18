@@ -61,3 +61,21 @@ class ProfessorProfile(models.Model):
 
     class Meta:
         db_table = "professor_profiles"
+
+
+class ContactMessage(models.Model):
+    """Messages sent through the public contact form, kept even if the email fails."""
+
+    name = models.CharField(max_length=255)
+    email = models.EmailField()
+    subject = models.CharField(max_length=255)
+    message = models.TextField()
+    email_sent = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "contact_messages"
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"{self.subject} ({self.email})"

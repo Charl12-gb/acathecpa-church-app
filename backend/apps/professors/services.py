@@ -94,6 +94,10 @@ def create_professor_user_and_profile(payload: dict) -> Union[User, str]:
 
     user_data = {k: v for k, v in payload.items() if k in USER_FIELDS}
     profile_data = {k: v for k, v in payload.items() if k in PROFILE_FIELDS}
+    # Phone is unique: store "no phone" as NULL, never as "".
+    user_data["phone"] = user_data.get("phone") or None
+    if user_data["phone"] and User.objects.filter(phone=user_data["phone"]).exists():
+        return "PhoneAlreadyExists"
 
     user = User(role=professor_role, **user_data)
     user.set_password(payload["password"])
@@ -101,6 +105,32 @@ def create_professor_user_and_profile(payload: dict) -> Union[User, str]:
 
     ProfessorProfile.objects.create(user=user, **profile_data)
     return user
+
+
+WELCOME_LINK_LIFETIME_MINUTES = 72 * 60
+
+
+def send_professor_welcome_email(user: User) -> bool:
+    """Tell a new professor their account exists, with a link to choose a password."""
+    from django.conf import settings
+
+    from apps.accounts import services as account_services
+
+    token = account_services.generate_password_reset_token(
+        email=user.email, lifetime_minutes=WELCOME_LINK_LIFETIME_MINUTES
+    )
+    return account_services.send_email(
+        subject=f"Votre compte formateur sur {settings.PROJECT_NAME}",
+        recipient=user.email,
+        body=(
+            f"Bonjour {user.name or ''},\n\n"
+            f"Un compte formateur vient d'être créé pour vous sur {settings.PROJECT_NAME}.\n"
+            "Choisissez votre mot de passe en suivant ce lien (valable 3 jours) :\n"
+            f"{settings.FRONTEND_URL}/reset-password?token={token}\n\n"
+            f"Vous pourrez ensuite vous connecter avec l'adresse {user.email}.\n\n"
+            f"L'équipe {settings.PROJECT_NAME}"
+        ),
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -112,14 +142,12 @@ def get_admin_dashboard_stats() -> dict:
         User.objects.filter(role=professor_role).count() if professor_role else 0
     )
     one_month_ago = timezone.now() - timedelta(days=30)
-    new_users_last_month = User.objects.filter(created_at__gte=one_month_ago).count()
     return {
         "total_users": User.objects.count(),
         "total_professors": total_professors,
         "total_courses": Course.objects.count(),
-        # Note: FastAPI calls this "new_enrollments_last_month" but actually
-        # counts new users in last 30 days. We keep parity.
-        "new_enrollments_last_month": new_users_last_month,
+        # Course enrollments over the last 30 days.
+        "new_enrollments_last_month": Enrollment.objects.filter(enrolled_at__gte=one_month_ago).count(),
     }
 
 
@@ -171,7 +199,7 @@ def get_admin_professors() -> List[dict]:
             "phone": prof.phone,
             "is_active": bool(prof.is_active),
             "latest_course_published_at": (
-                latest.isoformat() + "Z" if latest else None
+                latest.isoformat() if latest else None
             ),
         })
     return out
@@ -198,7 +226,7 @@ def get_admin_recent_activities() -> List[dict]:
             "user_name": instructor_name,
             "action": "created_course",
             "resource_name": course.title,
-            "timestamp": course.created_at.isoformat() + "Z",
+            "timestamp": course.created_at.isoformat(),
         })
 
     for user in User.objects.order_by("-created_at")[:3]:
@@ -207,7 +235,7 @@ def get_admin_recent_activities() -> List[dict]:
             "user_name": user.name or user.email,
             "action": "Enregistrement d'un utilisateur ",
             "resource_name": user.email,
-            "timestamp": user.created_at.isoformat() + "Z",
+            "timestamp": user.created_at.isoformat(),
         })
 
     activities.sort(key=lambda x: x["timestamp"], reverse=True)
@@ -232,8 +260,9 @@ def get_admin_monthly_registrations() -> List[dict]:
     out: List[dict] = []
     today = timezone.now()
     for i in range(5, -1, -1):
-        target = today - timedelta(days=i * 30)
-        month_start = datetime(target.year, target.month, 1, tzinfo=today.tzinfo)
+        # Calendar months: step back i months from the current one.
+        year, month = divmod(today.year * 12 + today.month - 1 - i, 12)
+        month_start = datetime(year, month + 1, 1, tzinfo=today.tzinfo)
         if month_start.month == 12:
             next_month = datetime(month_start.year + 1, 1, 1, tzinfo=today.tzinfo)
         else:

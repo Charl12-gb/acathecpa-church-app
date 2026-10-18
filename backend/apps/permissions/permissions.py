@@ -11,15 +11,26 @@ from rest_framework.permissions import BasePermission
 from .models import Permission, RolePermission, UserPermission, UserPermissionType
 
 
+SUPER_ADMIN_ONLY_PERMISSIONS = frozenset({
+    "create_role", "edit_role", "delete_role",
+    "assign_permission_to_role", "remove_permission_from_role",
+    "create_permission_def", "edit_permission_def", "delete_permission_def",
+    "assign_user_permission_override", "remove_user_permission_override",
+})
+
+
 def check_permission(user, permission_name: str) -> bool:
     """Return True if the user is allowed to perform `permission_name`."""
     if not user or not user.is_authenticated or not user.is_active:
         return False
 
-    # Bypass: super_admin / admin have all permissions.
+    # Bypass: super_admin has every permission; admin has every permission
+    # except managing roles and permissions, which stays with super admins.
     role = getattr(user, "role", None)
-    if role and role.name in ("super_admin", "admin"):
+    if role and role.name == "super_admin":
         return True
+    if role and role.name == "admin":
+        return permission_name not in SUPER_ADMIN_ONLY_PERMISSIONS
 
     # Role-based grant
     if user.role_id:

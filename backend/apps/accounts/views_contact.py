@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from . import services
+from .models import ContactMessage
 
 logger = logging.getLogger(__name__)
 
@@ -39,20 +40,21 @@ class ContactView(APIView):
             f"Sujet  : {data['subject']}\n\n"
             f"Message :\n{data['message']}\n"
         )
-        try:
-            services.send_email(
-                subject=f"[Contact] {data['subject']}",
-                recipient=recipient,
-                body=body,
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.error("Contact email failed: %s", exc)
-            return Response(
-                {"detail": "Impossible d'envoyer le message pour le moment."},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+        # Saved first, so the message is never lost even if the email fails.
+        saved = ContactMessage.objects.create(
+            name=data["name"], email=data["email"], subject=data["subject"], message=data["message"],
+        )
+        saved.email_sent = services.send_email(
+            subject=f"[Contact] {data['subject']}",
+            recipient=recipient,
+            body=body,
+            reply_to=data["email"],
+        )
+        saved.save(update_fields=["email_sent"])
+        if not saved.email_sent:
+            logger.error("Contact email failed for message %s (kept in database)", saved.id)
 
         return Response(
-            {"message": "Votre message a bien été envoyé. Nous vous répondrons rapidement."},
+            {"message": "Votre message a bien été reçu. Nous vous répondrons rapidement."},
             status=status.HTTP_201_CREATED,
         )

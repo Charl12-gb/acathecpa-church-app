@@ -79,11 +79,17 @@ class CreateProfessorView(APIView):
                 {"detail": "Un utilisateur avec cet email existe déjà."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        if result == "PhoneAlreadyExists":
+            return Response(
+                {"detail": "Un utilisateur avec ce numéro de téléphone existe déjà."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         if result == "ProfessorRoleMissing":
             return Response(
                 {"detail": "Le rôle 'professor' est introuvable. Lance `seed_permissions`."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+        services.send_professor_welcome_email(result)
         return Response(UserSerializer(result).data, status=status.HTTP_201_CREATED)
 
 

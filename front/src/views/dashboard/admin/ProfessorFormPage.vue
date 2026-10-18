@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { updateUser } from '../../../services/api/user';
 import { ref, onMounted, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useProfessorStore } from '../../../stores/professor';
@@ -144,6 +145,14 @@ const saveProfessor = async () => {
         skills: professorData.value.professor_profile.skills?.filter(s => s && s.trim() !== ''),
         social_links: professorData.value.professor_profile.social_links,
       };
+      // Account fields (name, email, phone…) live on the user, not the profile.
+      await updateUser(localProfessorId.value, {
+        name: professorData.value.name,
+        email: professorData.value.email,
+        phone: professorData.value.phone || null,
+        country: professorData.value.country || null,
+        birthdate: professorData.value.birthdate || null,
+      } as any);
       await updateProfile(localProfessorId.value, profileUpdatePayload);
 
     } else {
@@ -188,6 +197,12 @@ const saveProfessor = async () => {
         } else {
              localErrors.value.general = "Une erreur est survenue lors de l'enregistrement.";
         }
+    } else if (error.response?.data && typeof error.response.data === 'object') {
+        // DRF field errors: { email: ["…"], phone: ["…"] }
+        for (const [field, messages] of Object.entries(error.response.data)) {
+            localErrors.value[field] = ([] as string[]).concat(messages as any).join(' ');
+        }
+        localErrors.value.general = Object.values(localErrors.value).join(' ');
     } else if (error.message) {
         localErrors.value.general = error.message;
     } else {

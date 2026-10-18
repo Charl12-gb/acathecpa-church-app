@@ -112,6 +112,23 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         )
         extra_kwargs = {f: {"required": False} for f in fields}
 
+    def to_internal_value(self, data):
+        # The admin form used to send role as {"name": "..."}; accept both shapes.
+        if isinstance(data.get("role"), dict):
+            data = {**data, "role": data["role"].get("name")}
+        return super().to_internal_value(data)
+
+    def validate_phone(self, value):
+        if value and User.objects.filter(phone=value).exclude(pk=self.instance.pk).exists():
+            raise serializers.ValidationError("Phone number already registered")
+        # Phone is unique: store "no phone" as NULL, never as "".
+        return value or None
+
+    def validate_role_id(self, value):
+        if value and not Role.objects.filter(pk=value).exists():
+            raise serializers.ValidationError("Rôle inconnu.")
+        return value
+
     def update(self, instance: User, validated_data: dict) -> User:
         password = validated_data.pop("password", None)
         role_id = validated_data.pop("role_id", serializers.empty)

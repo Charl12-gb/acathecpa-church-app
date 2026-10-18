@@ -15,6 +15,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from apps.permissions.permissions import HasPermission, check_permission
 
 from . import services
+from .hierarchy import can_assign_role
 from .models import User
 from .serializers import (
     ForgotPasswordSerializer,
@@ -37,6 +38,14 @@ class RegisterView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
+        requested_role = request.data.get("role_name") or request.data.get("role")
+        if requested_role and check_permission(request.user, "create_user") and not can_assign_role(
+            request.user, requested_role
+        ):
+            return Response(
+                {"detail": "Seul un super administrateur peut créer un compte super administrateur."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         serializer = RegisterSerializer(
             data=request.data,
             context={"can_assign_role": check_permission(request.user, "create_user")},

@@ -91,7 +91,7 @@ const computedRegistrationChartData = computed(() => {
     labels: monthlyRegistrations.value.map(item => item.month),
     datasets: [
       {
-        label: 'Nouvelles inscriptions',
+        label: 'Nouveaux comptes',
         backgroundColor: 'rgba(52, 152, 219, 0.2)',
         borderColor: '#3498db',
         borderWidth: 2,
@@ -190,7 +190,7 @@ export default {
                 <i class="bi bi-graph-up-arrow text-info fs-4"></i>
               </div>
               <div>
-                <h6 class="mb-0 text-muted">Nouv. inscriptions</h6>
+                <h6 class="mb-0 text-muted">Inscriptions aux cours (30 j)</h6>
                 <h3 class="mb-0">{{ stats.new_enrollments_last_month ?? 'N/A' }}</h3>
               </div>
             </div>
@@ -229,7 +229,7 @@ export default {
                     <th scope="col">Email</th>
                     <th scope="col">Cours</th>
                     <th scope="col">Étudiants</th>
-                    <th scope="col">Évaluation</th>
+                    <th scope="col">Cours publiés</th>
                     <th scope="col">Actions</th>
                   </tr>
                 </thead>
@@ -239,14 +239,7 @@ export default {
                     <td>{{ professor.email }}</td>
                     <td>{{ professor.courses_count }}</td>
                     <td>{{ professor.students_count }}</td>
-                    <td>
-                      <div class="d-flex align-items-center">
-                        <span class="me-2">{{ professor.average_rating.toFixed(1) }}</span>
-                        <div class="text-warning">
-                          <i class="bi bi-star-fill"></i>
-                        </div>
-                      </div>
-                    </td>
+                    <td>{{ professor.published_courses_count }}</td>
                     <td>
                       <RouterLink :to="`/professor-form/${professor.id}`" class="btn btn-sm btn-outline-primary me-1">
                         <i class="bi bi-pencil"></i>
@@ -321,7 +314,7 @@ export default {
         <!-- Registration Chart -->
         <div class="card border-0 shadow-sm mb-4">
           <div class="card-header bg-white py-3">
-            <h5 class="mb-0">Nouvelles inscriptions</h5>
+            <h5 class="mb-0">Nouveaux comptes par mois</h5>
           </div>
           <div class="card-body">
             <div v-if="monthlyRegistrations.length > 0" style="height: 250px;">

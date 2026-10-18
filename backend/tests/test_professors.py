@@ -63,12 +63,13 @@ def test_update_and_delete_profile(professor_user):
 # Admin dashboard
 # --------------------------------------------------------------------------- #
 @pytest.mark.django_db
-def test_admin_dashboard_stats(admin_user, professor_user, free_published_course):
+def test_admin_dashboard_stats(admin_user, professor_user, free_published_course, enrollment):
     stats = services.get_admin_dashboard_stats()
     assert stats["total_users"] >= 2
     assert stats["total_professors"] == 1
     assert stats["total_courses"] == 1
-    assert stats["new_enrollments_last_month"] >= 2  # parity: new users last 30d
+    # Course enrollments over the last 30 days (no longer new user accounts).
+    assert stats["new_enrollments_last_month"] == 1
 
 
 @pytest.mark.django_db

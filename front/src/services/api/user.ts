@@ -37,3 +37,18 @@ export const deleteUser = async (userId: number): Promise<User> => {
   const response = await apiClient.delete<User>(`/users/${userId}`);
   return response.data;
 };
+
+/** What deleting a user would remove, and whether the current admin may do it. */
+export interface UserDeletionImpact {
+  history: {
+    enrollments: number; payments: number; certificates: number;
+    courses: number; course_enrollments: number; contents: number; live_sessions: number;
+  };
+  has_history: boolean;
+  can_delete: boolean;
+}
+
+export const getUserDeletionImpact = async (userId: number): Promise<UserDeletionImpact> => {
+  const response = await apiClient.get<UserDeletionImpact>(`/users/${userId}/deletion-impact`);
+  return response.data;
+};

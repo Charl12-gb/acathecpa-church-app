@@ -10,7 +10,7 @@
               {{ isEditing ? 'Modifiez les informations de l\'utilisateur' : 'Créez un nouvel utilisateur' }}
             </p>
           </div>
-          <button class="btn btn-primary" @click="saveUser" :disabled="isSaving">
+          <button class="btn btn-primary" @click="saveUser" :disabled="isSaving || isProtectedAccount">
             <span v-if="isSaving" class="spinner-border spinner-border-sm me-2"></span>
             <i v-else class="bi bi-check-circle me-2"></i>
             {{ isSaving ? 'Enregistrement...' : 'Enregistrer' }}
@@ -23,6 +23,9 @@
       <div class="col-lg-8">
         <!-- Error message -->
         <div v-if="errorMsg" class="alert alert-danger mb-3">{{ errorMsg }}</div>
+        <div v-if="isProtectedAccount" class="alert alert-warning mb-3">
+          Ce compte est un super administrateur : seul un super administrateur peut le modifier.
+        </div>
         <!-- User Form -->
         <div class="card border-0 shadow-sm">
           <div class="card-body">
@@ -31,8 +34,8 @@
               <h5 class="mb-4">Informations de base</h5>
               <div class="row g-3 mb-4">
                 <div class="col-md-6">
-                  <label class="form-label">Nom</label>
-                  <input 
+                  <label class="form-label" for="user-name">Nom</label>
+                  <input id="user-name" 
                     type="text" 
                     class="form-control" 
                     v-model="userForm.name"
@@ -86,12 +89,9 @@
                   <label class="form-label">Rôle</label>
                   <SearchableSelect
                     v-model="userForm.role"
-                    :options="[
-                      { value: 'student', label: 'Étudiant' },
-                      { value: 'professor', label: 'Professeur' },
-                      { value: 'admin', label: 'Administrateur' },
-                    ]"
+                    :options="roleOptions"
                     :searchable="false"
+                    :disabled="isProtectedAccount"
                   />
                 </div>
 
@@ -198,8 +198,19 @@ import { register } from '../../../services/api/auth'
 import { UserRole } from '../../../types/api/userTypes'
 import { countries } from '../../../services/utils'
 import SearchableSelect from '../../../components/ui/SearchableSelect.vue'
+import { useAuthStore } from '../../../stores/auth'
 
 const route = useRoute()
+const authStore = useAuthStore()
+// Only a super admin may manage super admin accounts or hand out that role.
+const isSuperAdmin = computed(() => authStore.hasRole(UserRole.SUPER_ADMIN))
+const roleOptions = computed(() => [
+  { value: 'student', label: 'Étudiant' },
+  { value: 'professor', label: 'Professeur' },
+  { value: 'admin', label: 'Administrateur' },
+  ...(isSuperAdmin.value ? [{ value: 'super_admin', label: 'Super administrateur' }] : []),
+])
+const isProtectedAccount = computed(() => userForm.value.role === 'super_admin' && !isSuperAdmin.value)
 const router = useRouter()
 
 const isEditing = computed(() => !!route.params.id)
@@ -260,7 +271,7 @@ const saveUser = async () => {
         phone: userForm.value.phone || null,
         country: userForm.value.country || null,
         birthdate: userForm.value.birthdate || null,
-        role: { name: userForm.value.role },
+        role: userForm.value.role,
         is_active: userForm.value.status === 'active',
       }
       if (userForm.value.password) {
@@ -280,7 +291,10 @@ const saveUser = async () => {
     }
     router.push('/manage-users')
   } catch (err: any) {
-    errorMsg.value = err.response?.data?.detail || err.message || 'Erreur lors de l\'enregistrement'
+    const data = err.response?.data
+    errorMsg.value = data?.detail
+      || (data && typeof data === 'object' ? Object.values(data).flat().join(' ') : '')
+      || err.message || 'Erreur lors de l\'enregistrement'
   } finally {
     isSaving.value = false
   }

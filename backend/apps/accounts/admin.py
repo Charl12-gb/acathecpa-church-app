@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
-from .models import ProfessorProfile, User
+from .models import ContactMessage, ProfessorProfile, User
 
 
 @admin.register(User)
@@ -30,3 +30,11 @@ class UserAdmin(DjangoUserAdmin):
 class ProfessorProfileAdmin(admin.ModelAdmin):
     list_display = ("user", "specialization")
     search_fields = ("user__email", "specialization")
+
+
+@admin.register(ContactMessage)
+class ContactMessageAdmin(admin.ModelAdmin):
+    list_display = ("subject", "name", "email", "email_sent", "created_at")
+    list_filter = ("email_sent",)
+    search_fields = ("subject", "name", "email", "message")
+    readonly_fields = ("created_at",)

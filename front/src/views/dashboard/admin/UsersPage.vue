@@ -14,6 +14,11 @@
     </div>
 
     <!-- Stats Strip -->
+    <div v-if="error" class="alert alert-danger d-flex justify-content-between align-items-center" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="btn-close" aria-label="Fermer" @click="error = ''"></button>
+    </div>
+
     <div class="stats-strip mb-4">
       <div class="stat-card">
         <div class="stat-icon" style="background: rgba(36,83,167,0.1);">
@@ -149,7 +154,10 @@
                 </td>
                 <td>{{ new Date(user.created_at).toLocaleDateString() }}</td>
                 <td>
-                  <div class="btn-group">
+                  <span v-if="!canManage(user)" class="text-muted small" title="Réservé aux super administrateurs">
+                    <i class="bi bi-shield-lock"></i> Protégé
+                  </span>
+                  <div v-else class="btn-group">
                     <RouterLink 
                       :to="`/user-form/${user.id}`"
                       class="btn btn-sm btn-outline-custom"
@@ -164,7 +172,7 @@
                     </button>
                     <button 
                       class="btn btn-sm btn-outline-danger-custom"
-                      @click="deleteUser(user.id)"
+                      @click="askDelete(user)"
                     >
                       <i class="bi bi-trash"></i>
                     </button>
@@ -174,6 +182,50 @@
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
+
+    <!-- Deletion dialog -->
+    <div v-if="deletion" class="del-backdrop" @click.self="deletion = null">
+      <div class="del-dialog" role="dialog" aria-modal="true" aria-labelledby="del-title">
+        <h5 id="del-title">Supprimer {{ deletion.user.name || deletion.user.email }}</h5>
+
+        <div v-if="!deletion.impact" class="text-center py-3">
+          <div class="spinner-border spinner-border-sm" role="status"><span class="visually-hidden">Chargement</span></div>
+        </div>
+
+        <template v-else-if="!deletion.impact.can_delete && deletion.impact.has_history">
+          <p>Ce compte a un historique : <strong>{{ historySummary }}</strong>.</p>
+          <p class="text-muted">Pour le conserver, désactivez-le : la personne ne pourra plus se connecter.
+            Seul un super administrateur peut le supprimer définitivement.</p>
+          <div class="del-actions">
+            <button type="button" class="btn btn-light" @click="deletion = null">Annuler</button>
+            <button v-if="deletion.user.status === 'active'" type="button" class="btn btn-warning" @click="deactivateInstead">
+              Désactiver à la place
+            </button>
+          </div>
+        </template>
+
+        <template v-else>
+          <template v-if="deletion.impact.has_history">
+            <p class="text-danger fw-semibold">Suppression définitive, avec toutes les données du compte :</p>
+            <p>{{ historySummary }}.</p>
+            <p v-if="deletion.impact.history.course_enrollments" class="text-muted small">
+              Les cours de ce formateur seront supprimés, avec les inscriptions, paiements et certificats de leurs étudiants.
+            </p>
+            <label for="del-confirm" class="form-label small">Tapez <code>{{ deletion.user.email }}</code> pour confirmer</label>
+            <input id="del-confirm" v-model.trim="deletion.typed" class="form-control mb-3" autocomplete="off">
+          </template>
+          <p v-else>Ce compte n'a aucun historique. Il sera supprimé.</p>
+          <div v-if="deletion.error" class="alert alert-danger py-2">{{ deletion.error }}</div>
+          <div class="del-actions">
+            <button type="button" class="btn btn-light" @click="deletion = null">Annuler</button>
+            <button type="button" class="btn btn-danger" :disabled="deletion.busy || (deletion.impact.has_history && deletion.typed !== deletion.user.email)"
+              @click="confirmDelete">
+              {{ deletion.impact.has_history ? 'Supprimer définitivement' : 'Supprimer' }}
+            </button>
+          </div>
+        </template>
       </div>
     </div>
 
@@ -193,7 +245,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { getUsers, deleteUser as apiDeleteUser, updateUser as apiUpdateUser } from '../../../services/api/user'
+import { getUsers, deleteUser as apiDeleteUser, updateUser as apiUpdateUser, getUserDeletionImpact, type UserDeletionImpact } from '../../../services/api/user'
+import { useAuthStore } from '../../../stores/auth'
+import { UserRole } from '../../../types/api/userTypes'
 import SearchableSelect from '../../../components/ui/SearchableSelect.vue'
 
 const users = ref<any[]>([])
@@ -276,23 +330,90 @@ const toggleUserStatus = async (user: any) => {
     await apiUpdateUser(user.id, { is_active: newStatus })
     user.status = newStatus ? 'active' : 'inactive'
   } catch (err: any) {
-    alert(err.message || 'Erreur lors du changement de statut')
+    error.value = err.response?.data?.detail || 'Erreur lors du changement de statut'
+
   }
 }
 
-const deleteUser = async (userId: number) => {
-  if (confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?')) {
-    try {
-        await apiDeleteUser(userId)
-        users.value = users.value.filter(user => user.id !== userId)
-    } catch (err: any) {
-        alert(err.message || 'Erreur lors de la suppression')
-    }
+// Super admin accounts can only be managed by a super admin.
+const authStore = useAuthStore()
+const canManage = (user: any) =>
+  authStore.hasRole(UserRole.SUPER_ADMIN) || user.role !== 'super_admin'
+
+const deletion = ref<null | {
+  user: any; impact: UserDeletionImpact | null; typed: string; busy: boolean; error: string
+}>(null)
+
+const HISTORY_LABELS: Record<string, string> = {
+  enrollments: 'inscription(s)', payments: 'paiement(s)', certificates: 'certificat(s)',
+  courses: 'cours donné(s)', course_enrollments: 'étudiant(s) inscrit(s) à ses cours',
+  contents: 'article(s) ou podcast(s)', live_sessions: 'session(s) en direct',
+}
+const historySummary = computed(() => {
+  const history = deletion.value?.impact?.history ?? {}
+  return Object.entries(history).filter(([, n]) => n).map(([k, n]) => `${n} ${HISTORY_LABELS[k] ?? k}`).join(', ')
+})
+
+const askDelete = async (user: any) => {
+  deletion.value = { user, impact: null, typed: '', busy: false, error: '' }
+  try {
+    deletion.value.impact = await getUserDeletionImpact(user.id)
+  } catch (err: any) {
+    deletion.value = null
+    error.value = err.response?.data?.detail || 'Impossible de vérifier ce compte.'
   }
+}
+
+const confirmDelete = async () => {
+  if (!deletion.value) return
+  const target = deletion.value
+  target.busy = true
+  target.error = ''
+  try {
+    await apiDeleteUser(target.user.id)
+    users.value = users.value.filter(u => u.id !== target.user.id)
+    deletion.value = null
+  } catch (err: any) {
+    target.error = err.response?.data?.detail || 'Erreur lors de la suppression.'
+  } finally {
+    target.busy = false
+  }
+}
+
+const deactivateInstead = async () => {
+  if (!deletion.value) return
+  await toggleUserStatus(deletion.value.user)
+  deletion.value = null
 }
 </script>
 
 <style scoped lang="scss">
+.del-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, .45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 1050;
+}
+
+.del-dialog {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, .2);
+}
+
+.del-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .users-page {
   max-width: 1100px;
   margin: 0 auto;

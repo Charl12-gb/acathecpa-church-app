@@ -33,8 +33,8 @@ def authenticate_user_flexible(username: str, password: str) -> Optional[User]:
     return user
 
 
-def generate_password_reset_token(email: str) -> str:
-    lifetime = settings.PASSWORD_RESET_TOKEN_LIFETIME_MINUTES
+def generate_password_reset_token(email: str, lifetime_minutes: Optional[int] = None) -> str:
+    lifetime = lifetime_minutes or settings.PASSWORD_RESET_TOKEN_LIFETIME_MINUTES
     expire = timezone.now() + timedelta(minutes=lifetime)
     payload = {"sub": email, "exp": expire, "type": PASSWORD_RESET_TOKEN_TYPE}
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.SIMPLE_JWT["ALGORITHM"])
@@ -54,15 +54,19 @@ def verify_password_reset_token(token: str) -> Optional[str]:
     return payload.get("sub")
 
 
-def send_email(*, subject: str, recipient: str, body: str, subtype: str = "plain") -> None:
-    """Lightweight wrapper around Django EmailMessage."""
+def send_email(
+    *, subject: str, recipient: str, body: str, subtype: str = "plain",
+    reply_to: Optional[str] = None,
+) -> bool:
+    """Lightweight wrapper around Django EmailMessage. Returns False if sending failed."""
     if not recipient:
-        return
+        return False
     msg = EmailMessage(
         subject=subject,
         body=body,
         from_email=f"{settings.EMAIL_FROM_NAME} <{settings.DEFAULT_FROM_EMAIL}>",
         to=[recipient],
+        reply_to=[reply_to] if reply_to else None,
     )
     if subtype == "html":
         msg.content_subtype = "html"
@@ -70,3 +74,5 @@ def send_email(*, subject: str, recipient: str, body: str, subtype: str = "plain
         msg.send(fail_silently=False)
     except Exception as exc:  # noqa: BLE001
         logger.error("Error sending email to %s: %s", recipient, exc)
+        return False
+    return True
