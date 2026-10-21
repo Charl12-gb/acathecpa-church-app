@@ -1,5 +1,5 @@
 <template>
-  <div class="pro-editor">
+  <div class="pro-editor" :class="{ compact }">
     <!-- ── Professional Toolbar ── -->
     <div class="pro-toolbar">
       <div class="toolbar-section">
@@ -146,7 +146,10 @@ import TableHeader from '@tiptap/extension-table-header'
 import TableCell from '@tiptap/extension-table-cell'
 
 const props = defineProps<{
-  modelValue: string
+  modelValue: string | null
+  /** Smaller writing area, for course sections and lessons. */
+  compact?: boolean
+  placeholder?: string
 }>()
 
 const emit = defineEmits<{
@@ -159,7 +162,7 @@ const inTable = ref(false)
 
 // Initialize editor
 const editor = useEditor({
-  content: props.modelValue,
+  content: props.modelValue || '',
   extensions: [
     StarterKit,
     Image,
@@ -170,11 +173,12 @@ const editor = useEditor({
     TableHeader,
     TableCell,
     Placeholder.configure({
-      placeholder: 'Commencez à rédiger votre contenu ici…'
+      placeholder: props.placeholder || 'Commencez à rédiger votre contenu ici…'
     })
   ],
   onUpdate: ({ editor }) => {
-    emit('update:modelValue', editor.getHTML())
+    // An empty editor is "" (not "<p></p>"), so empty sections stay empty.
+    emit('update:modelValue', editor.isEmpty ? '' : editor.getHTML())
     plainText.value = editor.getText()
   },
   onTransaction: ({ editor }) => {
@@ -191,8 +195,9 @@ const charCount = computed(() => plainText.value.length)
 const readingTime = computed(() => Math.max(1, Math.ceil(wordCount.value / 200)))
 
 // Watch for external changes to modelValue
-watch(() => props.modelValue, (newContent) => {
-  const currentContent = editor.value?.getHTML()
+watch(() => props.modelValue, (value) => {
+  const newContent = value || ''
+  const currentContent = editor.value?.isEmpty ? '' : editor.value?.getHTML()
   if (editor.value && newContent !== currentContent) {
     editor.value.commands.setContent(newContent, false)
     plainText.value = editor.value.getText()
@@ -511,6 +516,17 @@ $radius-sm: 10px;
     color: $gray;
     i { font-size: .8rem; }
   }
+}
+
+/* ── Compact (course sections and lessons) ── */
+.pro-editor.compact {
+  box-shadow: none;
+  border-radius: $radius-sm;
+  .pro-toolbar { padding: 6px 8px; }
+  .tb-btn { width: 30px; height: 30px; }
+  .pro-content { min-height: 160px; padding: 14px 18px; }
+  :deep(.ProseMirror) { min-height: 130px; }
+  .pro-statusbar { padding: 6px 12px; }
 }
 
 /* ── Responsive ── */

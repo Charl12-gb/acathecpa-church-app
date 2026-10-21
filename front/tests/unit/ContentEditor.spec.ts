@@ -76,3 +76,15 @@ describe('ContentEditorPage', () => {
     wrapper.unmount()
   })
 })
+
+describe('ContentEditor empty value', () => {
+  it('emits an empty string, not <p></p>, once everything is erased', async () => {
+    const wrapper = mount(ContentEditor, { props: { modelValue: '<p>x</p>', compact: true }, attachTo: document.body })
+    await flushPromises()
+    expect(wrapper.find('.pro-editor').classes()).toContain('compact')
+    const editor = (wrapper.vm as any).$?.setupState?.editor
+    editor.commands.clearContent(true)
+    expect(wrapper.emitted('update:modelValue')!.at(-1)![0]).toBe('')
+    wrapper.unmount()
+  })
+})

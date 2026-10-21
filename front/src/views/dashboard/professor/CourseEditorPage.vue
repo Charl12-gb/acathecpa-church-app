@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import CourseTestEditor from '../../../components/CourseTestEditor.vue';
 import SearchableSelect from '../../../components/ui/SearchableSelect.vue';
 const FileUploader = defineAsyncComponent(() => import('../../../components/FileUploader.vue'));
+const ContentEditor = defineAsyncComponent(() => import('../../../components/content/ContentEditor.vue'));
 import { resolveMediaUrl } from '../../../services/api/upload';
 import { getCategories, createCategory } from '../../../services/api/category';
 import {
@@ -758,8 +759,7 @@ const previewLessons = (section: any) => {
                 <!-- Text content -->
                 <div v-if="section.content_type === 'text'" class="field">
                   <label>Contenu Texte</label>
-                  <textarea v-model="section.text_content" rows="6" placeholder="Saisissez le contenu texte de cette section…"></textarea>
-                  <span class="field-hint"><i class="bi bi-info-circle"></i> HTML basique supporté : &lt;p&gt;, &lt;strong&gt;, &lt;em&gt;, &lt;ul&gt;, &lt;ol&gt;</span>
+                  <ContentEditor v-model="section.text_content" compact placeholder="Saisissez le contenu texte de cette section…" />
                 </div>
 
                 <!-- Video content -->
@@ -832,7 +832,8 @@ const previewLessons = (section: any) => {
                           </div>
                         </div>
                         <div class="field">
-                          <textarea v-model="lesson.content" rows="2" :placeholder="lesson.type === 'video' ? 'URL de la vidéo' : 'Contenu texte de la leçon'"></textarea>
+                          <input v-if="lesson.type === 'video'" type="url" v-model="lesson.content" placeholder="URL de la vidéo (YouTube, Vimeo…)">
+                          <ContentEditor v-else v-model="lesson.content" compact placeholder="Contenu texte de la leçon" />
                         </div>
                       </div>
                     </div>

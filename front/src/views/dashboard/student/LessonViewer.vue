@@ -467,6 +467,23 @@ onMounted(loadCourse);
   line-height: 1.8;
 }
 
+.lesson-content :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  display: block;
+  overflow-x: auto;
+}
+.lesson-content :deep(th),
+.lesson-content :deep(td) {
+  border: 1px solid #cbd5e1;
+  padding: 8px 10px;
+  vertical-align: top;
+}
+.lesson-content :deep(th) { background: #f4f7fb; font-weight: 700; text-align: left; }
+.lesson-content :deep(td p),
+.lesson-content :deep(th p) { margin: 0; }
+
 .lesson-content :deep(img) {
   max-width: 100%;
   height: auto;
