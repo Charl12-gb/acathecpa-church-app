@@ -15,6 +15,7 @@ Creates the roles/permissions, a professor and:
     - an admin, a super admin and a student without any history.
 """
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -38,6 +39,7 @@ def main() -> None:
     assert db_path.parent.name == ".e2e", "Refusing to reset a non-e2e database"
     db_path.parent.mkdir(exist_ok=True)
     db_path.unlink(missing_ok=True)
+    shutil.rmtree(settings.MEDIA_ROOT, ignore_errors=True)  # files uploaded by the last run
 
     call_command("migrate", verbosity=0)
     call_command("seed_permissions", verbosity=0)

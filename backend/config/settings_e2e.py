@@ -14,6 +14,9 @@ DATABASES = {
     }
 }
 
+# Files uploaded by the tests stay out of backend/media.
+MEDIA_ROOT = E2E_DIR / "media"
+
 DEBUG = True
 CORS_ALLOWED_ORIGINS = ["http://localhost:5174", "http://127.0.0.1:5174"]
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"

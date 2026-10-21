@@ -17,6 +17,9 @@ pnpm-debug.log*
 # Coverage
 front/coverage/
 
+# Fichiers envoyés par les utilisateurs (jamais dans le dépôt)
+backend/media/
+
 # Tests end-to-end (Playwright)
 front/test-results/
 front/playwright-report/
