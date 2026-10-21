@@ -82,6 +82,10 @@
         <button class="tb-btn" title="Lien" @click="addLink">
           <i class="bi bi-link-45deg"></i>
         </button>
+        <button type="button" class="tb-btn" title="Insérer un tableau" aria-label="Insérer un tableau"
+          @click="insertTable" :class="{ active: inTable }">
+          <i class="bi bi-table"></i>
+        </button>
       </div>
 
       <!-- Right side: undo/redo -->
@@ -93,6 +97,19 @@
           <i class="bi bi-arrow-clockwise"></i>
         </button>
       </div>
+    </div>
+
+    <!-- ── Table tools (cursor inside a table) ── -->
+    <div v-if="inTable" class="table-toolbar" role="toolbar" aria-label="Outils du tableau">
+      <span class="table-toolbar-label"><i class="bi bi-table"></i> Tableau</span>
+      <button type="button" class="tt-btn" @click="run(c => c.addRowAfter())">+ Ligne</button>
+      <button type="button" class="tt-btn" @click="run(c => c.addColumnAfter())">+ Colonne</button>
+      <button type="button" class="tt-btn" @click="run(c => c.deleteRow())">− Ligne</button>
+      <button type="button" class="tt-btn" @click="run(c => c.deleteColumn())">− Colonne</button>
+      <button type="button" class="tt-btn" @click="run(c => c.toggleHeaderRow())">En-tête</button>
+      <button type="button" class="tt-btn" :disabled="!editor?.can().mergeCells()" @click="run(c => c.mergeCells())">Fusionner</button>
+      <button type="button" class="tt-btn" :disabled="!editor?.can().splitCell()" @click="run(c => c.splitCell())">Scinder</button>
+      <button type="button" class="tt-btn danger" @click="run(c => c.deleteTable())">Supprimer le tableau</button>
     </div>
 
     <!-- ── Editor Content ── -->
@@ -123,6 +140,10 @@ import Image from '@tiptap/extension-image'
 import Link from '@tiptap/extension-link'
 import Youtube from '@tiptap/extension-youtube'
 import Placeholder from '@tiptap/extension-placeholder'
+import Table from '@tiptap/extension-table'
+import TableRow from '@tiptap/extension-table-row'
+import TableHeader from '@tiptap/extension-table-header'
+import TableCell from '@tiptap/extension-table-cell'
 
 const props = defineProps<{
   modelValue: string
@@ -133,6 +154,8 @@ const emit = defineEmits<{
 }>()
 
 const plainText = ref('')
+// Updated on every transaction: a computed over editor.isActive() would not re-run.
+const inTable = ref(false)
 
 // Initialize editor
 const editor = useEditor({
@@ -142,6 +165,10 @@ const editor = useEditor({
     Image,
     Link.configure({ openOnClick: false }),
     Youtube,
+    Table.configure({ resizable: true }),
+    TableRow,
+    TableHeader,
+    TableCell,
     Placeholder.configure({
       placeholder: 'Commencez à rédiger votre contenu ici…'
     })
@@ -149,6 +176,9 @@ const editor = useEditor({
   onUpdate: ({ editor }) => {
     emit('update:modelValue', editor.getHTML())
     plainText.value = editor.getText()
+  },
+  onTransaction: ({ editor }) => {
+    inTable.value = editor.isActive('table')
   }
 })
 
@@ -168,6 +198,16 @@ watch(() => props.modelValue, (newContent) => {
     plainText.value = editor.value.getText()
   }
 }, { deep: true })
+
+// Tables
+const insertTable = () => {
+  editor.value?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+}
+
+// Runs one table command on the current selection.
+const run = (command: (chain: any) => any) => {
+  if (editor.value) command(editor.value.chain().focus()).run()
+}
 
 // Editor actions
 const addImage = () => {
@@ -384,6 +424,76 @@ $radius-sm: 10px;
   margin: 1rem 0;
   max-width: 100%;
 }
+
+/* ── Tables ── */
+.table-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 16px;
+  background: $primary-soft;
+  border-bottom: 1px solid $border;
+}
+.table-toolbar-label {
+  font-size: .78rem;
+  font-weight: 700;
+  color: $primary;
+  margin-right: 6px;
+}
+.tt-btn {
+  border: 1px solid $border;
+  background: #fff;
+  color: $dark;
+  border-radius: 6px;
+  padding: 3px 9px;
+  font-size: .78rem;
+  cursor: pointer;
+  &:hover:not(:disabled) { border-color: $primary; color: $primary; }
+  &:disabled { opacity: .45; cursor: not-allowed; }
+  &.danger { color: #dc2626; }
+}
+
+:deep(.ProseMirror table) {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 1rem 0;
+  overflow: hidden;
+}
+:deep(.ProseMirror td),
+:deep(.ProseMirror th) {
+  border: 1px solid #cbd5e1;
+  padding: 8px 10px;
+  vertical-align: top;
+  min-width: 60px;
+  position: relative;
+}
+:deep(.ProseMirror th) {
+  background: $gray-light;
+  font-weight: 700;
+  text-align: left;
+}
+:deep(.ProseMirror td p),
+:deep(.ProseMirror th p) { margin: 0; }
+:deep(.ProseMirror .selectedCell::after) {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(36, 83, 167, .12);
+  pointer-events: none;
+}
+:deep(.ProseMirror .column-resize-handle) {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: $primary;
+  pointer-events: none;
+}
+:deep(.ProseMirror.resize-cursor) { cursor: col-resize; }
+:deep(.tableWrapper) { overflow-x: auto; }
 
 /* ── Status bar ── */
 .pro-statusbar {

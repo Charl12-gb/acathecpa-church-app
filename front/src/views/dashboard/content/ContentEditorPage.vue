@@ -406,10 +406,19 @@ const removeTag = (tag: string) => {
 onMounted(async () => {
   if (isEditing.value) {
     try {
+      // The API uses snake_case names (content_body, is_premium, media_url).
       const content = await contentStore.getContent(parseInt(route.params.id as string))
       contentForm.value = {
-        ...content,
-        tags: content.tags || []
+        title: content.title || '',
+        description: content.description || '',
+        content: content.content_body || '',
+        type: content.type || 'article',
+        format: content.format || 'text',
+        mediaUrl: content.media_url || '',
+        isPremium: !!content.is_premium,
+        price: content.price ?? 0,
+        status: content.status || 'draft',
+        tags: content.tags || [],
       }
     } catch (error) {
       console.error('Error loading content:', error)
@@ -420,11 +429,21 @@ onMounted(async () => {
 // Save content
 const saveContent = async () => {
   try {
-    const payload: any = {
-        ...contentForm.value,
-        content_body: contentForm.value.content
-    };
-    await contentStore.saveContent(payload)
+    const form = contentForm.value
+    const payload = {
+      title: form.title,
+      description: form.description,
+      content_body: form.content,
+      type: form.type,
+      format: form.format,
+      media_url: form.mediaUrl || null,
+      is_premium: form.isPremium,
+      price: form.isPremium ? form.price : null,
+      status: form.status,
+      tags: form.tags,
+    }
+    // Editing updates the existing content instead of creating a copy.
+    await contentStore.saveContent(payload, isEditing.value ? Number(route.params.id) : undefined)
     router.push('/my-content')
   } catch (error) {
     console.error('Error saving content:', error)

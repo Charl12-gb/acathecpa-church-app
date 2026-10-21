@@ -112,6 +112,15 @@ def main() -> None:
     Course.objects.create(title="Brouillon vide", instructor=prof, status=CourseStatus.DRAFT,
                           is_free=True, price=0, category="Comptabilité")
 
+    # An article the professor edits (content editor journey).
+    from apps.content.models import Content
+
+    Content.objects.create(
+        title="Les obligations fiscales", type="article", format="text", status="published",
+        description="Calendrier des déclarations.", author=prof,
+        content_body="<p>Chaque entreprise déclare sa TVA chaque mois.</p>",
+    )
+
     # A paying student of the OHADA course, deleted for good by the super admin.
     from apps.payments.models import Payment, PaymentStatus
 

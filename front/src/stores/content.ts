@@ -11,7 +11,11 @@ export interface Content {
   format?: 'audio' | 'video' | 'text' | 'pdf'
   mediaUrl?: string
   isPremium: boolean
-  price?: number
+  // Names actually sent by the API (snake_case).
+  content_body?: string | null
+  media_url?: string | null
+  is_premium?: boolean
+  price?: number | null
   author: {
     id: number
     name: string
@@ -61,13 +65,15 @@ export const useContentStore = defineStore('content', () => {
     }
   }
 
-  // Create/Update content
-  const saveContent = async (content: Partial<Content>) => {
+  // Create (no id) or update (id) a content. `payload` uses the API field names.
+  const saveContent = async (payload: Record<string, unknown>, contentId?: number) => {
     loading.value = true
     error.value = ''
     
     try {
-      const response = await apiClient.post('/contents/', content)
+      const response = contentId
+        ? await apiClient.put(`/contents/${contentId}`, payload)
+        : await apiClient.post('/contents/', payload)
       return response.data
     } catch (err: any) {
       error.value = err.message || 'Failed to save content'

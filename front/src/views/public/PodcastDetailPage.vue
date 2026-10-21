@@ -321,6 +321,12 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* Tables written in the content editor */
+.podcast-content :deep(table) { width: 100%; border-collapse: collapse; margin: 1rem 0; display: block; overflow-x: auto; }
+.podcast-content :deep(th), .podcast-content :deep(td) { border: 1px solid #cbd5e1; padding: 8px 10px; vertical-align: top; }
+.podcast-content :deep(th) { background: #f4f7fb; font-weight: 700; text-align: left; }
+.podcast-content :deep(td p), .podcast-content :deep(th p) { margin: 0; }
+
 .badge {
     padding: 0.5rem 1rem;
 }

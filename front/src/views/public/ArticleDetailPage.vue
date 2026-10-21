@@ -326,6 +326,12 @@
   </script>
   
   <style scoped>
+/* Tables written in the content editor */
+.article-content :deep(table) { width: 100%; border-collapse: collapse; margin: 1rem 0; display: block; overflow-x: auto; }
+.article-content :deep(th), .article-content :deep(td) { border: 1px solid #cbd5e1; padding: 8px 10px; vertical-align: top; }
+.article-content :deep(th) { background: #f4f7fb; font-weight: 700; text-align: left; }
+.article-content :deep(td p), .article-content :deep(th p) { margin: 0; }
+
   .article-content {
     font-size: 1.1rem;
     line-height: 1.8;

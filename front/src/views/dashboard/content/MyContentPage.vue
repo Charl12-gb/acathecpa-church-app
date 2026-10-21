@@ -108,7 +108,7 @@
             <div class="row">
               <div class="col-md-3">
                 <img 
-                  :src="content.mediaUrl || 'https://placehold.co/400x200?text=Content'" 
+                  :src="coverOf(content)" 
                   class="img-fluid rounded mb-3 mb-md-0"
                   :alt="content.title"
                 >
@@ -195,6 +195,12 @@
 </template>
 
 <script setup lang="ts">
+// media_url may be an audio, video or PDF file: only use it as a cover when it is an image.
+const coverOf = (content: { media_url?: string | null }) =>
+  content.media_url && /\.(jpe?g|png|gif|webp|avif|svg)(\?|$)/i.test(content.media_url)
+    ? content.media_url
+    : 'https://placehold.co/400x200?text=Content'
+
 import { ref, computed, onMounted } from 'vue'
 import { useContentStore } from '../../../stores/content'
 import type { Content } from '../../../stores/content'
@@ -249,7 +255,7 @@ const draftCount = computed(() =>
 )
 
 const premiumCount = computed(() => 
-  userContents.value.filter(content => content.isPremium).length
+  userContents.value.filter(content => content.is_premium).length
 )
 
 // Methods
