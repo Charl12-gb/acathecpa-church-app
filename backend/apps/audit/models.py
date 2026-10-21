@@ -14,6 +14,8 @@ class AuditAction(models.TextChoices):
     ROLE_PERMISSION_REVOKED = "role.permission_revoked", "Permission retirée à un rôle"
     USER_PERMISSION_ADDED = "user.permission_override_added", "Dérogation ajoutée"
     USER_PERMISSION_REMOVED = "user.permission_override_removed", "Dérogation supprimée"
+    CONTENT_STATUS_CHANGED = "content.status_changed", "Statut d'un contenu modifié"
+    CONTENT_DELETED = "content.deleted", "Contenu supprimé"
 
 
 class AuditLog(models.Model):

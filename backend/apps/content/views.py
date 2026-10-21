@@ -14,12 +14,15 @@ Mounted at `/api/v1/contents/`.
 """
 from __future__ import annotations
 
+from django.db.models import Q
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
+from apps.audit.models import AuditAction
+from apps.audit.services import record
 from apps.permissions.permissions import HasPermission
 
 from .models import Content, ContentStatus
@@ -51,6 +54,7 @@ class ContentViewSet(viewsets.ModelViewSet):
         "destroy": "delete_own_content",
         "publish": "publish_own_content",
         "user": "view_own_content",
+        "all_contents": None,
     }
 
     filterset_fields = ["type", "status", "is_premium"]
@@ -101,6 +105,35 @@ class ContentViewSet(viewsets.ModelViewSet):
             row["requires_payment"] = bool(locked)
         return response
 
+    @action(detail=False, methods=["get"], url_path="all")
+    def all_contents(self, request):
+        """Admins: every article and podcast, drafts included, any author."""
+        if not _is_admin(request.user) and not request.user.is_superuser:
+            raise PermissionDenied("Réservé aux administrateurs.")
+        qs = Content.objects.select_related("author").order_by("-updated_at")
+        if status_filter := request.query_params.get("status"):
+            qs = qs.filter(status=status_filter)
+        if type_filter := request.query_params.get("type"):
+            qs = qs.filter(type=type_filter)
+        if q := request.query_params.get("q"):
+            qs = qs.filter(Q(title__icontains=q) | Q(author__name__icontains=q) | Q(author__email__icontains=q))
+        return Response(ContentSerializer(qs, many=True).data)
+
+    def perform_update(self, serializer):
+        old_status = serializer.instance.status
+        content = serializer.save()
+        # Moderation of someone else's post is logged for super admins.
+        if content.author_id != self.request.user.id and content.status != old_status:
+            record(self.request.user, AuditAction.CONTENT_STATUS_CHANGED, target_type="content",
+                   target_id=content.id, target_label=content.title, old=old_status, new=content.status)
+
+    def perform_destroy(self, instance):
+        if instance.author_id != self.request.user.id:
+            record(self.request.user, AuditAction.CONTENT_DELETED, target_type="content",
+                   target_id=instance.id, target_label=instance.title,
+                   author=getattr(instance.author, "email", ""))
+        instance.delete()
+
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
@@ -125,9 +158,9 @@ class ContentViewSet(viewsets.ModelViewSet):
 
         data = self.get_serializer(instance).data
 
-        # Premium gate: redact body if user has not paid
-        # Only the author bypasses (admins go through the admin space).
-        if instance.is_premium and not is_owner:
+        # Premium gate: redact body if user has not paid.
+        # The author and admins (who may edit it) see everything.
+        if instance.is_premium and not (is_owner or is_admin):
             from apps.payments.services import has_completed_content_payment
 
             paid = is_authed and has_completed_content_payment(user.id, instance.id)

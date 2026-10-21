@@ -120,6 +120,12 @@ def main() -> None:
         description="Calendrier des déclarations.", author=prof,
         content_body="<p>Chaque entreprise déclare sa TVA chaque mois.</p>",
     )
+    # A draft by another author, moderated then deleted by an admin.
+    autre = User(email="autre.prof.e2e@acathecpa.test", name="Prof. Kossi Agbo", role=Role.objects.get(name="professor"))
+    autre.set_password("Password123!")
+    autre.save()
+    Content.objects.create(title="Brouillon à modérer", type="podcast", format="text", status="draft",
+                           author=autre, content_body="<p>Épisode en préparation.</p>")
 
     # A paying student of the OHADA course, deleted for good by the super admin.
     from apps.payments.models import Payment, PaymentStatus

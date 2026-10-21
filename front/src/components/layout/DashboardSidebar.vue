@@ -106,6 +106,10 @@ const isActiveGroup = (paths: string[]) => paths.some(p => route.path.startsWith
           <i class="bi bi-person-vcard-fill"></i>
           <span v-if="!collapsed">Notre équipe</span>
         </RouterLink>
+        <RouterLink to="/manage-contents" class="nav-item" :class="{ active: isActive('/manage-contents') }">
+          <i class="bi bi-collection-fill"></i>
+          <span v-if="!collapsed">Contenus</span>
+        </RouterLink>
         <RouterLink to="/manage-categories" class="nav-item" :class="{ active: isActive('/manage-categories') }">
           <i class="bi bi-tags-fill"></i>
           <span v-if="!collapsed">Catégories</span>

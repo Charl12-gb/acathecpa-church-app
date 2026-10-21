@@ -3,7 +3,7 @@
     <!-- ── Toolbar ── -->
     <header class="editor-toolbar">
       <div class="toolbar-left">
-        <button class="btn-back" @click="router.push('/my-content')" title="Retour">
+        <button class="btn-back" @click="router.push(route.query.back === 'manage' ? '/manage-contents' : '/my-content')" title="Retour">
           <i class="bi bi-arrow-left"></i>
         </button>
         <div class="toolbar-info">
@@ -444,7 +444,8 @@ const saveContent = async () => {
     }
     // Editing updates the existing content instead of creating a copy.
     await contentStore.saveContent(payload, isEditing.value ? Number(route.params.id) : undefined)
-    router.push('/my-content')
+    // Admins editing from « Tous les contenus » go back there.
+    router.push(route.query.back === 'manage' ? '/manage-contents' : '/my-content')
   } catch (error) {
     console.error('Error saving content:', error)
   }

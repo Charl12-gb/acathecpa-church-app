@@ -17,7 +17,7 @@ from pathlib import Path
 from django.conf import settings
 from django.core.files.storage import default_storage
 from rest_framework import status
-from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.parsers import FileUploadParser, FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -49,10 +49,25 @@ def _detect_category(extension: str) -> str:
     return "other"
 
 
+class RawFileParser(FileUploadParser):
+    """
+    The file as the raw request body, its name in ``?filename=``.
+
+    Some hosts' firewalls reject every multipart/form-data request (the API
+    answers "Error 403.4" before Django sees it); a raw body goes through.
+    """
+
+    def get_filename(self, stream, media_type, parser_context):
+        request = parser_context.get("request")
+        name = request.query_params.get("filename") if request is not None else None
+        return name or super().get_filename(stream, media_type, parser_context) or "file"
+
+
 class UploadView(APIView):
     """``POST /api/v1/uploads/`` — multipart upload (authenticated only)."""
 
-    parser_classes = [MultiPartParser, FormParser]
+    # Multipart (classic form) or raw body (?filename=…&category=…).
+    parser_classes = [MultiPartParser, FormParser, RawFileParser]
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -64,7 +79,9 @@ class UploadView(APIView):
             )
 
         # Optional client-provided category (image/video/audio/document); else auto-detect from ext
-        client_category = (request.data.get("category") or "").strip().lower() or None
+        client_category = (
+            request.data.get("category") or request.query_params.get("category") or ""
+        ).strip().lower() or None
 
         original_name = upload.name or "file"
         ext = Path(original_name).suffix.lower().lstrip(".")

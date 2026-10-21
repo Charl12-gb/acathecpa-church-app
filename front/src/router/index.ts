@@ -51,6 +51,7 @@ import TeamMemberFormPage from '../views/dashboard/admin/TeamMemberFormPage.vue'
 import CategoriesPage from '../views/dashboard/admin/CategoriesPage.vue'
 import RolesPermissionsPage from '../views/dashboard/admin/RolesPermissionsPage.vue'
 import AuditLogPage from '../views/dashboard/admin/AuditLogPage.vue'
+import ContentsAdminPage from '../views/dashboard/admin/ContentsAdminPage.vue'
 import { UserRole } from '../types/api/userTypes'
 
 const router = createRouter({
@@ -231,6 +232,12 @@ const router = createRouter({
       path: '/team-form/:id?',
       name: 'team-form',
       component: TeamMemberFormPage,
+      meta: { requiresAuth: true, minRole: 'admin', layout: 'dashboard' }
+    },
+    {
+      path: '/manage-contents',
+      name: 'manage-contents',
+      component: ContentsAdminPage,
       meta: { requiresAuth: true, minRole: 'admin', layout: 'dashboard' }
     },
     {

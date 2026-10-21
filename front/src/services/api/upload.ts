@@ -25,12 +25,14 @@ export const uploadFile = async (
   category?: UploadCategory,
   onProgress?: (percent: number) => void
 ): Promise<UploadResult> => {
-  const formData = new FormData();
-  formData.append('file', file);
-  if (category) formData.append('category', category);
+  // The file goes as the raw request body, its name and category in the URL:
+  // the production host rejects every multipart/form-data request (403.4).
+  const params: Record<string, string> = { filename: file.name };
+  if (category) params.category = category;
 
-  const response = await apiClient.post<UploadResult>('/uploads/', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+  const response = await apiClient.post<UploadResult>('/uploads/', file, {
+    params,
+    headers: { 'Content-Type': file.type || 'application/octet-stream' },
     onUploadProgress: (evt) => {
       if (onProgress && evt.total) {
         onProgress(Math.round((evt.loaded * 100) / evt.total));
