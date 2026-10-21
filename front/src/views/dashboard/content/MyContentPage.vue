@@ -100,8 +100,12 @@
       </div>
     </div>
 
+    <div v-if="error" class="alert alert-danger" role="alert">{{ error }}</div>
+
+    <PageLoader v-if="loading" text="Chargement de vos contenus…" />
+
     <!-- Content List -->
-    <div class="row g-4">
+    <div v-else class="row g-4">
       <div v-for="content in filteredContents" :key="content.id" class="col-12">
         <div class="card app-card list-card">
           <div class="card-body">
@@ -181,7 +185,7 @@
     </div>
 
     <!-- Empty State -->
-    <div v-if="filteredContents.length === 0" class="empty-state">
+    <div v-if="!loading && !error && filteredContents.length === 0" class="empty-state">
       <div class="empty-icon">
         <i class="bi bi-file-earmark-x"></i>
       </div>
@@ -205,12 +209,13 @@ import { ref, computed, onMounted } from 'vue'
 import { useContentStore } from '../../../stores/content'
 import type { Content } from '../../../stores/content'
 import SearchableSelect from '../../../components/ui/SearchableSelect.vue'
+import PageLoader from '../../../components/ui/PageLoader.vue'
 
 const contentStore = useContentStore()
 
 // State
 const userContents = ref<Content[]>([])
-const loading = ref(false)
+const loading = ref(true) // shown from the first render, before the list arrives
 const error = ref('')
 
 // Filters
@@ -266,8 +271,8 @@ const loadContents = async () => {
   try {
     const data = await contentStore.getUserContents()
     userContents.value = data
-  } catch (err: any) {
-    error.value = err.message
+  } catch {
+    error.value = 'Impossible de charger vos contenus. Vérifiez votre connexion puis rechargez la page.'
   } finally {
     loading.value = false
   }

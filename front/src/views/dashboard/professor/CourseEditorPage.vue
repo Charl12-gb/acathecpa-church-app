@@ -3,6 +3,7 @@ import { ref, onMounted, computed, nextTick, defineAsyncComponent } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import CourseTestEditor from '../../../components/CourseTestEditor.vue';
 import SearchableSelect from '../../../components/ui/SearchableSelect.vue';
+import PageLoader from '../../../components/ui/PageLoader.vue';
 const FileUploader = defineAsyncComponent(() => import('../../../components/FileUploader.vue'));
 const ContentEditor = defineAsyncComponent(() => import('../../../components/content/ContentEditor.vue'));
 import { resolveMediaUrl } from '../../../services/api/upload';
@@ -31,6 +32,9 @@ const route = useRoute();
 const router = useRouter();
 
 const isLoading = ref(false);
+// Loading an existing course: shown from the first render, until the form is filled.
+const pageLoading = ref(!!route.params.id);
+const loadError = ref<string | null>(null);
 const error = ref<string | null>(null);
 const showPreview = ref(true);
 const course_data = ref<Course | null>(null);
@@ -185,8 +189,8 @@ onMounted(async () => {
   await loadCategories();
   const courseIdParam = route.params.id;
   if (courseIdParam) {
-    isLoading.value = true;
-    error.value = null;
+    pageLoading.value = true;
+    loadError.value = null;
     try {
       const courseId = Number(courseIdParam);
       const fetchedCourse = await getCourseById(courseId);
@@ -227,9 +231,9 @@ onMounted(async () => {
       };
     } catch (err: any) {
       console.error('Error loading course:', err);
-      error.value = err.message || 'Failed to load course data.';
+      loadError.value = err.response?.data?.detail || 'Impossible de charger ce cours. Vérifiez votre connexion puis rechargez la page.';
     } finally {
-      isLoading.value = false;
+      pageLoading.value = false;
     }
   }
 });
@@ -372,6 +376,7 @@ const saveCourse = async () => {
       (sec.lessons || []).some((l: any) => l.title?.trim()) || sec.test?.questions?.length);
     if (wantsPublished && !hasLesson) {
       error.value = 'Ajoutez au moins une leçon avant de publier, ou enregistrez le cours en brouillon.';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       currentStep.value = totalSteps;
       isLoading.value = false;
       return;
@@ -474,6 +479,7 @@ const saveCourse = async () => {
   } catch (err: any) {
     console.error('Erreur lors de l\'enregistrement du cours:', err);
     error.value = err.response?.data?.detail || err.message;
+    window.scrollTo({ top: 0, behavior: 'smooth' }); // the message is above the form
     if (err.response?.data?.errors) {
       errors.value = err.response.data.errors;
     }
@@ -544,19 +550,16 @@ const previewLessons = (section: any) => {
     </header>
 
     <!-- Loading -->
-    <div v-if="isLoading && route.params.id && !courseForm.id" class="loading-state">
-      <div class="spinner-lg"></div>
-      <p>Chargement du cours…</p>
-    </div>
+    <PageLoader v-if="pageLoading" text="Chargement du cours…" />
 
-    <!-- Error -->
-    <div v-if="error" class="error-banner">
+    <!-- Load error (the form stays hidden) or save error (shown above the form) -->
+    <div v-if="loadError || error" class="error-banner" role="alert">
       <i class="bi bi-exclamation-triangle"></i>
-      <span>{{ error }}</span>
+      <span>{{ loadError || error }}</span>
     </div>
 
     <!-- ── Main layout ── -->
-    <div class="editor-grid" :class="{ 'with-preview': showPreview }" v-if="!error && (!(isLoading && route.params.id && !courseForm.id))">
+    <div class="editor-grid" :class="{ 'with-preview': showPreview }" v-if="!pageLoading && !loadError">
 
       <!-- ─ Form column ─ -->
       <div class="form-col">

@@ -38,6 +38,15 @@
       </div>
     </header>
 
+    <!-- Loading an existing post: the form appears once it is filled -->
+    <PageLoader v-if="pageLoading" text="Chargement du contenu…" />
+    <div v-else-if="loadError" class="load-error" role="alert">
+      <i class="bi bi-exclamation-triangle"></i>
+      <span>{{ loadError }}</span>
+      <button type="button" class="btn-retry" @click="loadContent">Réessayer</button>
+    </div>
+
+    <template v-else>
     <!-- ══════════ STEP 1 : Informations ══════════ -->
     <div v-show="currentStep === 1" class="step-content">
       <div class="editor-grid" :class="{ 'with-preview': showPreview }">
@@ -313,6 +322,7 @@
         </button>
       </div>
     </div>
+    </template>
   </div>
 </template>
 
@@ -322,6 +332,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useContentStore } from '../../../stores/content'
 const FileUploader = defineAsyncComponent(() => import('../../../components/FileUploader.vue'))
 import ContentEditor from '../../../components/content/ContentEditor.vue'
+import PageLoader from '../../../components/ui/PageLoader.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -403,28 +414,36 @@ const removeTag = (tag: string) => {
 }
 
 // Load content if editing
-onMounted(async () => {
-  if (isEditing.value) {
-    try {
-      // The API uses snake_case names (content_body, is_premium, media_url).
-      const content = await contentStore.getContent(parseInt(route.params.id as string))
-      contentForm.value = {
-        title: content.title || '',
-        description: content.description || '',
-        content: content.content_body || '',
-        type: content.type || 'article',
-        format: content.format || 'text',
-        mediaUrl: content.media_url || '',
-        isPremium: !!content.is_premium,
-        price: content.price ?? 0,
-        status: content.status || 'draft',
-        tags: content.tags || [],
-      }
-    } catch (error) {
-      console.error('Error loading content:', error)
+const pageLoading = ref(isEditing.value)
+const loadError = ref('')
+
+const loadContent = async () => {
+  if (!isEditing.value) return
+  pageLoading.value = true
+  loadError.value = ''
+  try {
+    // The API uses snake_case names (content_body, is_premium, media_url).
+    const content = await contentStore.getContent(parseInt(route.params.id as string))
+    contentForm.value = {
+      title: content.title || '',
+      description: content.description || '',
+      content: content.content_body || '',
+      type: content.type || 'article',
+      format: content.format || 'text',
+      mediaUrl: content.media_url || '',
+      isPremium: !!content.is_premium,
+      price: content.price ?? 0,
+      status: content.status || 'draft',
+      tags: content.tags || [],
     }
+  } catch {
+    loadError.value = 'Impossible de charger ce contenu. Vérifiez votre connexion puis réessayez.'
+  } finally {
+    pageLoading.value = false
   }
-})
+}
+
+onMounted(loadContent)
 
 // Save content
 const saveContent = async () => {
@@ -473,6 +492,27 @@ $purple-soft: #f3f0ff;
 $red: #dc2626;
 $yellow: #ca8a04;
 $yellow-soft: #fefce8;
+
+.load-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 24px 0;
+  padding: 14px 18px;
+  border-radius: $radius-sm;
+  background: #fef2f2;
+  color: $red;
+  span { flex: 1; }
+}
+.btn-retry {
+  border: 1px solid $red;
+  background: #fff;
+  color: $red;
+  border-radius: 8px;
+  padding: 4px 12px;
+  cursor: pointer;
+}
 
 /* ── Page ── */
 .content-editor-page {

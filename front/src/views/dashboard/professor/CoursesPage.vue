@@ -19,7 +19,8 @@ import type { Course, CourseStatus } from '../../../types/api' // Added CourseSt
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Title)
 
 const courses = ref<Course[]>([])
-const isLoading = ref(false)
+const isLoading = ref(true) // list loading, shown from the first render
+const statusSaving = ref(false) // a status change keeps the list on screen
 const error = ref<string | null>(null)
 // Action feedback (refused publication or deletion), shown above the list.
 const route = useRoute()
@@ -124,7 +125,7 @@ const setCourseStatus = (courseId: number, value: string | number | boolean | nu
 
 const updateCourseStatus = async (courseId: number, newStatus: CourseStatus) => {
   // Simple loading state for now, could be per-course
-  isLoading.value = true;
+  statusSaving.value = true;
   try {
     if (newStatus === 'published') { // Assuming CourseStatus.PUBLISHED is 'published'
       await publishCourse(courseId);
@@ -142,7 +143,7 @@ const updateCourseStatus = async (courseId: number, newStatus: CourseStatus) => 
     notice.value = apiMessage(err, 'Le statut du cours n\'a pas pu être modifié.');
     // Optionally, revert local change or show specific error to user
   } finally {
-    isLoading.value = false;
+    statusSaving.value = false;
   }
 };
 
@@ -281,7 +282,7 @@ const deleteCourse = async (courseId: number) => {
               class="status-select"
               :model-value="course.status"
               :searchable="false"
-              :disabled="isLoading"
+              :disabled="isLoading || statusSaving"
               :options="[
                 { value: 'draft', label: 'Brouillon' },
                 { value: 'published', label: 'Publié' },
@@ -302,7 +303,7 @@ const deleteCourse = async (courseId: number) => {
           <button
             class="btn-action danger"
             @click="deleteCourse(course.id)"
-            :disabled="isLoading"
+            :disabled="isLoading || statusSaving"
           >
             <i class="bi bi-trash"></i> Supprimer
           </button>

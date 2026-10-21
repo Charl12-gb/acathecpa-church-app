@@ -24,7 +24,7 @@ const authStore = useAuthStore();
 
 const courses = ref<Course[]>([]);
 const enrolledCourseIds = ref<Set<number>>(new Set());
-const isLoading = ref(false);
+const isLoading = ref(true); // shown from the first render, before the catalogue arrives
 const error = ref<string | null>(null);
 
 // Filters
